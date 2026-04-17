@@ -21,12 +21,12 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
-    const socketURL = window.location.hostname === 'localhost'
-      ? (process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001')
-      : 'https://pastel-chat.onrender.com';
+    // Socket.io connects to the same backend URL the REST client uses.
+    // In production this is injected by Vercel via REACT_APP_BACKEND_URL.
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
     const newSocket = io(
-      socketURL,
+      BACKEND_URL,
       {
         auth: { token },
         transports: ['websocket', 'polling'],
