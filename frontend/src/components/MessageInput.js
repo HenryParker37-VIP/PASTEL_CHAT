@@ -140,7 +140,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
             maxHeight: 120,
             resize: 'none',
             padding: '10px 14px',
-            fontSize: 14,
+            fontSize: 16,
             lineHeight: 1.5
           }}
         />
