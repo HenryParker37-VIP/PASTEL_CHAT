@@ -225,10 +225,15 @@ input, textarea {
 
 .center {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
-  padding: 24px;
+  padding: 24px 16px 60px;
+  overflow-y: auto;
+}
+
+@media (min-height: 700px) {
+  .center { align-items: center; }
 }
 
 /* ---------- Home hero sections ---------- */
@@ -509,15 +514,17 @@ input, textarea {
 
 .signature {
   position: fixed;
-  bottom: 10px;
+  bottom: 0;
   left: 0;
   right: 0;
   text-align: center;
   font-size: 11px;
   color: #aaa;
   pointer-events: none;
-  z-index: 1;
+  z-index: 10;
   font-style: italic;
+  padding: 8px 12px 10px;
+  background: linear-gradient(transparent, rgba(255, 248, 243, 0.97) 40%);
 }
 
 /* ---------- Loading dots ---------- */
@@ -560,13 +567,20 @@ input, textarea {
   .hero h1 { font-size: 34px; }
   .home-tile { padding: 22px 16px; }
   .home-tile .emoji { font-size: 44px; }
-  .container { padding: 16px 14px 80px; }
+  .container { padding: 16px 14px 70px; }
   .drawer { width: 100vw; max-width: 100vw; }
   .msg-bubble { max-width: 85%; }
-  .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); }
+  .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); max-height: 220px; }
+  .login-card { padding: 28px 20px 24px; }
+  /* Hide the date/time in chat header on small screens to prevent overlap */
+  .header-datetime { display: none; }
 }
 
 @media (max-width: 420px) {
-  .hero h1 { font-size: 28px; }
-  .login-card { padding: 26px 20px; }
+  .hero h1 { font-size: 26px; }
+  .login-card { padding: 22px 16px 20px; border-radius: 20px; }
+  .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); max-height: 190px; }
+  .btn { padding: 10px 16px; font-size: 14px; }
+  /* Hide "Home" label text in chat header, keep just the arrow */
+  .back-label { display: none; }
 }

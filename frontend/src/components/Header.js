@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 
 const Header = () => {
   const { user, logout } = useAuth();
   const { onlineUsers, connected } = useSocket();
+  const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
 
@@ -39,13 +41,32 @@ const Header = () => {
       position: 'relative',
       zIndex: 100
     }}>
-      {/* Logo */}
+      {/* Left: back button + logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button
+          onClick={() => navigate('/home')}
+          title="Back to dashboard"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            background: 'rgba(255,255,255,0.2)',
+            border: 'none', borderRadius: '12px',
+            padding: '5px 10px', cursor: 'pointer',
+            color: 'white', fontSize: '13px', fontWeight: 600,
+            backdropFilter: 'blur(4px)',
+            transition: 'background 0.2s',
+            flexShrink: 0
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.35)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+        >
+          ← <span className="back-label">Home</span>
+        </button>
         <div style={{
           width: '34px', height: '34px', borderRadius: '50%',
           background: 'rgba(255,255,255,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '18px', backdropFilter: 'blur(4px)'
+          fontSize: '18px', backdropFilter: 'blur(4px)',
+          flexShrink: 0
         }}>
           💬
         </div>
@@ -67,7 +88,7 @@ const Header = () => {
       </div>
 
       {/* DateTime */}
-      <div style={{
+      <div className="header-datetime" style={{
         textAlign: 'center',
         color: 'white',
         position: 'absolute',
