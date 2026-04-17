@@ -1,7 +1,8 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SocketProvider } from './contexts/SocketContext';
+import { SocketProvider, useSocket } from './contexts/SocketContext';
+import { ToastProvider, useToast } from './components/Toast';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
@@ -10,6 +11,32 @@ import Chat from './pages/Chat';
 import Privacy from './pages/Privacy';
 import LoadingAnimation from './components/LoadingAnimation';
 import Signature from './components/Signature';
+
+const GlobalSocketListener = () => {
+  const { socket } = useSocket();
+  const { user } = useAuth();
+  const { push } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!socket || !user) return;
+    const handler = (payload) => {
+      if (payload.type === 'friend_requested') {
+        push({ emoji: '📫', title: 'New friend request!', body: `${payload.from?.name} wants to be friends.` });
+      }
+      if (payload.type === 'friend_accepted') {
+        push({ emoji: '🌸', title: 'Request accepted!', body: `You are now friends with ${payload.from?.name}.` });
+      }
+      if (payload.type === 'new_message') {
+        push({ emoji: '💬', title: `New message from ${payload.from?.name}`, body: payload.preview });
+      }
+    };
+    socket.on(`notify:${user._id}`, handler);
+    return () => socket.off(`notify:${user._id}`, handler);
+  }, [socket, user, push]);
+
+  return null;
+};
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -38,6 +65,7 @@ const AppRoutes = () => {
   const { user } = useAuth();
   return (
     <>
+      {user && <GlobalSocketListener />}
       <Routes>
         <Route
           path="/login"
@@ -47,9 +75,7 @@ const AppRoutes = () => {
           path="/home"
           element={
             <ProtectedRoute>
-              <SocketProvider>
-                <PageFrame><Home /></PageFrame>
-              </SocketProvider>
+              <PageFrame><Home /></PageFrame>
             </ProtectedRoute>
           }
         />
@@ -57,9 +83,7 @@ const AppRoutes = () => {
           path="/profile"
           element={
             <ProtectedRoute>
-              <SocketProvider>
-                <PageFrame><Profile /></PageFrame>
-              </SocketProvider>
+              <PageFrame><Profile /></PageFrame>
             </ProtectedRoute>
           }
         />
@@ -67,9 +91,7 @@ const AppRoutes = () => {
           path="/friends"
           element={
             <ProtectedRoute>
-              <SocketProvider>
-                <PageFrame><Friends /></PageFrame>
-              </SocketProvider>
+              <PageFrame><Friends /></PageFrame>
             </ProtectedRoute>
           }
         />
@@ -77,9 +99,7 @@ const AppRoutes = () => {
           path="/chat/:friendId"
           element={
             <ProtectedRoute>
-              <SocketProvider>
-                <Chat />
-              </SocketProvider>
+              <Chat />
             </ProtectedRoute>
           }
         />
@@ -87,9 +107,7 @@ const AppRoutes = () => {
           path="/privacy"
           element={
             <ProtectedRoute>
-              <SocketProvider>
-                <PageFrame><Privacy /></PageFrame>
-              </SocketProvider>
+              <PageFrame><Privacy /></PageFrame>
             </ProtectedRoute>
           }
         />
@@ -103,9 +121,13 @@ const AppRoutes = () => {
 
 const App = () => (
   <AuthProvider>
-    <Router>
-      <AppRoutes />
-    </Router>
+    <ToastProvider>
+      <SocketProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </SocketProvider>
+    </ToastProvider>
   </AuthProvider>
 );
 
