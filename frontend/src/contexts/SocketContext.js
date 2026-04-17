@@ -21,8 +21,12 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
+    const socketURL = window.location.hostname === 'localhost'
+      ? (process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001')
+      : 'https://pastel-chat.onrender.com';
+
     const newSocket = io(
-      process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001',
+      socketURL,
       {
         auth: { token },
         transports: ['websocket', 'polling'],

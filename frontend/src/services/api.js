@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const baseURL = window.location.hostname === 'localhost'
+  ? (process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001')
+  : '/api';
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001',
+  baseURL,
   headers: { 'Content-Type': 'application/json' }
 });
 
