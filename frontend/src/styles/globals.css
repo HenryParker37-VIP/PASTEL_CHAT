@@ -160,7 +160,7 @@ input, textarea {
   border: 2px solid var(--soft-pink);
   border-radius: 999px;
   background: white;
-  font-size: 15px;
+  font-size: 16px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
