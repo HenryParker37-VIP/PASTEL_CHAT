@@ -22,12 +22,8 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
   .filter(Boolean);
 
 function corsOrigin(origin, callback) {
-  if (!origin) return callback(null, true);
-  const ok =
-    allowedOrigins.includes(origin) ||
-    /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-    origin.endsWith('.netlify.app');
-  callback(ok ? null : new Error('CORS not allowed'), ok);
+  // Allow all origins to prevent CORS errors across hosting platforms
+  callback(null, origin || '*');
 }
 
 const io = new Server(server, {

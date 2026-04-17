@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-const baseURL = window.location.hostname === 'localhost'
-  ? (process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001')
-  : '/api';
+// Read backend URL from env (Vercel / .env.production sets this).
+// Falls back to localhost for dev when the var is missing.
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
 
 const api = axios.create({
-  baseURL,
+  baseURL: BACKEND_URL,
   headers: { 'Content-Type': 'application/json' }
 });
 
