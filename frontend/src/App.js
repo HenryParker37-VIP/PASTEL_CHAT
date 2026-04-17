@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import Friends from './pages/Friends';
 import Chat from './pages/Chat';
 import Privacy from './pages/Privacy';
+import Admin from './pages/Admin';
 import LoadingAnimation from './components/LoadingAnimation';
 import Signature from './components/Signature';
 
@@ -108,6 +109,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <PageFrame><Privacy /></PageFrame>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <PageFrame><Admin /></PageFrame>
             </ProtectedRoute>
           }
         />
