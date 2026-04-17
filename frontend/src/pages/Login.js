@@ -52,7 +52,13 @@ const Login = () => {
     const r = await loginWithCode(code);
     setBusy(false);
     if (!r.success) return setError(r.error);
-    navigate('/home');
+    
+    // Check if the code is the Admin bypass
+    if (r.user.loginCode === 'ADMN-0307' || r.user.isAdmin) {
+      navigate('/admin');
+    } else {
+      navigate('/home');
+    }
   };
 
   if (newCode) {

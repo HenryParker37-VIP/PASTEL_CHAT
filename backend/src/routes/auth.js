@@ -54,7 +54,13 @@ router.post('/register', (req, res) => {
 router.post('/login', (req, res) => {
   try {
     const { loginCode } = req.body;
-    const code = (loginCode || '').trim().toUpperCase();
+    let code = (loginCode || '').trim().toUpperCase();
+    
+    // Automatically inject the hyphen for 8-character strings missing it
+    if (code.length === 8 && !code.includes('-')) {
+      code = code.slice(0, 4) + '-' + code.slice(4);
+    }
+
     if (!code) return res.status(400).json({ message: 'Login code is required' });
 
     const user = findUser({ loginCode: code });

@@ -11,6 +11,7 @@ const userRoutes = require('./routes/users');
 const friendRoutes = require('./routes/friends');
 const messageRoutes = require('./routes/messages');
 const feedbackRoutes = require('./routes/feedback');
+const adminRoutes = require('./routes/admin');
 const setupSocket = require('./socket');
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/users', userRoutes);
 app.use('/friends', friendRoutes);
 app.use('/messages', messageRoutes);
 app.use('/feedback', feedbackRoutes);
+app.use('/admin', adminRoutes);
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
 

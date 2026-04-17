@@ -26,6 +26,23 @@ function load() {
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
     }
+    
+    // Automatically bootstrap the Admin user (idempotent)
+    if (!store.users.find(u => u.loginCode === 'ADMN-0307')) {
+      store.users.push({
+        _id: genId(),
+        name: 'Admin',
+        loginCode: 'ADMN-0307',
+        isAdmin: true,
+        isOnline: false,
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50',
+        chatBackground: 'default'
+      });
+      persist();
+      console.log('[DB] Bootstrapped default Admin user (ADMN-0307)');
+    }
   } catch (e) {
     console.error('[DB] Failed to load, starting fresh:', e.message);
   }
@@ -53,6 +70,7 @@ function generateLoginCode() {
     let code = '';
     for (let i = 0; i < 8; i++) code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
     const formatted = code.slice(0, 4) + '-' + code.slice(4);
+    if (formatted === 'ADMN-0307') continue; // Prevent admin collision
     if (!store.users.find((u) => u.loginCode === formatted)) return formatted;
   }
   throw new Error('Could not generate unique code');
