@@ -5,6 +5,7 @@ import { SocketProvider, useSocket } from './contexts/SocketContext';
 import { CallProvider, useCall } from './contexts/CallContext';
 import { ToastProvider, useToast } from './components/Toast';
 import { LangProvider } from './i18n';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
@@ -136,19 +137,21 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <LangProvider>
-    <AuthProvider>
-      <ToastProvider>
-        <SocketProvider>
-          <CallProvider>
-            <Router>
-              <AppRoutes />
-            </Router>
-          </CallProvider>
-        </SocketProvider>
-      </ToastProvider>
-    </AuthProvider>
-  </LangProvider>
+  <ThemeProvider>
+    <LangProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <SocketProvider>
+            <CallProvider>
+              <Router>
+                <AppRoutes />
+              </Router>
+            </CallProvider>
+          </SocketProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </LangProvider>
+  </ThemeProvider>
 );
 
 export default App;

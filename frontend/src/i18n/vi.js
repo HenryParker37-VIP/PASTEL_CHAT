@@ -162,6 +162,32 @@ const vi = {
   mySpaceUpcoming: 'Sắp tới',
   mySpaceFriendName: 'Tên bạn bè',
   mySpaceDescription: 'Ghi chú nhanh cho ghi chú hoặc nội dung được chia sẻ',
+
+  // Privacy & support
+  privacyAppearance: 'Giao diện',
+  privacyAppearanceDesc: 'Chọn giữa chế độ sáng và tối để có trải nghiệm thoải mái hơn.',
+  privacyLight: 'Chế độ sáng',
+  privacyDark: 'Chế độ tối',
+  privacyToggleTheme: 'Chuyển chế độ sáng/tối',
+  privacyLanguage: 'Ngôn ngữ',
+  privacyLanguageDesc: 'Chọn ngôn ngữ hiển thị ưa thích của bạn.',
+  privacyNotifications: 'Thông báo',
+  privacyNotificationsDesc: 'PastelChat có thể thông báo trên trình duyệt khi có tin nhắn mới hoặc lời mời kết bạn.',
+  privacyNotificationsEnable: 'Bật thông báo trình duyệt',
+  privacyWhatWeStore: 'Chúng tôi lưu trữ gì',
+  privacyStore1: 'Tên, khuôn mặt sticker và mã đăng nhập của bạn (cần thiết để tìm lại bạn)',
+  privacyStore2: 'Danh sách bạn bè với biệt danh bạn đã đặt',
+  privacyStore3: 'Tin nhắn của bạn (để bạn có thể cuộn lại) — có thể xóa bất cứ lúc nào từ bảng bên phải',
+  privacyNoAds: 'Không có gì được chia sẻ ra ngoài PastelChat. Không quảng cáo, không theo dõi ✿',
+  privacyFeedbackTitle: 'Tìm thấy lỗi hoặc có ý tưởng?',
+  privacyFeedbackDesc: 'Tin nhắn của bạn sẽ được gửi thẳng đến người tạo — Nguyễn Mạnh Tuấn Hùng (Henry Parker).',
+  privacyFeedbackPlaceholder: 'Hãy cho người tạo biết bạn đang nghĩ gì...',
+  privacyFeedbackEmpty: 'Vui lòng mô tả những gì đã xảy ra',
+  privacyFeedbackError: 'Không thể gửi. Thử lại sớm nhé.',
+  privacyFeedbackSent: 'Đã gửi! Cảm ơn bạn đã giúp PastelChat tốt hơn.',
+  privacyFeedbackAnother: 'Gửi thêm',
+  privacyFeedbackSending: 'Đang gửi...',
+  privacyFeedbackSend: '💌 Gửi cho người tạo',
 };
 
 export default vi;

@@ -2,6 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/globals.css';
 import App from './App';
+
+// Apply saved theme before first render to avoid flash
+if (localStorage.getItem('pastelchat.theme') === 'dark') {
+  document.body.classList.add('dark');
+}
 import { register as registerSW } from './serviceWorkerRegistration';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
