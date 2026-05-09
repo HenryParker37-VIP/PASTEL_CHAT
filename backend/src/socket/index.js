@@ -167,6 +167,16 @@ const setupSocket = (io) => {
       });
     });
 
+    // Birthday wish — relay to the friend so they see the Happy Birthday overlay
+    socket.on('wish_birthday', ({ targetUserId, age }) => {
+      if (!targetUserId) return;
+      io.emit(`notify:${targetUserId}`, {
+        type: 'happy_birthday',
+        from: { _id: user._id, name: user.name, avatar: user.avatar },
+        age: age || null
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log(`[Socket] Disconnected: ${user.name}`);
       Object.values(typingTimeouts).forEach(clearTimeout);

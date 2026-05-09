@@ -958,6 +958,14 @@ input, textarea {
   .back-label { display: none; }
 }
 
+/* ---------- Happy Birthday confetti ---------- */
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(-30px) rotate(0deg)   scaleX(1);   opacity: 1; }
+  50%  { transform: translateY(50vh)  rotate(360deg) scaleX(-1);  opacity: 0.8; }
+  100% { transform: translateY(110vh) rotate(720deg) scaleX(1);   opacity: 0; }
+}
+
 /* ---------- Tablet view (iPad, 701–1100px) ---------- */
 
 @media (min-width: 701px) and (max-width: 1100px) {
