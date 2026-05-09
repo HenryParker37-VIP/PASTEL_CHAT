@@ -11,6 +11,7 @@ const userRoutes = require('./routes/users');
 const friendRoutes = require('./routes/friends');
 const messageRoutes = require('./routes/messages');
 const groupRoutes = require('./routes/groups');
+const privateSpaceRoutes = require('./routes/private-space');
 const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const setupSocket = require('./socket');
@@ -41,6 +42,7 @@ app.use('/users', userRoutes);
 app.use('/friends', friendRoutes);
 app.use('/messages', messageRoutes);
 app.use('/groups', groupRoutes);
+app.use('/private-space', privateSpaceRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/admin', adminRoutes);
 
