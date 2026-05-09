@@ -41,7 +41,10 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     try {
       await onSend(content);
       setText('');
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.focus();
+      }
     } finally {
       setSending(false);
     }
@@ -61,98 +64,79 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     const end = ta.selectionEnd;
     const next = text.slice(0, start) + emoji + text.slice(end);
     setText(next);
+    setShowEmoji(false);
     setTimeout(() => {
       ta.focus();
       ta.selectionStart = ta.selectionEnd = start + emoji.length;
     }, 0);
   };
 
+  const hasText = text.trim().length > 0;
+
   return (
-    <div className="chat-footer" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+    <div className="chat-input-area">
+      {/* Reply preview bar */}
       {replyingTo && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 12px', background: 'rgba(221,160,221,0.12)', borderRadius: 10, marginBottom: 8
-        }}>
-          <div style={{ display: 'flex', gap: 8, minWidth: 0, alignItems: 'flex-start' }}>
-            <div style={{ width: 3, background: 'var(--lavender)', borderRadius: 2, minHeight: 30 }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--lavender)' }}>
-                Replying to {replyingTo.senderId?.name || 'message'}
-              </div>
-              <div style={{ fontSize: 12, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {replyingTo.content}
-              </div>
+        <div className="reply-bar">
+          <div className="reply-bar-accent" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="reply-bar-name">
+              Replying to {replyingTo.senderId?.name || 'message'}
             </div>
+            <div className="reply-bar-text">{replyingTo.content}</div>
           </div>
-          <button onClick={onCancelReply} style={{ fontSize: 18, color: '#999' }}>×</button>
+          <button className="reply-bar-close" onClick={onCancelReply}>✕</button>
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+      {/* Emoji picker */}
+      {showEmoji && (
+        <div className="emoji-picker">
+          {EMOJI_LIST.map((e) => (
+            <button
+              key={e}
+              onClick={() => insertEmoji(e)}
+              className="emoji-btn"
+            >{e}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Input row */}
+      <div className="input-row">
         <button
-          onClick={() => setShowEmoji(!showEmoji)}
+          className={`icon-btn ${showEmoji ? 'active' : ''}`}
+          onClick={() => setShowEmoji(v => !v)}
           title="Emoji"
-          style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: showEmoji ? 'var(--soft-pink)' : 'rgba(0,0,0,0.04)',
-            fontSize: 20
-          }}
-        >😊</button>
+          type="button"
+        >
+          😊
+        </button>
 
-        {showEmoji && (
-          <div style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 8px)',
-            left: 0,
-            background: 'white',
-            borderRadius: 16,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            padding: 10,
-            width: 280,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(8, 1fr)',
-            gap: 4,
-            zIndex: 30
-          }}>
-            {EMOJI_LIST.map((e) => (
-              <button
-                key={e}
-                onClick={() => { insertEmoji(e); setShowEmoji(false); }}
-                style={{ fontSize: 22, padding: 4, borderRadius: 8 }}
-              >{e}</button>
-            ))}
-          </div>
-        )}
-
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder={replyingTo ? 'Write a reply...' : 'Type a message...'}
-          disabled={disabled || sending}
-          rows={1}
-          className="input"
-          style={{
-            borderRadius: 20,
-            minHeight: 40,
-            maxHeight: 120,
-            resize: 'none',
-            padding: '10px 14px',
-            fontSize: 16,
-            lineHeight: 1.5
-          }}
-        />
+        <div className="input-pill">
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={replyingTo ? 'Write a reply…' : 'Message…'}
+            disabled={disabled || sending}
+            rows={1}
+            className="message-textarea"
+          />
+        </div>
 
         <button
-          className="btn"
+          className={`send-btn ${hasText ? 'active' : ''}`}
           onClick={handleSend}
-          disabled={!text.trim() || sending || disabled}
-          style={{ width: 44, height: 44, padding: 0, borderRadius: '50%' }}
+          disabled={!hasText || sending || disabled}
           title="Send"
+          type="button"
         >
-          <span style={{ transform: 'translateX(1px)' }}>➤</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
       </div>
     </div>

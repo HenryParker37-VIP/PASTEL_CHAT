@@ -12,6 +12,17 @@ const randomCuteName = () => {
   return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${nouns[Math.floor(Math.random() * nouns.length)]}${num}`;
 };
 
+// Read last-used account from localStorage (code is stored in user object)
+function getStoredAccount() {
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    if (u?.loginCode) return u;
+    return null;
+  } catch { return null; }
+}
+
 const Login = () => {
   const [tab, setTab] = useState('register');
   const [name, setName] = useState(randomCuteName());
@@ -20,8 +31,13 @@ const Login = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [newCode, setNewCode] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [codeSaved, setCodeSaved] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
   const { register, loginWithCode, checkName } = useAuth();
   const navigate = useNavigate();
+
+  const storedAccount = getStoredAccount();
 
   const handleCheckName = async () => {
     setError('');
@@ -41,6 +57,7 @@ const Login = () => {
     setBusy(false);
     if (!r.success) return setError(r.error);
     setNewCode(r.user.loginCode);
+    setNewName(r.user.name || name.trim());
   };
 
   const handleLogin = async (e) => {
@@ -52,8 +69,6 @@ const Login = () => {
     const r = await loginWithCode(code);
     setBusy(false);
     if (!r.success) return setError(r.error);
-    
-    // Check if the code is the Admin bypass
     if (r.user.loginCode === 'ADMN-0307' || r.user.isAdmin) {
       navigate('/admin');
     } else {
@@ -61,27 +76,89 @@ const Login = () => {
     }
   };
 
-  if (newCode) {
+  const handleRecoverLogin = async () => {
+    if (!storedAccount?.loginCode) return;
+    setBusy(true);
+    setError('');
+    const r = await loginWithCode(storedAccount.loginCode);
+    setBusy(false);
+    if (!r.success) {
+      setError('Recovery failed — your account may no longer exist on this server.');
+      return;
+    }
+    navigate('/home');
+  };
+
+  // Step 2: Show the code, require confirmation before entering
+  if (newCode && !codeSaved) {
     return (
       <div className="center">
         <div className="login-card pop-in" style={{ textAlign: 'center' }}>
-          <div className="float" style={{ fontSize: 60, marginBottom: 10 }}>🎉</div>
-          <h2 style={{ margin: '0 0 8px' }}>Welcome, {name}!</h2>
-          <p style={{ color: '#777', fontSize: 14 }}>
-            Save this code — you'll need it to log back in next time.<br />
-            <strong style={{ color: '#e57373' }}>Don't lose it, or your chat history will be gone!</strong>
-          </p>
-          <div style={{ margin: '20px 0' }}>
-            <div className="code-display sparkle">{newCode}</div>
+          <div className="float" style={{ fontSize: 56, marginBottom: 8 }}>🎉</div>
+          <h2 style={{ margin: '0 0 6px' }}>Welcome, {newName}!</h2>
+
+          <div style={{
+            background: '#FFF3CD',
+            border: '2px solid #FFCA28',
+            borderRadius: 14,
+            padding: '12px 16px',
+            margin: '16px 0',
+            textAlign: 'left'
+          }}>
+            <p style={{ margin: 0, fontWeight: 700, color: '#856404', fontSize: 14 }}>
+              ⚠️ Save this code — it's the only way to log back in!
+            </p>
+            <p style={{ margin: '4px 0 0', color: '#856404', fontSize: 13 }}>
+              There's no email recovery. If you lose this code, your account is gone forever.
+            </p>
           </div>
+
+          <div style={{ margin: '16px 0' }}>
+            <div className="code-display sparkle" style={{ fontSize: 28, letterSpacing: '0.3em' }}>
+              {newCode}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+            <button
+              className="btn btn-lavender"
+              onClick={() => { navigator.clipboard?.writeText(newCode).catch(() => {}); }}
+            >
+              📋 Copy code
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                const msg = `My Pastel Chat login code: ${newCode}\nDon't share this with anyone!`;
+                if (navigator.share) {
+                  navigator.share({ text: msg }).catch(() => {});
+                } else {
+                  navigator.clipboard?.writeText(msg).catch(() => {});
+                }
+              }}
+            >
+              📤 Share / Save
+            </button>
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', justifyContent: 'center', marginBottom: 16 }}>
+            <input
+              type="checkbox"
+              checked={codeSaved}
+              onChange={e => setCodeSaved(e.target.checked)}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#4A4A4A' }}>
+              Yes, I saved my login code safely ✓
+            </span>
+          </label>
+
           <button
-            className="btn"
-            onClick={() => { navigator.clipboard?.writeText(newCode).catch(() => {}); }}
-            style={{ marginRight: 8 }}
+            className="btn btn-blue"
+            disabled={!codeSaved}
+            onClick={() => navigate('/home')}
+            style={{ width: '100%' }}
           >
-            📋 Copy code
-          </button>
-          <button className="btn btn-blue" onClick={() => navigate('/home')}>
             Enter PastelChat →
           </button>
         </div>
@@ -111,7 +188,7 @@ const Login = () => {
         </div>
 
         <div className="login-tabs">
-          <button className={tab === 'register' ? 'active' : ''} onClick={() => { setTab('register'); setError(''); }}>
+          <button className={tab === 'register' ? 'active' : ''} onClick={() => { setTab('register'); setError(''); setShowRecovery(false); }}>
             New here
           </button>
           <button className={tab === 'login' ? 'active' : ''} onClick={() => { setTab('login'); setError(''); }}>
@@ -157,24 +234,105 @@ const Login = () => {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label>
-              <span style={{ fontSize: 13, color: '#888' }}>Your login code</span>
-              <input
-                className="code-input"
-                value={loginCode}
-                onChange={(e) => { setLoginCode(e.target.value); setError(''); }}
-                placeholder="XXXX-XXXX"
-                maxLength={9}
-              />
-            </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {error && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
+            {/* Device recovery banner */}
+            {storedAccount && !showRecovery && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #FFF0F5, #EDE7FF)',
+                  border: '1.5px solid #DDA0DD',
+                  borderRadius: 14,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowRecovery(true)}
+              >
+                {storedAccount.avatar && (
+                  <img src={storedAccount.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#6B4E8B' }}>
+                    Previously logged in as {storedAccount.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#9B7EB8' }}>
+                    Tap to recover your code from this device
+                  </div>
+                </div>
+                <span style={{ color: '#DDA0DD', fontSize: 18 }}>›</span>
+              </div>
+            )}
 
-            <button className="btn btn-blue" disabled={busy} type="submit">
-              {busy ? 'Checking...' : '🔑 Log back in'}
-            </button>
-          </form>
+            {/* Recovery panel */}
+            {storedAccount && showRecovery && (
+              <div style={{
+                background: 'linear-gradient(135deg, #FFF0F5, #EDE7FF)',
+                border: '1.5px solid #DDA0DD',
+                borderRadius: 14,
+                padding: '14px'
+              }}>
+                <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6B4E8B', fontWeight: 600 }}>
+                  Your saved login code for <strong>{storedAccount.name}</strong>:
+                </p>
+                <div style={{
+                  background: 'white',
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  fontFamily: 'monospace',
+                  fontSize: 20,
+                  fontWeight: 700,
+                  letterSpacing: '0.2em',
+                  color: '#4A4A4A',
+                  textAlign: 'center',
+                  marginBottom: 10
+                }}>
+                  {storedAccount.loginCode}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    className="btn btn-lavender"
+                    style={{ flex: 1, fontSize: 13 }}
+                    onClick={() => navigator.clipboard?.writeText(storedAccount.loginCode).catch(() => {})}
+                  >📋 Copy</button>
+                  <button
+                    className="btn"
+                    style={{ flex: 1, fontSize: 13 }}
+                    disabled={busy}
+                    onClick={handleRecoverLogin}
+                  >{busy ? 'Logging in...' : '🔑 Log in now'}</button>
+                </div>
+                <button
+                  onClick={() => setShowRecovery(false)}
+                  style={{ marginTop: 8, fontSize: 12, color: '#999', width: '100%', textAlign: 'center' }}
+                >
+                  Cancel
+                </button>
+                {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Your login code</span>
+                <input
+                  className="code-input"
+                  value={loginCode}
+                  onChange={(e) => { setLoginCode(e.target.value); setError(''); }}
+                  placeholder="XXXX-XXXX"
+                  maxLength={9}
+                />
+              </label>
+
+              {error && !showRecovery && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
+
+              <button className="btn btn-blue" disabled={busy} type="submit">
+                {busy ? 'Checking...' : '🔑 Log back in'}
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>

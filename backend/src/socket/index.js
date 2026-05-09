@@ -69,6 +69,50 @@ const setupSocket = (io) => {
       });
     });
 
+    // ── WebRTC call signaling ─────────────────────────────────────────────
+    // All events are forwarded to the target user; server never inspects SDP/ICE.
+
+    socket.on('call:invite', ({ to, callType }) => {
+      if (!to) return;
+      io.emit(`call:incoming:${to}`, {
+        from: { _id: user._id, name: user.name, avatar: user.avatar },
+        callType: callType === 'video' ? 'video' : 'voice'
+      });
+    });
+
+    socket.on('call:accept', ({ to }) => {
+      if (!to) return;
+      io.emit(`call:accepted:${to}`, {
+        from: { _id: user._id, name: user.name, avatar: user.avatar }
+      });
+    });
+
+    socket.on('call:reject', ({ to }) => {
+      if (!to) return;
+      io.emit(`call:rejected:${to}`, { from: user._id });
+    });
+
+    socket.on('call:end', ({ to }) => {
+      if (!to) return;
+      io.emit(`call:ended:${to}`, { from: user._id });
+    });
+
+    // WebRTC handshake relay
+    socket.on('call:offer', ({ to, offer }) => {
+      if (!to || !offer) return;
+      io.emit(`call:offer:${to}`, { from: user._id, offer });
+    });
+
+    socket.on('call:answer', ({ to, answer }) => {
+      if (!to || !answer) return;
+      io.emit(`call:answer:${to}`, { from: user._id, answer });
+    });
+
+    socket.on('call:ice', ({ to, candidate }) => {
+      if (!to || !candidate) return;
+      io.emit(`call:ice:${to}`, { from: user._id, candidate });
+    });
+
     socket.on('disconnect', () => {
       console.log(`[Socket] Disconnected: ${user.name}`);
       Object.values(typingTimeouts).forEach(clearTimeout);

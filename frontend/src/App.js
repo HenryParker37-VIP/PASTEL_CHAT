@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
+import { CallProvider, useCall } from './contexts/CallContext';
 import { ToastProvider, useToast } from './components/Toast';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -12,6 +13,9 @@ import Privacy from './pages/Privacy';
 import Admin from './pages/Admin';
 import LoadingAnimation from './components/LoadingAnimation';
 import Signature from './components/Signature';
+import IncomingCallAlert from './components/IncomingCallAlert';
+import VoiceCallScreen from './components/VoiceCallScreen';
+import VideoCallScreen from './components/VideoCallScreen';
 
 const GlobalSocketListener = () => {
   const { socket } = useSocket();
@@ -62,11 +66,23 @@ const PageFrame = ({ children }) => (
   <div className="page-frame page-fade-in">{children}</div>
 );
 
+const CallOverlays = () => {
+  const { incomingCall, activeCall } = useCall();
+  return (
+    <>
+      {incomingCall && <IncomingCallAlert />}
+      {activeCall?.callType === 'voice' && <VoiceCallScreen />}
+      {activeCall?.callType === 'video' && <VideoCallScreen />}
+    </>
+  );
+};
+
 const AppRoutes = () => {
   const { user } = useAuth();
   return (
     <>
       {user && <GlobalSocketListener />}
+      {user && <CallOverlays />}
       <Routes>
         <Route
           path="/login"
@@ -132,9 +148,11 @@ const App = () => (
   <AuthProvider>
     <ToastProvider>
       <SocketProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <CallProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </CallProvider>
       </SocketProvider>
     </ToastProvider>
   </AuthProvider>
