@@ -63,13 +63,21 @@ const setupSocket = (io) => {
     });
 
     // Send private message via socket
-    socket.on('send_private_message', ({ to, content, replyTo }) => {
-      if (!to || !content || !content.trim()) return;
+    socket.on('send_private_message', ({ to, content, replyTo, media }) => {
+      if (!to || ((!content || !content.trim()) && !media)) return;
+      let validMedia = null;
+      if (media && media.dataUrl && media.name) {
+        const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
+        if (sizeBytes <= 8 * 1024 * 1024) {
+          validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sizeBytes };
+        }
+      }
       const msg = createMessage({
         senderId: user._id,
         receiverId: to,
-        content: content.trim().slice(0, 2000),
-        replyTo: replyTo || null
+        content: (content || '').trim().slice(0, 2000),
+        replyTo: replyTo || null,
+        media: validMedia
       });
       const populated = populateMessage(msg);
       io.emit(`msg:${user._id}:${to}`, populated);

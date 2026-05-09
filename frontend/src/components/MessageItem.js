@@ -14,6 +14,13 @@ const formatTime = (ts) =>
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 
+function formatBytes(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, highlight }) => {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -128,8 +135,35 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
               </div>
             )}
 
+            {/* Media attachment */}
+            {message.media && !message.isRecalled && (
+              message.media.type === 'image' ? (
+                <div className="bubble-media-img">
+                  <img
+                    src={message.media.dataUrl}
+                    alt={message.media.name || 'image'}
+                    style={{ maxWidth: '100%', maxHeight: 280, borderRadius: 10, display: 'block', cursor: 'pointer' }}
+                    onClick={() => window.open(message.media.dataUrl, '_blank')}
+                  />
+                </div>
+              ) : (
+                <a
+                  href={message.media.dataUrl}
+                  download={message.media.name}
+                  className="bubble-media-file"
+                >
+                  <span style={{ fontSize: 22 }}>📄</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="bubble-file-name">{message.media.name}</div>
+                    <div className="bubble-file-size">{formatBytes(message.media.size)}</div>
+                  </div>
+                  <span style={{ fontSize: 14, opacity: 0.6, marginLeft: 'auto' }}>↓</span>
+                </a>
+              )
+            )}
+
             {/* Message text */}
-            <div className="bubble-text">{message.content}</div>
+            {message.content && <div className="bubble-text">{message.content}</div>}
 
             {/* Time + pin */}
             {!emojiOnly && (

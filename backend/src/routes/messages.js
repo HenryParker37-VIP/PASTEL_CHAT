@@ -51,20 +51,35 @@ router.delete('/clear/:friendId', authMiddleware, (req, res) => {
   res.json({ success: true, cleared: count });
 });
 
-// POST /messages - Send new message { receiverId, content, replyTo }
+// POST /messages - Send new message { receiverId, content, replyTo, media }
 router.post('/', authMiddleware, (req, res) => {
   try {
-    const { receiverId, content, replyTo } = req.body;
+    const { receiverId, content, replyTo, media } = req.body;
     if (!receiverId) return res.status(400).json({ message: 'receiverId required' });
-    if (!content || !content.trim()) return res.status(400).json({ message: 'Content required' });
+    // Allow empty content if media is present
+    if ((!content || !content.trim()) && !media) return res.status(400).json({ message: 'Content or media required' });
     const receiver = findUserById(receiverId);
     if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
+
+    // Validate media object
+    let validMedia = null;
+    if (media && media.dataUrl && media.name) {
+      const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
+      if (sizeBytes > 8 * 1024 * 1024) return res.status(400).json({ message: 'File too large (max 8MB)' });
+      validMedia = {
+        type: media.type === 'image' ? 'image' : 'file',
+        dataUrl: media.dataUrl,
+        name: String(media.name).slice(0, 200),
+        size: sizeBytes
+      };
+    }
 
     const msg = createMessage({
       senderId: req.user._id,
       receiverId,
-      content: content.trim().slice(0, 2000),
-      replyTo: replyTo || null
+      content: (content || '').trim().slice(0, 2000),
+      replyTo: replyTo || null,
+      media: validMedia
     });
     const populated = populateMessage(msg);
 
