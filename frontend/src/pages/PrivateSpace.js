@@ -284,27 +284,45 @@ const PrivateSpace = () => {
             </div>
           )}
           <div style={{ display: 'grid', gap: 12 }}>
-            {birthdays.map(bday => (
-              <div key={bday._id} className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                  <div>
-                    <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14 }}>
-                      🎂 {bday.friendName}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 12, color: '#999' }}>
-                      {bday.date}
-                    </p>
+            {birthdays.map(bday => {
+              const parts = bday.date ? bday.date.split('-') : [];
+              const hasYear = parts.length === 3;
+              const birthYear = hasYear ? parseInt(parts[0], 10) : null;
+              const month = hasYear ? parts[1] : parts[0];
+              const day = hasYear ? parts[2] : parts[1];
+              const currentYear = new Date().getFullYear();
+              const age = birthYear ? currentYear - birthYear : null;
+              const today = new Date();
+              const mm = String(today.getMonth() + 1).padStart(2, '0');
+              const dd = String(today.getDate()).padStart(2, '0');
+              const isToday = `${month}-${day}` === `${mm}-${dd}`;
+              const formatted = birthYear
+                ? new Date(parseInt(birthYear), parseInt(month) - 1, parseInt(day))
+                    .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                : `${month}/${day}`;
+              return (
+                <div key={bday._id} className="card" style={{ borderLeft: isToday ? '4px solid #FFB6C1' : undefined }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14 }}>
+                        {isToday ? '🎉' : '🎂'} {bday.friendName}
+                        {isToday && <span style={{ marginLeft: 8, fontSize: 12, color: '#C06080', fontWeight: 700 }}>TODAY!</span>}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#999' }}>
+                        {formatted}{age ? ` · Turns ${age} this year` : ''}
+                      </p>
+                    </div>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => handleDeleteBirthday(bday._id)}
+                      style={{ fontSize: 12, padding: '4px 8px', flexShrink: 0 }}
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => handleDeleteBirthday(bday._id)}
-                    style={{ fontSize: 12, padding: '4px 8px', flexShrink: 0 }}
-                  >
-                    ✕
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -496,12 +514,13 @@ const PrivateSpace = () => {
               </select>
 
               <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceReminderDate')} (MM-DD)
+                Date of Birth
               </label>
               <input
+                type="date"
                 className="input"
-                placeholder="MM-DD"
                 value={birthdayDate}
+                max={new Date().toISOString().split('T')[0]}
                 onChange={e => setBirthdayDate(e.target.value)}
                 style={{ marginBottom: 20 }}
               />

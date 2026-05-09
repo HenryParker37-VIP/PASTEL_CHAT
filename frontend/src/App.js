@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
@@ -20,8 +20,10 @@ import Signature from './components/Signature';
 import IncomingCallAlert from './components/IncomingCallAlert';
 import VoiceCallScreen from './components/VoiceCallScreen';
 import VideoCallScreen from './components/VideoCallScreen';
+import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
+import GlobalChecker from './components/GlobalChecker';
 
-const GlobalSocketListener = () => {
+const GlobalSocketListener = ({ onHappyBirthday }) => {
   const { socket } = useSocket();
   const { user } = useAuth();
   const { push } = useToast();
@@ -49,10 +51,14 @@ const GlobalSocketListener = () => {
       if (payload.type === 'group_created' || payload.type === 'group_invited') {
         push({ emoji: '👥', title: `Added to "${payload.group?.name}"`, body: `by ${payload.from?.name}` });
       }
+      if (payload.type === 'happy_birthday') {
+        // Friend is wishing us a happy birthday — show the overlay for ourselves
+        onHappyBirthday({ friendName: user.name, age: payload.age, isOwn: true });
+      }
     };
     socket.on(`notify:${user._id}`, handler);
     return () => socket.off(`notify:${user._id}`, handler);
-  }, [socket, user, push, navigate]);
+  }, [socket, user, push, navigate, onHappyBirthday]);
 
   return null;
 };
@@ -87,10 +93,29 @@ const CallOverlays = () => {
 
 const AppRoutes = () => {
   const { user } = useAuth();
+  const [birthdayOverlay, setBirthdayOverlay] = useState(null);
+
+  const handleBirthdayToday = useCallback(({ friendId, friendName, age }) => {
+    setBirthdayOverlay({ friendName, age, isOwn: false });
+  }, []);
+
+  const handleHappyBirthday = useCallback(({ friendName, age, isOwn }) => {
+    setBirthdayOverlay({ friendName, age, isOwn });
+  }, []);
+
   return (
     <>
-      {user && <GlobalSocketListener />}
+      {user && <GlobalSocketListener onHappyBirthday={handleHappyBirthday} />}
       {user && <CallOverlays />}
+      {user && <GlobalChecker onBirthdayToday={handleBirthdayToday} />}
+      {birthdayOverlay && (
+        <HappyBirthdayOverlay
+          name={birthdayOverlay.friendName}
+          age={birthdayOverlay.age}
+          isOwn={birthdayOverlay.isOwn}
+          onClose={() => setBirthdayOverlay(null)}
+        />
+      )}
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/home" replace /> : <PageFrame><Login /></PageFrame>} />
         <Route path="/home" element={<ProtectedRoute><PageFrame><Home /></PageFrame></ProtectedRoute>} />
