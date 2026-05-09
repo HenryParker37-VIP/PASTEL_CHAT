@@ -1015,3 +1015,161 @@ input, textarea {
   /* Header datetime stays visible */
   .header-datetime { display: block; }
 }
+
+/* ========== Dark mode ========== */
+
+body.dark {
+  --cream: #1E1A2E;
+  --text: #EDE6FF;
+  --soft-pink: #3A2D50;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+body.dark .card,
+body.dark .home-tile,
+body.dark .login-card,
+body.dark .msg-toolbar,
+body.dark .reaction-picker,
+body.dark .drawer,
+body.dark .drawer .drawer-close {
+  background: #2A2445;
+}
+
+body.dark .chat-header,
+body.dark .chat-footer {
+  background: rgba(26, 22, 42, 0.92);
+  border-color: #3E2F60;
+}
+
+body.dark .chat-body { background: #1E1A2E; }
+
+body.dark .msg-bubble-v2.theirs {
+  background: #302850;
+  color: #EDE6FF;
+}
+
+body.dark .msg-bubble-v2.recalled {
+  background: #2A2445 !important;
+  color: #7A6A90 !important;
+}
+
+body.dark .input {
+  background: #241E3A;
+  border-color: #4A3868;
+  color: #EDE6FF;
+}
+body.dark .input::placeholder { color: #7A6A90; }
+body.dark .input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,182,193,0.18); }
+
+body.dark .btn-ghost {
+  color: #EDE6FF;
+  border-color: var(--pink);
+}
+
+body.dark .code-input {
+  background: #241E3A;
+  border-color: var(--lavender);
+  color: #EDE6FF;
+}
+body.dark .code-display { background: linear-gradient(135deg, #3A2D50, #2A3850); }
+
+body.dark .friend-tile,
+body.dark .avatar-grid .avatar-option {
+  background: #2A2445;
+}
+
+body.dark .tagline { color: #9A8ABE; }
+body.dark .toast { background: #2A2445; }
+body.dark .toast .toast-body { color: #9A8ABE; }
+
+body.dark .reaction-pill {
+  background: #2A2445;
+  border-color: #4A3868;
+}
+body.dark .reaction-pill span { color: #9A8ABE; }
+body.dark .reaction-pill.mine {
+  background: rgba(255,182,193,0.12);
+  border-color: #FFB6C1;
+}
+
+body.dark .media-preview-bar { background: #241E3A; }
+body.dark .media-file-name { color: #EDE6FF; }
+
+body.dark .login-tabs { background: #241E3A; }
+body.dark .login-tabs button.active { background: #2A2445; }
+
+body.dark .signature { background: linear-gradient(transparent, rgba(30, 26, 46, 0.97) 40%); }
+
+body.dark .home-tile p { color: #9A8ABE; }
+body.dark .home-tile:hover { border-color: #4A3868; }
+
+body.dark .reply-preview { background: rgba(255,255,255,0.08); }
+body.dark .msg-bubble-v2.theirs .reply-preview { background: rgba(255,182,193,0.08); }
+
+body.dark .date-pill span { background: rgba(100,80,140,0.2); color: #9A8ABE; }
+
+/* Theme toggle switch */
+.theme-toggle {
+  position: relative;
+  width: 60px;
+  height: 32px;
+  flex-shrink: 0;
+}
+.theme-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.theme-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #87CEEB, #FFD700);
+  cursor: pointer;
+  transition: background 0.4s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  font-size: 14px;
+}
+.theme-toggle input:checked + .theme-toggle-track {
+  background: linear-gradient(135deg, #2A1A5E, #4A3A90);
+}
+.theme-toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  pointer-events: none;
+}
+.theme-toggle input:checked ~ .theme-toggle-thumb {
+  transform: translateX(28px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* Lang toggle buttons */
+.lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  border: 2px solid transparent;
+  cursor: pointer;
+  background: var(--soft-pink);
+  color: var(--text);
+}
+.lang-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(180,150,180,0.25); }
+.lang-btn.active {
+  background: var(--pink);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(255,182,193,0.45);
+}
+body.dark .lang-btn { background: #3A2D50; color: #EDE6FF; }
+body.dark .lang-btn.active { background: var(--pink); color: white; }

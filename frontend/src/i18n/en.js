@@ -162,6 +162,32 @@ const en = {
   mySpaceUpcoming: 'Upcoming',
   mySpaceFriendName: 'Friend name',
   mySpaceDescription: 'Quick note for notes or shared content',
+
+  // Privacy & support
+  privacyAppearance: 'Appearance',
+  privacyAppearanceDesc: 'Choose between light and dark mode for a comfortable experience.',
+  privacyLight: 'Light mode',
+  privacyDark: 'Dark mode',
+  privacyToggleTheme: 'Toggle dark/light mode',
+  privacyLanguage: 'Language',
+  privacyLanguageDesc: 'Choose your preferred display language.',
+  privacyNotifications: 'Notifications',
+  privacyNotificationsDesc: 'PastelChat can ping your browser when new messages or friend requests arrive.',
+  privacyNotificationsEnable: 'Enable browser notifications',
+  privacyWhatWeStore: 'What we store',
+  privacyStore1: 'Your name, sticker face, and login code (needed to find you again)',
+  privacyStore2: 'Your friend list with the nicknames you\'ve set',
+  privacyStore3: 'Your messages (so you can scroll back) — cleared any time from the right panel',
+  privacyNoAds: 'Nothing is shared outside PastelChat. No ads, no tracking ✿',
+  privacyFeedbackTitle: 'Found a bug or have an idea?',
+  privacyFeedbackDesc: 'Your note goes straight to the creator — Nguyen Manh Tuan Hung (Henry Parker).',
+  privacyFeedbackPlaceholder: 'Tell the creator what\'s on your mind...',
+  privacyFeedbackEmpty: 'Please describe what happened',
+  privacyFeedbackError: 'Could not send. Try again soon.',
+  privacyFeedbackSent: 'Sent! Thank you for helping make PastelChat better.',
+  privacyFeedbackAnother: 'Send another',
+  privacyFeedbackSending: 'Sending...',
+  privacyFeedbackSend: '💌 Send to creator',
 };
 
 export default en;
