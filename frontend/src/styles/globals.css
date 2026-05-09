@@ -538,7 +538,7 @@ input, textarea {
 /* ── Chat input area ───────────────────────────────────────────────────── */
 
 .chat-input-area {
-  padding: 10px 14px 14px;
+  padding: 10px 14px 42px;
   background: white;
   border-top: 1px solid #F0E6F0;
 }

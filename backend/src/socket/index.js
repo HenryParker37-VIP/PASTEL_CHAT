@@ -3,6 +3,7 @@ const {
   findUserById,
   updateUser,
   getOnlineUsers,
+  getFriends,
   createMessage,
   populateMessage
 } = require('../db/store');
@@ -24,12 +25,24 @@ const setupSocket = (io) => {
     }
   });
 
+  // Send each connected user only the online status of their own friends
+  const broadcastOnlineFriends = () => {
+    const allOnline = getOnlineUsers();
+    const onlineIds = new Set(allOnline.map(u => u._id));
+    io.sockets.sockets.forEach((s) => {
+      if (!s.user) return;
+      const friendIds = new Set(getFriends(s.user._id).map(f => f.friendId));
+      const visible = allOnline.filter(u => friendIds.has(u._id));
+      s.emit('online_users', visible);
+    });
+  };
+
   io.on('connection', (socket) => {
     const { user } = socket;
     console.log(`[Socket] Connected: ${user.name}`);
 
     updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
-    io.emit('online_users', getOnlineUsers());
+    broadcastOnlineFriends();
 
     // Typing: targeted to a specific peer
     let typingTimeouts = {};
@@ -117,7 +130,7 @@ const setupSocket = (io) => {
       console.log(`[Socket] Disconnected: ${user.name}`);
       Object.values(typingTimeouts).forEach(clearTimeout);
       updateUser(user._id, { isOnline: false, lastSeen: new Date().toISOString() });
-      io.emit('online_users', getOnlineUsers());
+      broadcastOnlineFriends();
     });
   });
 };
