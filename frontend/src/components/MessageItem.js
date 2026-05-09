@@ -12,10 +12,13 @@ const isEmojiOnly = (text) => {
 const formatTime = (ts) =>
   new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-const MessageItem = ({ message, peer, onReply, onRecall, onPin, highlight }) => {
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+
+const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, highlight }) => {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   const isOwn = (message.senderId?._id || message.senderId) === user?._id;
   const sender = typeof message.senderId === 'object' ? message.senderId : null;
@@ -24,6 +27,8 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, highlight }) => 
 
   const replyRef = message.replyTo;
   const emojiOnly = !message.isRecalled && isEmojiOnly(message.content);
+  const reactions = message.reactions || {};
+  const hasReactions = Object.keys(reactions).length > 0;
 
   const handleRecall = async () => {
     if (!window.confirm('Recall this message?')) return;
@@ -46,6 +51,16 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, highlight }) => 
     } finally { setBusy(false); }
   };
 
+  const handleReact = async (emoji) => {
+    setShowReactionPicker(false);
+    try {
+      const { data } = await api.post(`/messages/${message._id}/react`, { emoji });
+      onReaction?.(message._id, data.reactions);
+    } catch (err) {
+      console.error('Reaction failed:', err);
+    }
+  };
+
   let replyPreview = null;
   if (replyRef && !replyRef.isRecalled) {
     const refSender = replyRef.senderId;
@@ -60,7 +75,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, highlight }) => 
       id={`msg-${message._id}`}
       style={highlight ? { background: 'rgba(255,182,193,0.15)', borderRadius: 16 } : undefined}
       onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      onMouseLeave={() => { setShowActions(false); setShowReactionPicker(false); }}
     >
       {/* Avatar — only for received messages */}
       {!isOwn && (
@@ -128,11 +143,13 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, highlight }) => 
           {/* Floating action toolbar — appears on hover */}
           {!message.isRecalled && showActions && (
             <div className={`msg-toolbar ${isOwn ? 'toolbar-left' : 'toolbar-right'}`}>
+              {/* Reaction trigger */}
               <button
-                title="Reply"
-                onClick={() => onReply?.(message)}
-                disabled={busy}
-              >↩</button>
+                title="React"
+                onClick={() => setShowReactionPicker(v => !v)}
+                style={{ fontSize: 14 }}
+              >😊</button>
+              <button title="Reply" onClick={() => onReply?.(message)} disabled={busy}>↩</button>
               <button
                 title={message.isPinned ? 'Unpin' : 'Pin'}
                 onClick={handlePin}
@@ -146,9 +163,46 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, highlight }) => 
                   style={{ color: '#e57373' }}
                 >🗑</button>
               )}
+
+              {/* Reaction picker popup */}
+              {showReactionPicker && (
+                <div className={`reaction-picker ${isOwn ? 'picker-left' : 'picker-right'}`}>
+                  {REACTION_EMOJIS.map(emoji => {
+                    const myReaction = (reactions[emoji] || []).includes(user._id);
+                    return (
+                      <button
+                        key={emoji}
+                        className={`reaction-option ${myReaction ? 'reacted' : ''}`}
+                        onClick={() => handleReact(emoji)}
+                        title={emoji}
+                      >{emoji}</button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* Reaction pills */}
+        {hasReactions && (
+          <div className={`reaction-pills ${isOwn ? 'pills-own' : 'pills-theirs'}`}>
+            {Object.entries(reactions).map(([emoji, userIds]) => {
+              if (!userIds.length) return null;
+              const iMine = userIds.includes(user._id);
+              return (
+                <button
+                  key={emoji}
+                  className={`reaction-pill ${iMine ? 'mine' : ''}`}
+                  onClick={() => handleReact(emoji)}
+                  title={iMine ? 'Remove reaction' : `React with ${emoji}`}
+                >
+                  {emoji} <span>{userIds.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Time for emoji-only messages */}
         {emojiOnly && (

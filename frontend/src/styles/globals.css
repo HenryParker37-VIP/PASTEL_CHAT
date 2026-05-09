@@ -759,6 +759,69 @@ input, textarea {
 .toast .toast-title { font-weight: 700; font-size: 14px; margin: 0; }
 .toast .toast-body  { font-size: 13px; margin: 2px 0 0; color: #666; }
 
+/* ---------- Reaction picker ---------- */
+
+.reaction-picker {
+  position: absolute;
+  top: -48px;
+  display: flex;
+  gap: 4px;
+  background: white;
+  border-radius: 24px;
+  padding: 5px 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+  border: 1px solid #F0E6F0;
+  z-index: 50;
+  white-space: nowrap;
+}
+.reaction-picker.picker-left  { right: 0; }
+.reaction-picker.picker-right { left: 0; }
+
+.reaction-option {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 2px 3px;
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+  line-height: 1;
+}
+.reaction-option:hover { transform: scale(1.3); background: #FFF0F5; }
+.reaction-option.reacted { background: rgba(255,182,193,0.25); }
+
+/* ---------- Reaction pills ---------- */
+
+.reaction-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.reaction-pills.pills-own    { justify-content: flex-end; padding-right: 8px; }
+.reaction-pills.pills-theirs { justify-content: flex-start; padding-left: 40px; }
+
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: white;
+  border: 1.5px solid #F0E6F0;
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+.reaction-pill span { font-size: 11px; color: #888; font-weight: 600; }
+.reaction-pill:hover { border-color: #DDA0DD; transform: scale(1.08); }
+.reaction-pill.mine {
+  background: rgba(255,182,193,0.18);
+  border-color: #FFB6C1;
+}
+.reaction-pill.mine span { color: #C06080; }
+
 /* ---------- Signature ---------- */
 
 .signature {
