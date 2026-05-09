@@ -239,9 +239,27 @@ function createMessage(doc) {
     isRecalled: false,
     isPinned: false,
     replyTo: null,
+    reactions: {}, // { emoji: [userId, ...] }
     ...doc
   };
   store.messages.push(msg);
+  persist();
+  return msg;
+}
+
+// Toggle a reaction — add if not present, remove if already there
+function toggleReaction(messageId, userId, emoji) {
+  const msg = findMessage(messageId);
+  if (!msg) return null;
+  if (!msg.reactions) msg.reactions = {};
+  const users = msg.reactions[emoji] || [];
+  const idx = users.indexOf(userId);
+  if (idx === -1) {
+    msg.reactions[emoji] = [...users, userId];
+  } else {
+    msg.reactions[emoji] = users.filter(id => id !== userId);
+    if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+  }
   persist();
   return msg;
 }
@@ -349,7 +367,7 @@ module.exports = {
   createUser, updateUser, searchUsers, getOnlineUsers, userPublic,
   getFriends, findFriendship, addFriend, updateFriend, removeFriend,
   createRequest, findRequest, findRequestById, removeRequest, getRequests,
-  findMessage, createMessage, updateMessage, populateMessage,
+  findMessage, createMessage, updateMessage, populateMessage, toggleReaction,
   getConversation, getPinnedMessages, searchMessages, clearConversation,
   createFeedback
 };

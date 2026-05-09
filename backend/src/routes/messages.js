@@ -10,6 +10,7 @@ const {
   searchMessages,
   clearConversation,
   populateMessage,
+  toggleReaction,
   findUserById
 } = require('../db/store');
 
@@ -119,6 +120,31 @@ router.post('/:id/pin', authMiddleware, (req, res) => {
   io.emit(`msg_pin:${msg.senderId}:${msg.receiverId}`, populated);
   io.emit(`msg_pin:${msg.receiverId}:${msg.senderId}`, populated);
   res.json(populated);
+});
+
+// POST /messages/:id/react - Toggle reaction { emoji }
+router.post('/:id/react', authMiddleware, (req, res) => {
+  try {
+    const { emoji } = req.body;
+    if (!emoji) return res.status(400).json({ message: 'emoji required' });
+    const ALLOWED = ['👍','❤️','😂','😮','😢','😡'];
+    if (!ALLOWED.includes(emoji)) return res.status(400).json({ message: 'Invalid emoji' });
+
+    const msg = findMessage(req.params.id);
+    if (!msg) return res.status(404).json({ message: 'Not found' });
+    if (msg.isRecalled) return res.status(400).json({ message: 'Cannot react to recalled' });
+    if (msg.senderId !== req.user._id && msg.receiverId !== req.user._id)
+      return res.status(403).json({ message: 'Not a participant' });
+
+    const updated = toggleReaction(msg._id, req.user._id, emoji);
+    const populated = populateMessage(updated);
+    const io = req.app.get('io');
+    io.emit(`msg_reaction:${msg.senderId}:${msg.receiverId}`, { messageId: msg._id, reactions: populated.reactions });
+    io.emit(`msg_reaction:${msg.receiverId}:${msg.senderId}`, { messageId: msg._id, reactions: populated.reactions });
+    res.json({ messageId: msg._id, reactions: populated.reactions });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to react' });
+  }
 });
 
 // POST /messages/:id/reply - Reply { content }

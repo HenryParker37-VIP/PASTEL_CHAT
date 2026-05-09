@@ -3,7 +3,7 @@ import MessageItem from './MessageItem';
 import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 
-const MessageList = ({ messages, loading, typingUsers, onReply, onRecall }) => {
+const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId }) => {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -77,6 +77,8 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall }) => {
             message={item.data}
             onReply={onReply}
             onRecall={onRecall}
+            onReaction={onReaction}
+            highlight={highlightId === item.id}
           />
         );
       })}
