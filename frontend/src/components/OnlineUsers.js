@@ -90,6 +90,14 @@ const OnlineUsers = () => {
                 }}>
                   {u._id === user?._id ? 'You' : u.name}
                 </div>
+                {u.status && (
+                  <div style={{
+                    fontSize: '11px', color: '#B08ABD',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  }}>
+                    {u.status}
+                  </div>
+                )}
               </div>
             </div>
           ))

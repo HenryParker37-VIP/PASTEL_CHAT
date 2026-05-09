@@ -6,11 +6,21 @@ const EMOJI_LIST = ['😀','😂','🥰','😍','🤩','😎','🥳','🤗','�
   '🎉','🎊','🎈','🎀','🌈','🦋','🌻','🍀','🌙','☀️',
   '👍','🙌','👏','🤝','💪','🫶','🥺','😭','😅','🤣'];
 
+const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
+  const [media, setMedia] = useState(null); // { type, dataUrl, name, size, preview }
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
   const typingTimerRef = useRef(null);
   const { socket } = useSocket();
 
@@ -32,15 +42,42 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     typingTimerRef.current = setTimeout(() => emitTyping(false), 2000);
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      alert('File too large. Max 8 MB.');
+      return;
+    }
+    const isImage = file.type.startsWith('image/');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setMedia({
+        type: isImage ? 'image' : 'file',
+        dataUrl: ev.target.result,
+        name: file.name,
+        size: file.size,
+        preview: isImage ? ev.target.result : null,
+      });
+    };
+    reader.readAsDataURL(file);
+    // Reset file input so same file can be re-selected
+    e.target.value = '';
+  };
+
   const handleSend = async () => {
     const content = text.trim();
-    if (!content || sending) return;
+    if ((!content && !media) || sending) return;
     setSending(true);
     clearTimeout(typingTimerRef.current);
     emitTyping(false);
     try {
-      await onSend(content);
+      const mediaPayload = media
+        ? { type: media.type, dataUrl: media.dataUrl, name: media.name, size: media.size }
+        : null;
+      await onSend(content, mediaPayload);
       setText('');
+      setMedia(null);
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.focus();
@@ -71,7 +108,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     }, 0);
   };
 
-  const hasText = text.trim().length > 0;
+  const hasContent = text.trim().length > 0 || !!media;
 
   return (
     <div className="chat-input-area">
@@ -89,29 +126,62 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         </div>
       )}
 
+      {/* Media preview */}
+      {media && (
+        <div className="media-preview-bar">
+          {media.preview ? (
+            <img src={media.preview} alt="preview" className="media-preview-img" />
+          ) : (
+            <div className="media-preview-file">
+              <span className="media-file-icon">📄</span>
+              <div className="media-file-info">
+                <span className="media-file-name">{media.name}</span>
+                <span className="media-file-size">{formatBytes(media.size)}</span>
+              </div>
+            </div>
+          )}
+          <button
+            className="media-preview-remove"
+            onClick={() => setMedia(null)}
+            title="Remove"
+          >✕</button>
+        </div>
+      )}
+
       {/* Emoji picker */}
       {showEmoji && (
         <div className="emoji-picker">
           {EMOJI_LIST.map((e) => (
-            <button
-              key={e}
-              onClick={() => insertEmoji(e)}
-              className="emoji-btn"
-            >{e}</button>
+            <button key={e} onClick={() => insertEmoji(e)} className="emoji-btn">{e}</button>
           ))}
         </div>
       )}
 
       {/* Input row */}
       <div className="input-row">
+        {/* Emoji */}
         <button
           className={`icon-btn ${showEmoji ? 'active' : ''}`}
           onClick={() => setShowEmoji(v => !v)}
           title="Emoji"
           type="button"
-        >
-          😊
-        </button>
+        >😊</button>
+
+        {/* File attach */}
+        <button
+          className="icon-btn"
+          onClick={() => fileInputRef.current?.click()}
+          title="Attach file or image"
+          type="button"
+          disabled={disabled || sending}
+        >📎</button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf,.doc,.docx,.txt,.zip,.mp4,.mp3"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
 
         <div className="input-pill">
           <textarea
@@ -127,9 +197,9 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         </div>
 
         <button
-          className={`send-btn ${hasText ? 'active' : ''}`}
+          className={`send-btn ${hasContent ? 'active' : ''}`}
           onClick={handleSend}
-          disabled={!hasText || sending || disabled}
+          disabled={!hasContent || sending || disabled}
           title="Send"
           type="button"
         >

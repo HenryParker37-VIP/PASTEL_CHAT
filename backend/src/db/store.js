@@ -101,6 +101,8 @@ function createUser(doc) {
     lastSeen: new Date().toISOString(),
     avatar: '',
     chatBackground: 'default',
+    bio: '',
+    status: '',
     ...doc
   };
   store.users.push(user);
@@ -125,7 +127,11 @@ function getOnlineUsers() {
 }
 function userPublic(u) {
   if (!u) return null;
-  return { _id: u._id, name: u.name, avatar: u.avatar, chatBackground: u.chatBackground, isOnline: !!u.isOnline };
+  return {
+    _id: u._id, name: u.name, avatar: u.avatar,
+    chatBackground: u.chatBackground, isOnline: !!u.isOnline,
+    bio: u.bio || '', status: u.status || ''
+  };
 }
 
 // ===== Friendships =====
@@ -240,6 +246,7 @@ function createMessage(doc) {
     isPinned: false,
     replyTo: null,
     reactions: {}, // { emoji: [userId, ...] }
+    media: null,   // { type: 'image'|'file', dataUrl, name, size }
     ...doc
   };
   store.messages.push(msg);

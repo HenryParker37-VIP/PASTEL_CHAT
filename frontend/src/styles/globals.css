@@ -759,6 +759,67 @@ input, textarea {
 .toast .toast-title { font-weight: 700; font-size: 14px; margin: 0; }
 .toast .toast-body  { font-size: 13px; margin: 2px 0 0; color: #666; }
 
+/* ---------- Media preview in input ---------- */
+
+.media-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #F7F0FA;
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.media-preview-img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.media-preview-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.media-file-icon { font-size: 28px; }
+.media-file-info { display: flex; flex-direction: column; min-width: 0; }
+.media-file-name { font-size: 13px; font-weight: 600; color: #4A4A4A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.media-file-size { font-size: 11px; color: #aaa; }
+.media-preview-remove {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; color: #B08ABD; padding: 2px 6px;
+  border-radius: 50%; transition: background 0.15s; flex-shrink: 0;
+}
+.media-preview-remove:hover { background: rgba(176,138,189,0.15); }
+
+/* ---------- Media in message bubbles ---------- */
+
+.bubble-media-img { margin-bottom: 4px; }
+
+.bubble-media-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.35);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+  max-width: 220px;
+}
+.bubble-media-file:hover { background: rgba(255,255,255,0.55); }
+.bubble-file-name {
+  font-size: 13px; font-weight: 600; color: inherit;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 140px;
+}
+.bubble-file-size { font-size: 11px; opacity: 0.65; margin-top: 1px; }
+
 /* ---------- Reaction picker ---------- */
 
 .reaction-picker {

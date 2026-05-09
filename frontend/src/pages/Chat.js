@@ -27,6 +27,7 @@ const Chat = () => {
   const typingRef = useRef({});
 
   // Search state
+  const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -167,13 +168,13 @@ const Chat = () => {
     setTimeout(() => setHighlightId(null), 2500);
   };
 
-  const handleSend = async (content) => {
+  const handleSend = async (content, media) => {
     try {
       if (replyingTo) {
         await api.post(`/messages/${replyingTo._id}/reply`, { content });
         setReplyingTo(null);
       } else {
-        await api.post('/messages', { receiverId: friendId, content });
+        await api.post('/messages', { receiverId: friendId, content, media });
       }
     } catch (err) {
       console.error('Send failed:', err.message);
@@ -284,12 +285,19 @@ const Chat = () => {
 
             {friend && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                <img
-                  src={friend.avatar}
-                  alt=""
-                  style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
-                />
-                <div style={{ minWidth: 0 }}>
+                {/* Clickable avatar — opens profile card */}
+                <button
+                  onClick={() => setProfileOpen(v => !v)}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+                  title="View profile"
+                >
+                  <img
+                    src={friend.avatar}
+                    alt=""
+                    style={{ width: 32, height: 32, borderRadius: '50%', display: 'block' }}
+                  />
+                </button>
+                <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
                   <span style={{
                     fontSize: 13, fontWeight: 600, color: '#4A4A4A',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -297,8 +305,8 @@ const Chat = () => {
                   }}>
                     {friend.name}
                   </span>
-                  <span style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb' }}>
-                    {friend.isOnline ? 'Online' : 'Offline'}
+                  <span style={{ fontSize: 11, color: friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb') }}>
+                    {friend.status || (friend.isOnline ? 'Online' : 'Offline')}
                   </span>
                 </div>
 
@@ -354,6 +362,26 @@ const Chat = () => {
               </div>
             )}
           </div>
+
+          {/* Friend profile card (collapsible) */}
+          {profileOpen && friend && (
+            <div style={{
+              background: 'white', borderBottom: '1px solid #EEE0D8',
+              padding: '14px 16px', flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 14
+            }}>
+              <img src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#4A4A4A' }}>{friend.name}</div>
+                {friend.status && <div style={{ fontSize: 13, color: '#B08ABD', marginTop: 1 }}>{friend.status}</div>}
+                {friend.bio && <div style={{ fontSize: 13, color: '#888', marginTop: 4, wordBreak: 'break-word' }}>{friend.bio}</div>}
+                <div style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb', marginTop: 4 }}>
+                  {friend.isOnline ? '🟢 Online now' : '⚫ Offline'}
+                </div>
+              </div>
+              <button onClick={() => setProfileOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ccc' }}>✕</button>
+            </div>
+          )}
 
           {/* Search bar (collapsible) */}
           {searchOpen && (
