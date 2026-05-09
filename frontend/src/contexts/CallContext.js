@@ -8,7 +8,9 @@ export const useCall = () => useContext(CallContext);
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
   ]
 };
 
@@ -16,8 +18,8 @@ export const CallProvider = ({ children }) => {
   const { socket } = useSocket();
   const { user } = useAuth();
 
-  const [incomingCall, setIncomingCall] = useState(null);  // { from, callType }
-  const [activeCall, setActiveCall] = useState(null);       // { peer, callType, status, isMuted, isSpeaker, startTime }
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [activeCall, setActiveCall] = useState(null);
 
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -25,6 +27,15 @@ export const CallProvider = ({ children }) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
+
+  // Refs so socket listeners always read current values without stale closures
+  const activeCallRef = useRef(null);
+  const incomingCallRef = useRef(null);
+  const pendingOfferRef = useRef(null); // buffer offer that arrives before PC is ready
+
+  // Keep refs in sync with state
+  useEffect(() => { activeCallRef.current = activeCall; }, [activeCall]);
+  useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
 
   // ── Media helpers ─────────────────────────────────────────────────────────
 
@@ -34,9 +45,7 @@ export const CallProvider = ({ children }) => {
       : { video: false, audio: true };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     localStreamRef.current = stream;
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
-    }
+    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     return stream;
   }, []);
 
@@ -83,6 +92,7 @@ export const CallProvider = ({ children }) => {
   const cleanupCall = useCallback(() => {
     pcRef.current?.close();
     pcRef.current = null;
+    pendingOfferRef.current = null;
     stopMedia();
     setActiveCall(null);
     setIncomingCall(null);
@@ -91,7 +101,7 @@ export const CallProvider = ({ children }) => {
   // ── Initiate call ─────────────────────────────────────────────────────────
 
   const startCall = useCallback(async (peer, callType) => {
-    if (!socket || activeCall) return;
+    if (!socket || activeCallRef.current) return;
     try {
       setActiveCall({ peer, callType, status: 'calling', isMuted: false, isSpeaker: false, startTime: null });
       socket.emit('call:invite', { to: peer._id, callType });
@@ -107,13 +117,15 @@ export const CallProvider = ({ children }) => {
       console.error('Call start failed:', err);
       cleanupCall();
     }
-  }, [socket, activeCall, getMedia, createPC, cleanupCall]);
+  }, [socket, getMedia, createPC, cleanupCall]);
 
   // ── Answer call ───────────────────────────────────────────────────────────
 
   const answerCall = useCallback(async () => {
-    if (!incomingCall || !socket) return;
-    const { from, callType } = incomingCall;
+    const incoming = incomingCallRef.current;
+    if (!incoming || !socket) return;
+    const { from, callType } = incoming;
+
     setIncomingCall(null);
     setActiveCall({ peer: from, callType, status: 'connecting', isMuted: false, isSpeaker: false, startTime: null });
     socket.emit('call:accept', { to: from._id });
@@ -122,25 +134,36 @@ export const CallProvider = ({ children }) => {
       const stream = await getMedia(callType);
       const pc = createPC(from._id);
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+      // Process offer that may have arrived before we answered
+      const pending = pendingOfferRef.current;
+      if (pending) {
+        pendingOfferRef.current = null;
+        await pc.setRemoteDescription(new RTCSessionDescription(pending));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('call:answer', { to: from._id, answer });
+      }
     } catch (err) {
       console.error('Answer failed:', err);
       cleanupCall();
     }
-  }, [incomingCall, socket, getMedia, createPC, cleanupCall]);
+  }, [socket, getMedia, createPC, cleanupCall]);
 
   // ── Reject / end ──────────────────────────────────────────────────────────
 
   const rejectCall = useCallback(() => {
-    if (!incomingCall || !socket) return;
-    socket.emit('call:reject', { to: incomingCall.from._id });
+    const incoming = incomingCallRef.current;
+    if (!incoming || !socket) return;
+    socket.emit('call:reject', { to: incoming.from._id });
     setIncomingCall(null);
-  }, [incomingCall, socket]);
+  }, [socket]);
 
   const endCall = useCallback(() => {
-    const peerId = activeCall?.peer?._id || incomingCall?.from?._id;
+    const peerId = activeCallRef.current?.peer?._id || incomingCallRef.current?.from?._id;
     if (peerId && socket) socket.emit('call:end', { to: peerId });
     cleanupCall();
-  }, [activeCall, incomingCall, socket, cleanupCall]);
+  }, [socket, cleanupCall]);
 
   // ── In-call controls ──────────────────────────────────────────────────────
 
@@ -155,7 +178,6 @@ export const CallProvider = ({ children }) => {
     setActiveCall(prev => {
       if (!prev) return prev;
       const nextSpeaker = !prev.isSpeaker;
-      // Try setSinkId if supported (Android Chrome, desktop)
       const el = remoteAudioRef.current || remoteVideoRef.current;
       if (el && typeof el.setSinkId === 'function') {
         navigator.mediaDevices.enumerateDevices().then(devices => {
@@ -176,38 +198,39 @@ export const CallProvider = ({ children }) => {
     setActiveCall(prev => prev ? { ...prev, isCameraOff: !videoTrack.enabled } : prev);
   }, []);
 
-  // ── Socket listeners ──────────────────────────────────────────────────────
+  // ── Socket listeners (only depend on socket+user, use refs for live state) ─
 
   useEffect(() => {
     if (!socket || !user) return;
     const uid = user._id;
 
     const onIncoming = ({ from, callType }) => {
-      if (activeCall) {
+      if (activeCallRef.current) {
         socket.emit('call:reject', { to: from._id });
         return;
       }
       setIncomingCall({ from, callType });
     };
 
-    const onAccepted = async ({ from }) => {
+    const onAccepted = () => {
       setActiveCall(prev => prev ? { ...prev, status: 'connecting' } : prev);
     };
 
-    const onRejected = () => {
-      cleanupCall();
-    };
-
-    const onEnded = () => {
-      cleanupCall();
-    };
+    const onRejected = () => cleanupCall();
+    const onEnded = () => cleanupCall();
 
     const onOffer = async ({ offer }) => {
-      if (!pcRef.current) return;
+      if (!pcRef.current) {
+        // PC not ready yet — buffer the offer until answerCall() creates the PC
+        pendingOfferRef.current = offer;
+        return;
+      }
+      // PC already exists (e.g. re-negotiation)
+      const peerId = activeCallRef.current?.peer?._id || incomingCallRef.current?.from?._id;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(answer);
-      socket.emit('call:answer', { to: activeCall?.peer?._id || incomingCall?.from?._id, answer });
+      if (peerId) socket.emit('call:answer', { to: peerId, answer });
     };
 
     const onAnswer = async ({ answer }) => {
@@ -237,7 +260,7 @@ export const CallProvider = ({ children }) => {
       socket.off(`call:answer:${uid}`, onAnswer);
       socket.off(`call:ice:${uid}`, onIce);
     };
-  }, [socket, user, activeCall, incomingCall, cleanupCall]); // eslint-disable-line
+  }, [socket, user, cleanupCall]); // stable deps only — refs handle live state
 
   return (
     <CallContext.Provider value={{
