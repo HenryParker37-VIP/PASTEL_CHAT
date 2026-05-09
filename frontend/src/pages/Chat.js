@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
+import { useCall } from '../contexts/CallContext';
 import api from '../services/api';
 import Header from '../components/Header';
 import OnlineUsers from '../components/OnlineUsers';
@@ -14,6 +15,7 @@ const Chat = () => {
   const { friendId } = useParams();
   const { user } = useAuth();
   const { socket } = useSocket();
+  const { startCall, activeCall } = useCall();
   const navigate = useNavigate();
 
   const [messages, setMessages] = useState([]);
@@ -216,22 +218,58 @@ const Chat = () => {
             </button>
 
             {friend && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                 <img
                   src={friend.avatar}
                   alt=""
                   style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
                 />
-                <span style={{
-                  fontSize: 13, fontWeight: 600, color: '#4A4A4A',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                }}>
-                  {friend.name}
-                </span>
-                <span style={{
-                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: friend.isOnline ? '#7bd389' : '#ccc'
-                }} />
+                <div style={{ minWidth: 0 }}>
+                  <span style={{
+                    fontSize: 13, fontWeight: 600, color: '#4A4A4A',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    display: 'block'
+                  }}>
+                    {friend.name}
+                  </span>
+                  <span style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb' }}>
+                    {friend.isOnline ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+
+                {/* Call buttons */}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => startCall(friend, 'voice')}
+                    disabled={!!activeCall}
+                    title="Voice call"
+                    style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: activeCall ? '#eee' : 'linear-gradient(135deg, #C8E6C9, #A5D6A7)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, border: 'none', cursor: activeCall ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                      transition: 'transform 0.15s'
+                    }}
+                    onMouseEnter={e => !activeCall && (e.currentTarget.style.transform = 'scale(1.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                  >📞</button>
+                  <button
+                    onClick={() => startCall(friend, 'video')}
+                    disabled={!!activeCall}
+                    title="Video call"
+                    style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: activeCall ? '#eee' : 'linear-gradient(135deg, #BBDEFB, #90CAF9)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, border: 'none', cursor: activeCall ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                      transition: 'transform 0.15s'
+                    }}
+                    onMouseEnter={e => !activeCall && (e.currentTarget.style.transform = 'scale(1.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                  >📹</button>
+                </div>
               </div>
             )}
           </div>

@@ -66,26 +66,8 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall }) => {
       {!loading && items.map((item) => {
         if (item.type === 'dateSeparator') {
           return (
-            <div
-              key={item.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 24px',
-                userSelect: 'none'
-              }}
-            >
-              <div style={{ flex: 1, height: '1px', background: '#EEE0D8' }} />
-              <span style={{
-                fontSize: '11px',
-                color: '#BBBBBB',
-                fontWeight: 500,
-                whiteSpace: 'nowrap'
-              }}>
-                {item.label}
-              </span>
-              <div style={{ flex: 1, height: '1px', background: '#EEE0D8' }} />
+            <div key={item.id} className="date-pill" style={{ userSelect: 'none' }}>
+              <span>{item.label}</span>
             </div>
           );
         }

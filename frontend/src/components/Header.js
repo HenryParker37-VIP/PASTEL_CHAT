@@ -61,15 +61,11 @@ const Header = () => {
         >
           ← <span className="back-label">Home</span>
         </button>
-        <div style={{
-          width: '34px', height: '34px', borderRadius: '50%',
-          background: 'rgba(255,255,255,0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '18px', backdropFilter: 'blur(4px)',
-          flexShrink: 0
-        }}>
-          💬
-        </div>
+        <img
+          src="/icons/icon.svg"
+          alt="Pastel Chat"
+          style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0 }}
+        />
         <div>
           <div style={{ fontWeight: 700, fontSize: '16px', color: 'white', lineHeight: 1.2 }}>
             Pastel Chat
