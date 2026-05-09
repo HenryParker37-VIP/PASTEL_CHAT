@@ -6,11 +6,12 @@ const crypto = require('crypto');
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 
 const store = {
-  users: [],       // { _id, name, loginCode, avatar, chatBackground, createdAt, isOnline, lastSeen }
-  friendships: [], // { _id, userId, friendId, customNickname, createdAt }
+  users: [],        // { _id, name, loginCode, avatar, chatBackground, createdAt, isOnline, lastSeen }
+  friendships: [],  // { _id, userId, friendId, customNickname, createdAt }
   friendRequests: [], // { _id, fromId, toId, createdAt }
-  messages: [],    // { _id, senderId, receiverId, content, replyTo, isRecalled, isPinned, timestamp }
-  feedback: []     // { _id, userId, type, message, createdAt }
+  messages: [],     // { _id, senderId, receiverId|null, groupId|null, content, replyTo, isRecalled, isPinned, timestamp }
+  groups: [],       // { _id, name, avatar, creatorId, members: [userId], createdAt }
+  feedback: []      // { _id, userId, type, message, createdAt }
 };
 
 function load() {
@@ -21,8 +22,9 @@ function load() {
       store.friendships = loaded.friendships || [];
       store.friendRequests = loaded.friendRequests || [];
       store.messages = loaded.messages || [];
+      store.groups = loaded.groups || [];
       store.feedback = loaded.feedback || [];
-      console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.friendRequests.length} friend requests`);
+      console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
     }
@@ -351,6 +353,71 @@ function clearConversation(userA, userB) {
   return before - store.messages.length;
 }
 
+// ===== Groups =====
+function createGroup({ name, creatorId, memberIds = [] }) {
+  const members = [creatorId, ...memberIds.filter(id => id !== creatorId)];
+  const group = {
+    _id: genId(),
+    name: (name || '').trim().slice(0, 60),
+    creatorId,
+    members,
+    createdAt: new Date().toISOString()
+  };
+  store.groups.push(group);
+  persist();
+  return group;
+}
+function findGroup(id) {
+  return store.groups.find(g => String(g._id) === String(id));
+}
+function getGroupsForUser(userId) {
+  return store.groups.filter(g => g.members.includes(userId));
+}
+function groupPublic(g) {
+  if (!g) return null;
+  return {
+    _id: g._id,
+    name: g.name,
+    creatorId: g.creatorId,
+    members: g.members.map(id => userPublic(findUserById(id))).filter(Boolean),
+    createdAt: g.createdAt
+  };
+}
+function addGroupMember(groupId, userId) {
+  const g = findGroup(groupId);
+  if (!g || g.members.includes(userId)) return g;
+  g.members.push(userId);
+  persist();
+  return g;
+}
+function removeGroupMember(groupId, userId) {
+  const g = findGroup(groupId);
+  if (!g) return null;
+  g.members = g.members.filter(id => id !== userId);
+  if (g.members.length === 0) {
+    store.groups = store.groups.filter(x => x._id !== groupId);
+  }
+  persist();
+  return g;
+}
+function updateGroup(groupId, updates) {
+  const g = findGroup(groupId);
+  if (!g) return null;
+  if (updates.name) g.name = updates.name.trim().slice(0, 60);
+  persist();
+  return g;
+}
+function getGroupConversation(groupId, { limit = 100, before = null } = {}) {
+  let msgs = store.messages.filter(m => m.groupId === groupId);
+  if (before) {
+    const cutoff = new Date(before);
+    msgs = msgs.filter(m => new Date(m.timestamp) < cutoff);
+  }
+  msgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  msgs = msgs.slice(0, limit);
+  return msgs.map(m => populateMessage(m)).reverse();
+}
+
 // ===== Feedback =====
 function createFeedback(userId, type, message) {
   const fb = {
@@ -376,5 +443,7 @@ module.exports = {
   createRequest, findRequest, findRequestById, removeRequest, getRequests,
   findMessage, createMessage, updateMessage, populateMessage, toggleReaction,
   getConversation, getPinnedMessages, searchMessages, clearConversation,
+  createGroup, findGroup, getGroupsForUser, groupPublic,
+  addGroupMember, removeGroupMember, updateGroup, getGroupConversation,
   createFeedback
 };

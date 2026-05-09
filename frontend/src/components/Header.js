@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
+import { useLang, LANGUAGES } from '../i18n';
 
 const Header = () => {
   const { user, logout } = useAuth();
   const { onlineUsers, connected } = useSocket();
+  const { lang, setLang, t } = useLang();
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
@@ -97,6 +100,49 @@ const Header = () => {
         <div style={{ fontSize: '11px', opacity: 0.85 }}>
           {formatDate(now)}
         </div>
+      </div>
+
+      {/* Language picker */}
+      <div style={{ position: 'relative', marginRight: 6 }}>
+        <button
+          onClick={() => setShowLangMenu(v => !v)}
+          title="Switch language"
+          style={{
+            background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 12,
+            padding: '5px 10px', cursor: 'pointer', color: 'white',
+            fontSize: 18, backdropFilter: 'blur(4px)', lineHeight: 1,
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.35)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+        >
+          {LANGUAGES.find(l => l.code === lang)?.flag ?? '🌐'}
+        </button>
+        {showLangMenu && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+            background: 'white', borderRadius: 12,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            minWidth: 150, overflow: 'hidden', zIndex: 200
+          }}>
+            {LANGUAGES.map(l => (
+              <button
+                key={l.code}
+                onClick={() => { setLang(l.code); setShowLangMenu(false); }}
+                style={{
+                  width: '100%', padding: '10px 16px', background: lang === l.code ? '#FFF0F5' : 'none',
+                  border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 14,
+                  color: lang === l.code ? '#C06080' : '#4A4A4A', fontWeight: lang === l.code ? 700 : 400,
+                  display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => { if (lang !== l.code) e.currentTarget.style.background = '#FFF8F3'; }}
+                onMouseLeave={e => { if (lang !== l.code) e.currentTarget.style.background = 'none'; }}
+              >
+                <span style={{ fontSize: 18 }}>{l.flag}</span> {l.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* User menu */}

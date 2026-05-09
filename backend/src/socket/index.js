@@ -4,6 +4,7 @@ const {
   updateUser,
   getOnlineUsers,
   getFriends,
+  findGroup,
   createMessage,
   populateMessage
 } = require('../db/store');
@@ -132,6 +133,38 @@ const setupSocket = (io) => {
     socket.on('call:ice', ({ to, candidate }) => {
       if (!to || !candidate) return;
       io.emit(`call:ice:${to}`, { from: user._id, candidate });
+    });
+
+    // Group message via socket
+    socket.on('send_group_message', ({ groupId, content, media }) => {
+      const group = findGroup(groupId);
+      if (!group || !group.members.includes(user._id)) return;
+      if ((!content || !content.trim()) && !media) return;
+      let validMedia = null;
+      if (media?.dataUrl && media?.name) {
+        const sz = Math.round((media.dataUrl.length * 3) / 4);
+        if (sz <= 8 * 1024 * 1024) validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sz };
+      }
+      const msg = createMessage({
+        senderId: user._id,
+        receiverId: null,
+        groupId,
+        content: (content || '').trim().slice(0, 2000),
+        media: validMedia
+      });
+      const populated = populateMessage(msg);
+      group.members.forEach(memberId => {
+        io.emit(`msg:group:${groupId}:${memberId}`, populated);
+        if (memberId !== user._id) {
+          io.emit(`notify:${memberId}`, {
+            type: 'group_message',
+            groupId,
+            groupName: group.name,
+            from: { _id: user._id, name: user.name, avatar: user.avatar },
+            preview: (populated.content || '📎 Media').slice(0, 80)
+          });
+        }
+      });
     });
 
     socket.on('disconnect', () => {

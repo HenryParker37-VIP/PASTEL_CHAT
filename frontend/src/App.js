@@ -4,11 +4,13 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
 import { CallProvider, useCall } from './contexts/CallContext';
 import { ToastProvider, useToast } from './components/Toast';
+import { LangProvider } from './i18n';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
 import Chat from './pages/Chat';
+import GroupChat from './pages/GroupChat';
 import Privacy from './pages/Privacy';
 import Admin from './pages/Admin';
 import LoadingAnimation from './components/LoadingAnimation';
@@ -35,10 +37,20 @@ const GlobalSocketListener = () => {
       if (payload.type === 'new_message') {
         push({ emoji: '💬', title: `New message from ${payload.from?.name}`, body: payload.preview });
       }
+      if (payload.type === 'group_message') {
+        push({
+          emoji: '👥', title: `${payload.groupName}`,
+          body: `${payload.from?.name}: ${payload.preview}`,
+          onClick: () => navigate(`/group/${payload.groupId}`)
+        });
+      }
+      if (payload.type === 'group_created' || payload.type === 'group_invited') {
+        push({ emoji: '👥', title: `Added to "${payload.group?.name}"`, body: `by ${payload.from?.name}` });
+      }
     };
     socket.on(`notify:${user._id}`, handler);
     return () => socket.off(`notify:${user._id}`, handler);
-  }, [socket, user, push]);
+  }, [socket, user, push, navigate]);
 
   return null;
 };
@@ -48,13 +60,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#FFF8F3'
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#FFF8F3' }}>
         <LoadingAnimation label="" />
       </div>
     );
@@ -84,58 +90,14 @@ const AppRoutes = () => {
       {user && <GlobalSocketListener />}
       {user && <CallOverlays />}
       <Routes>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/home" replace /> : <PageFrame><Login /></PageFrame>}
-        />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <PageFrame><Home /></PageFrame>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <PageFrame><Profile /></PageFrame>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/friends"
-          element={
-            <ProtectedRoute>
-              <PageFrame><Friends /></PageFrame>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/chat/:friendId"
-          element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/privacy"
-          element={
-            <ProtectedRoute>
-              <PageFrame><Privacy /></PageFrame>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <PageFrame><Admin /></PageFrame>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/login" element={user ? <Navigate to="/home" replace /> : <PageFrame><Login /></PageFrame>} />
+        <Route path="/home" element={<ProtectedRoute><PageFrame><Home /></PageFrame></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><PageFrame><Profile /></PageFrame></ProtectedRoute>} />
+        <Route path="/friends" element={<ProtectedRoute><PageFrame><Friends /></PageFrame></ProtectedRoute>} />
+        <Route path="/chat/:friendId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+        <Route path="/group/:groupId" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
+        <Route path="/privacy" element={<ProtectedRoute><PageFrame><Privacy /></PageFrame></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><PageFrame><Admin /></PageFrame></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
@@ -145,17 +107,19 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <AuthProvider>
-    <ToastProvider>
-      <SocketProvider>
-        <CallProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
-        </CallProvider>
-      </SocketProvider>
-    </ToastProvider>
-  </AuthProvider>
+  <LangProvider>
+    <AuthProvider>
+      <ToastProvider>
+        <SocketProvider>
+          <CallProvider>
+            <Router>
+              <AppRoutes />
+            </Router>
+          </CallProvider>
+        </SocketProvider>
+      </ToastProvider>
+    </AuthProvider>
+  </LangProvider>
 );
 
 export default App;
