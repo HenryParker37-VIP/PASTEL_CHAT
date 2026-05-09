@@ -957,3 +957,51 @@ input, textarea {
   /* Hide "Home" label text in chat header, keep just the arrow */
   .back-label { display: none; }
 }
+
+/* ---------- Tablet view (iPad, 701–1100px) ---------- */
+
+@media (min-width: 701px) and (max-width: 1100px) {
+  .container {
+    max-width: 680px;
+    padding: 24px 28px 70px;
+  }
+
+  /* Home grid: 2 columns on tablet */
+  .home-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .home-tile { padding: 26px 20px; }
+  .home-tile .emoji { font-size: 48px; }
+  .hero h1 { font-size: 38px; }
+
+  /* Chat layout: keep sidebar visible but narrower */
+  .chat-layout {
+    height: 100vh;
+  }
+  .chat-sidebar {
+    width: 220px;
+    min-width: 180px;
+  }
+
+  /* Drawer slides in more naturally on tablet */
+  .drawer { width: min(360px, 80vw); }
+
+  /* Message bubbles: slightly narrower max width */
+  .msg-bubble { max-width: 72%; }
+
+  /* Login card: comfortably centered */
+  .login-card {
+    max-width: 500px;
+    padding: 40px 36px 36px;
+  }
+
+  /* Avatar grid: more columns on tablet */
+  .avatar-grid {
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    max-height: 260px;
+  }
+
+  /* Header datetime stays visible */
+  .header-datetime { display: block; }
+}
