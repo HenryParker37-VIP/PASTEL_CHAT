@@ -34,7 +34,7 @@ const PrivateSpace = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user]);
 
   const loadData = async () => {
     setLoading(true);
