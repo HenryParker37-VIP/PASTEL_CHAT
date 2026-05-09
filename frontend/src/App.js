@@ -11,6 +11,8 @@ import Profile from './pages/Profile';
 import Friends from './pages/Friends';
 import Chat from './pages/Chat';
 import GroupChat from './pages/GroupChat';
+import PrivateSpace from './pages/PrivateSpace';
+import InstallGuide from './pages/InstallGuide';
 import Privacy from './pages/Privacy';
 import Admin from './pages/Admin';
 import LoadingAnimation from './components/LoadingAnimation';
@@ -96,6 +98,8 @@ const AppRoutes = () => {
         <Route path="/friends" element={<ProtectedRoute><PageFrame><Friends /></PageFrame></ProtectedRoute>} />
         <Route path="/chat/:friendId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/group/:groupId" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
+        <Route path="/my-space" element={<ProtectedRoute><PageFrame><PrivateSpace /></PageFrame></ProtectedRoute>} />
+        <Route path="/install" element={<ProtectedRoute><PageFrame><InstallGuide /></PageFrame></ProtectedRoute>} />
         <Route path="/privacy" element={<ProtectedRoute><PageFrame><Privacy /></PageFrame></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><PageFrame><Admin /></PageFrame></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/home" replace />} />

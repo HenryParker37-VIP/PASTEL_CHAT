@@ -53,20 +53,32 @@ const Home = () => {
           <p>{t('homeChangeNameDesc')}</p>
         </div>
 
-        <div className="home-tile pop-in" style={{ animationDelay: '0.15s' }} onClick={() => navigate('/friends')}>
-          <span className="emoji float" style={{ animationDelay: '0.2s' }}>💬</span>
+        <div className="home-tile pop-in" style={{ animationDelay: '0.1s' }} onClick={() => navigate('/friends')}>
+          <span className="emoji float" style={{ animationDelay: '0.15s' }}>💬</span>
           <h3>{t('homeChatFriends')}</h3>
           <p>{t('homeChatFriendsDesc')}</p>
         </div>
 
-        <div className="home-tile pop-in" style={{ animationDelay: '0.2s' }} onClick={() => navigate('/friends')}>
-          <span className="emoji float" style={{ animationDelay: '0.3s' }}>👥</span>
+        <div className="home-tile pop-in" style={{ animationDelay: '0.15s' }} onClick={() => navigate('/friends')}>
+          <span className="emoji float" style={{ animationDelay: '0.2s' }}>👥</span>
           <h3>{t('homeGroups')}</h3>
           <p>{t('homeGroupsDesc')}</p>
         </div>
 
+        <div className="home-tile pop-in" style={{ animationDelay: '0.2s' }} onClick={() => navigate('/my-space')}>
+          <span className="emoji float" style={{ animationDelay: '0.25s' }}>✨</span>
+          <h3>{t('homeMySpace')}</h3>
+          <p>{t('homeMySpaceDesc')}</p>
+        </div>
+
+        <div className="home-tile pop-in" style={{ animationDelay: '0.25s' }} onClick={() => navigate('/install')}>
+          <span className="emoji float" style={{ animationDelay: '0.3s' }}>📱</span>
+          <h3>{t('homeInstall')}</h3>
+          <p>{t('homeInstallDesc')}</p>
+        </div>
+
         <div className="home-tile pop-in" style={{ animationDelay: '0.3s' }} onClick={() => navigate('/privacy')}>
-          <span className="emoji float" style={{ animationDelay: '0.4s' }}>🔒</span>
+          <span className="emoji float" style={{ animationDelay: '0.35s' }}>🔒</span>
           <h3>{t('homePrivacy')}</h3>
           <p>{t('homePrivacyDesc')}</p>
         </div>

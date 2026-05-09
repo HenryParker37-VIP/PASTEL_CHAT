@@ -966,13 +966,15 @@ input, textarea {
     padding: 24px 28px 70px;
   }
 
-  /* Home grid: 2 columns on tablet */
+  /* Home grid: 3 columns on tablet */
   .home-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
   }
-  .home-tile { padding: 26px 20px; }
-  .home-tile .emoji { font-size: 48px; }
+  .home-tile { padding: 24px 18px; }
+  .home-tile .emoji { font-size: 44px; }
+  .home-tile h3 { font-size: 14px; }
+  .home-tile p { font-size: 12px; }
   .hero h1 { font-size: 38px; }
 
   /* Chat layout: keep sidebar visible but narrower */

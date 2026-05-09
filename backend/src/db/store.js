@@ -11,7 +11,10 @@ const store = {
   friendRequests: [], // { _id, fromId, toId, createdAt }
   messages: [],     // { _id, senderId, receiverId|null, groupId|null, content, replyTo, isRecalled, isPinned, timestamp }
   groups: [],       // { _id, name, avatar, creatorId, members: [userId], createdAt }
-  feedback: []      // { _id, userId, type, message, createdAt }
+  feedback: [],     // { _id, userId, type, message, createdAt }
+  notes: [],        // { _id, userId, title, content, sharedWith: [userId], createdAt }
+  reminders: [],    // { _id, userId, date, time, text, createdAt }
+  birthdays: []     // { _id, userId, friendId, friendName, date (MM-DD), createdAt }
 };
 
 function load() {
@@ -24,6 +27,9 @@ function load() {
       store.messages = loaded.messages || [];
       store.groups = loaded.groups || [];
       store.feedback = loaded.feedback || [];
+      store.notes = loaded.notes || [];
+      store.reminders = loaded.reminders || [];
+      store.birthdays = loaded.birthdays || [];
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
@@ -418,6 +424,105 @@ function getGroupConversation(groupId, { limit = 100, before = null } = {}) {
   return msgs.map(m => populateMessage(m)).reverse();
 }
 
+// ===== Private Space: Notes =====
+function createNote(userId, { title, content, sharedWith = [] }) {
+  const note = {
+    _id: genId(),
+    userId,
+    title: (title || '').slice(0, 120),
+    content: (content || '').slice(0, 5000),
+    sharedWith: Array.isArray(sharedWith) ? sharedWith : [],
+    createdAt: new Date().toISOString()
+  };
+  store.notes.push(note);
+  persist();
+  return note;
+}
+function findNote(noteId) {
+  return store.notes.find(n => n._id === noteId);
+}
+function getUserNotes(userId) {
+  return store.notes.filter(n => n.userId === userId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+function deleteNote(noteId) {
+  const idx = store.notes.findIndex(n => n._id === noteId);
+  if (idx !== -1) {
+    store.notes.splice(idx, 1);
+    persist();
+    return true;
+  }
+  return false;
+}
+function updateNote(noteId, updates) {
+  const n = findNote(noteId);
+  if (!n) return null;
+  if (updates.title) n.title = updates.title.slice(0, 120);
+  if (updates.content) n.content = updates.content.slice(0, 5000);
+  if (updates.sharedWith) n.sharedWith = updates.sharedWith;
+  persist();
+  return n;
+}
+
+// ===== Private Space: Reminders =====
+function createReminder(userId, { date, time, text }) {
+  const reminder = {
+    _id: genId(),
+    userId,
+    date,
+    time,
+    text: (text || '').slice(0, 500),
+    createdAt: new Date().toISOString()
+  };
+  store.reminders.push(reminder);
+  persist();
+  return reminder;
+}
+function getUserReminders(userId) {
+  return store.reminders.filter(r => r.userId === userId).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+}
+function findReminder(reminderId) {
+  return store.reminders.find(r => r._id === reminderId);
+}
+function deleteReminder(reminderId) {
+  const idx = store.reminders.findIndex(r => r._id === reminderId);
+  if (idx !== -1) {
+    store.reminders.splice(idx, 1);
+    persist();
+    return true;
+  }
+  return false;
+}
+
+// ===== Private Space: Birthdays =====
+function createBirthday(userId, { friendId, friendName, date }) {
+  const bday = {
+    _id: genId(),
+    userId,
+    friendId,
+    friendName: (friendName || '').slice(0, 100),
+    date, // MM-DD format
+    createdAt: new Date().toISOString()
+  };
+  store.birthdays.push(bday);
+  persist();
+  return bday;
+}
+function getUserBirthdays(userId) {
+  return store.birthdays.filter(b => b.userId === userId).sort((a, b) => a.date.localeCompare(b.date));
+}
+function findBirthday(birthdayId) {
+  return store.birthdays.find(b => b._id === birthdayId);
+}
+function deleteBirthday(birthdayId) {
+  const idx = store.birthdays.findIndex(b => b._id === birthdayId);
+  if (idx !== -1) {
+    store.birthdays.splice(idx, 1);
+    persist();
+    return true;
+  }
+  return false;
+}
+
 // ===== Feedback =====
 function createFeedback(userId, type, message) {
   const fb = {
@@ -445,5 +550,8 @@ module.exports = {
   getConversation, getPinnedMessages, searchMessages, clearConversation,
   createGroup, findGroup, getGroupsForUser, groupPublic,
   addGroupMember, removeGroupMember, updateGroup, getGroupConversation,
+  createNote, findNote, getUserNotes, deleteNote, updateNote,
+  createReminder, getUserReminders, findReminder, deleteReminder,
+  createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
   createFeedback
 };
