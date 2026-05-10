@@ -15,27 +15,31 @@ const extractSeed = (url) => {
 
 const isCustomPhoto = (url) => url && url.startsWith('data:');
 
-// Crop + resize image to a square 200×200 data URL
-const cropToCircleDataUrl = (file) =>
+// Resize + square-crop image → small JPEG data URL
+const resizeToSquare = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onerror = reject;
     reader.onload = (e) => {
       const img = new Image();
-      img.onload = () => {
-        const size = Math.min(img.width, img.height);
-        const sx = (img.width - size) / 2;
-        const sy = (img.height - size) / 2;
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
-      };
       img.onerror = reject;
+      img.onload = () => {
+        const TARGET = 220;
+        const s = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - s) / 2;
+        const sy = (img.naturalHeight - s) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = TARGET;
+        canvas.height = TARGET;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('canvas not supported')); return; }
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, TARGET, TARGET);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        if (!dataUrl || dataUrl === 'data:,') { reject(new Error('canvas empty')); return; }
+        resolve(dataUrl);
+      };
       img.src = e.target.result;
     };
-    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 
@@ -69,12 +73,16 @@ const Profile = () => {
   const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
     try {
-      const dataUrl = await cropToCircleDataUrl(file);
+      const dataUrl = await resizeToSquare(file);
       setCustomPhoto(dataUrl);
       setAvatarMode('photo');
     } catch {
-      alert('Could not process image. Please try another file.');
+      // Fallback: use raw FileReader data URL without resize
+      const reader = new FileReader();
+      reader.onload = (ev) => { setCustomPhoto(ev.target.result); setAvatarMode('photo'); };
+      reader.readAsDataURL(file);
     }
   };
 

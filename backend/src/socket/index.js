@@ -167,6 +167,27 @@ const setupSocket = (io) => {
       });
     });
 
+    // Share a photo with close friends (base64 data URL, no file storage)
+    socket.on('share_photo', ({ dataUrl, caption }) => {
+      if (!dataUrl || !dataUrl.startsWith('data:image/')) return;
+      const sizeBytes = Math.round((dataUrl.length * 3) / 4);
+      if (sizeBytes > 5 * 1024 * 1024) return; // 5 MB cap
+      const friends = getFriends(user._id);
+      const payload = {
+        _id: `photo_${Date.now()}_${user._id}`,
+        dataUrl,
+        caption: caption ? String(caption).slice(0, 200) : '',
+        uploadedBy: { _id: user._id, name: user.name, avatar: user.avatar },
+        createdAt: new Date().toISOString()
+      };
+      // Deliver to every online friend
+      friends.forEach(f => {
+        io.emit(`new_photo_shared:${f.friendId}`, payload);
+      });
+      // Echo back to sender so it appears in their own feed
+      socket.emit(`new_photo_shared:${user._id}`, payload);
+    });
+
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay
     socket.on('wish_birthday', ({ targetUserId, age }) => {
       if (!targetUserId) return;
