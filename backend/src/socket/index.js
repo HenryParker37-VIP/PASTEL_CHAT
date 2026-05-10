@@ -6,7 +6,9 @@ const {
   getFriends,
   findGroup,
   createMessage,
-  populateMessage
+  populateMessage,
+  addSharedPhoto,
+  genId
 } = require('../db/store');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
@@ -167,24 +169,25 @@ const setupSocket = (io) => {
       });
     });
 
-    // Share a photo with close friends (base64 data URL, no file storage)
+    // Share a photo — persist to store then broadcast to all friends
     socket.on('share_photo', ({ dataUrl, caption }) => {
       if (!dataUrl || !dataUrl.startsWith('data:image/')) return;
       const sizeBytes = Math.round((dataUrl.length * 3) / 4);
       if (sizeBytes > 5 * 1024 * 1024) return; // 5 MB cap
       const friends = getFriends(user._id);
       const payload = {
-        _id: `photo_${Date.now()}_${user._id}`,
+        _id: genId(),
         dataUrl,
         caption: caption ? String(caption).slice(0, 200) : '',
         uploadedBy: { _id: user._id, name: user.name, avatar: user.avatar },
         createdAt: new Date().toISOString()
       };
-      // Deliver to every online friend
+      addSharedPhoto(payload);
+      // Deliver to every friend (online or offline — they'll see it on load)
       friends.forEach(f => {
         io.emit(`new_photo_shared:${f.friendId}`, payload);
       });
-      // Echo back to sender so it appears in their own feed
+      // Echo back to sender so it appears in their own feed immediately
       socket.emit(`new_photo_shared:${user._id}`, payload);
     });
 
