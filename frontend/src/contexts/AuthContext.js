@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import { subscribeToPush } from '../services/push';
+
+async function trySubscribePush() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    await subscribeToPush(reg);
+  } catch (e) {
+    console.warn('[Push] post-login subscribe failed:', e.message);
+  }
+}
 
 const AuthContext = createContext(null);
 
@@ -38,6 +49,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.post('/auth/register', { name, avatar });
       persist(data.token, data.user);
+      trySubscribePush();
       return { success: true, user: data.user };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Register failed' };
@@ -49,6 +61,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.post('/auth/login', { loginCode });
       persist(data.token, data.user);
+      trySubscribePush();
       return { success: true, user: data.user };
     } catch (err) {
       return { success: false, error: err.response?.data?.message || 'Login failed' };
