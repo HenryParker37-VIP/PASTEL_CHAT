@@ -53,9 +53,9 @@ const VoiceCallScreen = () => {
   const { peer, status, isMuted, isSpeaker } = activeCall;
 
   const statusText = {
-    calling: 'Calling…',
+    calling:    'Calling…',
     connecting: 'Connecting…',
-    connected: formatDuration(elapsed)
+    connected:  formatDuration(elapsed),
   }[status] || 'Connecting…';
 
   return (
@@ -66,16 +66,15 @@ const VoiceCallScreen = () => {
       padding: '60px 32px 52px',
       background: 'linear-gradient(160deg, #1a1a2e 0%, #2d1b3d 50%, #1a2a3a 100%)'
     }}>
-      {/* Hidden audio element for remote audio */}
+      {/* Hidden audio element for remote voice */}
       <audio ref={remoteAudioRef} autoPlay playsInline />
 
-      {/* Top: peer info */}
+      {/* Peer info */}
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', marginBottom: 24, textTransform: 'uppercase' }}>
           Voice Call
         </div>
 
-        {/* Pulsing avatar */}
         <div style={{ position: 'relative', display: 'inline-block', marginBottom: 20 }}>
           {status !== 'connected' && (
             <>
@@ -94,29 +93,20 @@ const VoiceCallScreen = () => {
           <img
             src={peer?.avatar}
             alt={peer?.name}
-            style={{
-              width: 110, height: 110, borderRadius: '50%',
-              border: '4px solid rgba(255,255,255,0.15)',
-              display: 'block'
-            }}
+            style={{ width: 110, height: 110, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.15)', display: 'block' }}
           />
         </div>
 
         <div style={{ fontSize: 26, fontWeight: 700, color: 'white', marginBottom: 8 }}>
           {peer?.name}
         </div>
-        <div style={{
-          fontSize: 15, color: 'rgba(255,255,255,0.6)',
-          fontVariantNumeric: 'tabular-nums',
-          minHeight: 22
-        }}>
+        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', fontVariantNumeric: 'tabular-nums', minHeight: 22 }}>
           {statusText}
         </div>
       </div>
 
-      {/* Bottom: controls */}
+      {/* Controls */}
       <div>
-        {/* Top row: mute + speaker */}
         <div style={{ display: 'flex', gap: 28, justifyContent: 'center', marginBottom: 36 }}>
           <CallBtn
             icon={isMuted ? '🔇' : '🎙️'}
@@ -125,6 +115,7 @@ const VoiceCallScreen = () => {
             onClick={toggleMute}
             disabled={status === 'calling'}
           />
+          {/* Speaker button: active (white) = loudspeaker ON, inactive = earpiece mode */}
           <CallBtn
             icon={isSpeaker ? '🔊' : '🔈'}
             label={isSpeaker ? 'Speaker' : 'Earpiece'}
@@ -134,20 +125,14 @@ const VoiceCallScreen = () => {
           />
         </div>
 
-        {/* End call — large, centered */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CallBtn
-            icon="📵"
-            label="End Call"
-            danger
-            onClick={endCall}
-          />
+          <CallBtn icon="📵" label="End Call" danger onClick={endCall} />
         </div>
       </div>
 
       <style>{`
         @keyframes voicePulse {
-          0% { transform: scale(1); opacity: 1; }
+          0%   { transform: scale(1); opacity: 1; }
           100% { transform: scale(1.5); opacity: 0; }
         }
       `}</style>

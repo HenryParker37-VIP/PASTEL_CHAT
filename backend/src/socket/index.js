@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const webpush = require('web-push');
 const {
   findUserById,
   updateUser,
@@ -8,8 +9,34 @@ const {
   createMessage,
   populateMessage,
   addSharedPhoto,
-  genId
+  genId,
+  getPushSubscriptions,
+  removePushSubscription
 } = require('../db/store');
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || 'admin@pastelchat.app'}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+async function sendCallPush(toUserId, payload) {
+  if (!process.env.VAPID_PUBLIC_KEY) return;
+  const subs = getPushSubscriptions(toUserId);
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(sub, JSON.stringify(payload));
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        removePushSubscription(toUserId, sub.endpoint);
+      } else {
+        console.warn('[Push] sendNotification error:', err.message);
+      }
+    }
+  }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
 
@@ -98,9 +125,18 @@ const setupSocket = (io) => {
 
     socket.on('call:invite', ({ to, callType }) => {
       if (!to) return;
+      const type = callType === 'video' ? 'video' : 'voice';
       io.emit(`call:incoming:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
-        callType: callType === 'video' ? 'video' : 'voice'
+        callType: type
+      });
+      // Send push if the callee is offline / backgrounded
+      sendCallPush(to, {
+        type:        'incoming_call',
+        callType:    type,
+        callerId:    user._id,
+        callerName:  user.name,
+        callerAvatar: user.avatar,
       });
     });
 

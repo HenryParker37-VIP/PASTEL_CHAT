@@ -15,7 +15,8 @@ const store = {
   notes: [],        // { _id, userId, title, content, sharedWith: [userId], createdAt }
   reminders: [],    // { _id, userId, date, time, text, createdAt }
   birthdays: [],    // { _id, userId, friendId, friendName, date (MM-DD), createdAt }
-  sharedPhotos: []  // { _id, dataUrl, caption, uploadedBy: {_id,name,avatar}, createdAt }
+  sharedPhotos: [], // { _id, dataUrl, caption, uploadedBy: {_id,name,avatar}, createdAt }
+  pushSubscriptions: [] // { userId, subscriptions: [PushSubscription, ...] }
 };
 
 function load() {
@@ -32,6 +33,7 @@ function load() {
       store.reminders = loaded.reminders || [];
       store.birthdays = loaded.birthdays || [];
       store.sharedPhotos = loaded.sharedPhotos || [];
+      store.pushSubscriptions = loaded.pushSubscriptions || [];
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
@@ -537,6 +539,29 @@ function getSharedPhotos() {
   return store.sharedPhotos.slice(0, 50);
 }
 
+// ===== Push Subscriptions =====
+function storePushSubscription(userId, subscription) {
+  let entry = store.pushSubscriptions.find(e => e.userId === userId);
+  if (!entry) {
+    entry = { userId, subscriptions: [] };
+    store.pushSubscriptions.push(entry);
+  }
+  const exists = entry.subscriptions.find(s => s.endpoint === subscription.endpoint);
+  if (!exists) entry.subscriptions.push(subscription);
+  persist();
+}
+function removePushSubscription(userId, endpoint) {
+  const entry = store.pushSubscriptions.find(e => e.userId === userId);
+  if (entry) {
+    entry.subscriptions = entry.subscriptions.filter(s => s.endpoint !== endpoint);
+    persist();
+  }
+}
+function getPushSubscriptions(userId) {
+  const entry = store.pushSubscriptions.find(e => e.userId === userId);
+  return entry ? entry.subscriptions : [];
+}
+
 // ===== Feedback =====
 function createFeedback(userId, type, message) {
   const fb = {
@@ -568,5 +593,6 @@ module.exports = {
   createReminder, getUserReminders, findReminder, deleteReminder,
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
   addSharedPhoto, getSharedPhotos,
+  storePushSubscription, removePushSubscription, getPushSubscriptions,
   createFeedback
 };
