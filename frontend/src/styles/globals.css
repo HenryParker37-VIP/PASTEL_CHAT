@@ -10,6 +10,10 @@
   --mint: #B0E0E6;
   --shadow: 0 4px 20px rgba(180, 150, 180, 0.15);
   --radius: 18px;
+  --card-bg: #ffffff;
+  --border: #EEE0D8;
+  --subtext: #888888;
+  --search-bg: #F7F0FA;
 }
 
 * { box-sizing: border-box; }
@@ -1023,6 +1027,10 @@ body.dark {
   --text: #EDE6FF;
   --soft-pink: #3A2D50;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  --card-bg: #2A2445;
+  --border: #3E2F60;
+  --subtext: #9A8ABE;
+  --search-bg: #241E3A;
 }
 
 body.dark .card,

@@ -13,23 +13,24 @@ const OnlineUsers = () => {
     <aside style={{
       width: '220px',
       minWidth: '220px',
-      background: 'white',
-      borderRight: '1px solid #EEE0D8',
+      background: 'var(--card-bg)',
+      borderRight: '1px solid var(--border)',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
       <div style={{
         padding: '16px 16px 12px',
-        borderBottom: '1px solid #EEE0D8',
+        borderBottom: '1px solid var(--border)',
         flexShrink: 0
       }}>
         <h3 style={{
           fontSize: '12px',
           fontWeight: 700,
-          color: '#AAAAAA',
+          color: 'var(--subtext)',
           textTransform: 'uppercase',
-          letterSpacing: '0.8px'
+          letterSpacing: '0.8px',
+          margin: 0
         }}>
           Online — {onlineUsers.length}
         </h3>
@@ -40,7 +41,7 @@ const OnlineUsers = () => {
           <p style={{
             padding: '16px',
             fontSize: '13px',
-            color: '#CCCCCC',
+            color: 'var(--subtext)',
             textAlign: 'center'
           }}>
             No one online
@@ -57,7 +58,7 @@ const OnlineUsers = () => {
                 transition: 'background 0.15s',
                 background: u._id === user?._id ? 'rgba(255,182,193,0.1)' : 'transparent'
               }}
-              onMouseEnter={e => { if (u._id !== user?._id) e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
+              onMouseEnter={e => { if (u._id !== user?._id) e.currentTarget.style.background = 'rgba(128,100,180,0.08)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = u._id === user?._id ? 'rgba(255,182,193,0.1)' : 'transparent'; }}
             >
               <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -80,12 +81,12 @@ const OnlineUsers = () => {
                 <div style={{
                   position: 'absolute', bottom: 0, right: 0,
                   width: '10px', height: '10px', borderRadius: '50%',
-                  background: '#4CAF50', border: '2px solid white'
+                  background: '#4CAF50', border: '2px solid var(--card-bg)'
                 }} />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{
-                  fontSize: '13px', fontWeight: 600, color: '#4A4A4A',
+                  fontSize: '13px', fontWeight: 600, color: 'var(--text)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                 }}>
                   {u._id === user?._id ? 'You' : u.name}

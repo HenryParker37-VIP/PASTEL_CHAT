@@ -157,7 +157,7 @@ const GroupChat = () => {
   const isCreator = group.creatorId === user?._id;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#FFF8F3' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--cream)' }}>
       <Header />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -166,7 +166,7 @@ const GroupChat = () => {
           {/* Toolbar */}
           <div style={{
             display: 'flex', alignItems: 'center', padding: '6px 12px',
-            borderBottom: '1px solid #EEE0D8', background: 'white', gap: 8, flexShrink: 0
+            borderBottom: '1px solid var(--border)', background: 'var(--card-bg)', gap: 8, flexShrink: 0
           }}>
             {/* Group avatar + name */}
             <div
@@ -182,7 +182,7 @@ const GroupChat = () => {
               {group.name[0]?.toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setShowInfo(v => !v)}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#4A4A4A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {group.name}
               </div>
               <div style={{ fontSize: 11, color: '#B08ABD' }}>
@@ -217,35 +217,35 @@ const GroupChat = () => {
 
           {/* Search bar */}
           {searchOpen && (
-            <div style={{ background: 'white', borderBottom: '1px solid #EEE0D8', padding: '8px 12px', flexShrink: 0, position: 'relative' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F0FA', borderRadius: 20, padding: '6px 14px', border: '1.5px solid #DDA0DD' }}>
+            <div style={{ background: 'var(--card-bg)', borderBottom: '1px solid var(--border)', padding: '8px 12px', flexShrink: 0, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--search-bg)', borderRadius: 20, padding: '6px 14px', border: '1.5px solid #DDA0DD' }}>
                 <span style={{ fontSize: 14, color: '#B08ABD' }}>🔍</span>
                 <input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder={t('chatSearchPlaceholder')}
-                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: '#4A4A4A' }}
+                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--text)' }}
                   onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)}
                   autoFocus
                 />
                 {searchQuery && <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#B08ABD', padding: 0 }}>✕</button>}
               </div>
               {searchResults.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 12, right: 12, background: 'white', borderRadius: 12, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #EEE0D8', maxHeight: 280, overflowY: 'auto' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 12, right: 12, background: 'var(--card-bg)', borderRadius: 12, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', border: '1px solid var(--border)', maxHeight: 280, overflowY: 'auto' }}>
                   {searchResults.map(msg => {
                     const isOwn = (msg.senderId?._id || msg.senderId) === user?._id;
                     const senderName = isOwn ? t('you') : (msg.senderId?.name || '');
                     return (
                       <button key={msg._id} onClick={() => jumpToMessage(msg._id)}
-                        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #F7F0FA' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#FFF0F5')}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft-pink)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                             <span style={{ fontSize: 12, fontWeight: 600, color: '#B08ABD' }}>{senderName}</span>
                           </div>
-                          <div style={{ fontSize: 13, color: '#4A4A4A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.content}</div>
+                          <div style={{ fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.content}</div>
                         </div>
                       </button>
                     );
@@ -280,7 +280,7 @@ const GroupChat = () => {
         {showInfo && (
           <div style={{
             width: isMobile() ? '100%' : 240, flexShrink: 0,
-            background: 'white', borderLeft: '1px solid #EEE0D8',
+            background: 'var(--card-bg)', borderLeft: '1px solid var(--border)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
             position: isMobile() ? 'absolute' : 'relative',
             top: 0, right: 0, bottom: 0, zIndex: isMobile() ? 30 : 'auto'
@@ -292,7 +292,7 @@ const GroupChat = () => {
             )}
 
             {/* Group avatar */}
-            <div style={{ padding: '20px 16px', textAlign: 'center', borderBottom: '1px solid #EEE0D8' }}>
+            <div style={{ padding: '20px 16px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
               <div style={{
                 width: 64, height: 64, borderRadius: '50%', background: groupAvatar(group.name),
                 margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -300,20 +300,20 @@ const GroupChat = () => {
               }}>
                 {group.name[0]?.toUpperCase()}
               </div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#4A4A4A' }}>{group.name}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{group.name}</div>
               <div style={{ fontSize: 12, color: '#B08ABD', marginTop: 2 }}>{group.members?.length} {t('groupMembers')}</div>
             </div>
 
             {/* Members list */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-              <div style={{ padding: '8px 16px 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              <div style={{ padding: '8px 16px 4px', fontSize: 11, fontWeight: 700, color: 'var(--subtext)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
                 {t('groupMembers')}
               </div>
               {group.members?.map(m => (
                 <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px' }}>
                   <img src={m.avatar} alt={m.name} style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#4A4A4A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {m._id === user?._id ? t('you') : m.name}
                     </div>
                     {m._id === group.creatorId && (
@@ -326,13 +326,13 @@ const GroupChat = () => {
 
             {/* Invite by user ID */}
             {isCreator && (
-              <div style={{ padding: '12px 16px', borderTop: '1px solid #EEE0D8' }}>
+              <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
                 <form onSubmit={handleInvite} style={{ display: 'flex', gap: 6 }}>
                   <input
                     value={inviteId}
                     onChange={e => setInviteId(e.target.value)}
                     placeholder="User ID..."
-                    style={{ flex: 1, padding: '6px 10px', borderRadius: 10, border: '1.5px solid #EEE0D8', fontSize: 12, outline: 'none' }}
+                    style={{ flex: 1, padding: '6px 10px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 12, outline: 'none', background: 'var(--search-bg)', color: 'var(--text)' }}
                   />
                   <button type="submit" disabled={inviteBusy} style={{ padding: '6px 10px', background: 'linear-gradient(135deg,#FFB6C1,#DDA0DD)', border: 'none', borderRadius: 10, color: 'white', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
                     {t('groupInvite')}
@@ -342,7 +342,7 @@ const GroupChat = () => {
             )}
 
             {/* Leave */}
-            <div style={{ padding: '12px 16px', borderTop: '1px solid #EEE0D8' }}>
+            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
               <button
                 onClick={handleLeave}
                 style={{ width: '100%', padding: '8px', background: '#FFF5F5', border: '1px solid #FFCDD2', borderRadius: 10, color: '#e57373', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
