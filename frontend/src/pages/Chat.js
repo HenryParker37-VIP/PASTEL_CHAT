@@ -253,7 +253,7 @@ const Chat = () => {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            padding: 'calc(6px + env(safe-area-inset-top)) 12px 6px',
+            padding: '6px 12px',
             borderBottom: '1px solid var(--border)',
             background: 'var(--card-bg)',
             gap: '8px',
