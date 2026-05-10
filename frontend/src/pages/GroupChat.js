@@ -165,7 +165,7 @@ const GroupChat = () => {
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
           {/* Toolbar */}
           <div style={{
-            display: 'flex', alignItems: 'center', padding: '6px 12px',
+            display: 'flex', alignItems: 'center', padding: 'calc(6px + env(safe-area-inset-top)) 12px 6px',
             borderBottom: '1px solid var(--border)', background: 'var(--card-bg)', gap: 8, flexShrink: 0
           }}>
             {/* Group avatar + name */}
