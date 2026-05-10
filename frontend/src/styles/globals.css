@@ -1391,3 +1391,255 @@ body.dark .date-pill span { background: rgba(100,80,140,0.2); color: #9A8ABE; }
 }
 body.dark .lang-btn { background: #3A2D50; color: #EDE6FF; }
 body.dark .lang-btn.active { background: var(--pink); color: white; }
+
+/* ====================== GIF / Sticker Picker ====================== */
+
+.gif-icon-btn {
+  font-size: 11px !important;
+  font-weight: 800;
+  padding: 0 6px;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #FFB6C1, #DDA0DD);
+  color: white !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.5px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(221,160,221,0.4);
+}
+.gif-icon-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(221,160,221,0.5); }
+.gif-icon-btn.active {
+  background: linear-gradient(135deg, #DDA0DD, #B08ABD);
+  box-shadow: 0 2px 8px rgba(176,138,189,0.5);
+}
+.gif-btn-label { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+
+/* Picker panel */
+.gif-picker {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 8px 40px rgba(180,150,180,0.25), 0 2px 12px rgba(0,0,0,0.08);
+  border: 1.5px solid #F0E4F8;
+  overflow: hidden;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  max-height: 380px;
+  animation: gif-picker-in 0.22s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes gif-picker-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+body.dark .gif-picker {
+  background: #2D2042;
+  border-color: #4A3D6A;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+
+/* Header */
+.gif-picker-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px 0;
+  gap: 8px;
+}
+.gif-tabs { display: flex; gap: 6px; flex: 1; }
+.gif-tab {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #F7F0FA;
+  color: #888;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.gif-tab:hover { background: #EDE0F5; color: #B08ABD; }
+.gif-tab.active {
+  background: linear-gradient(135deg, #FFB6C1, #DDA0DD);
+  color: white;
+  box-shadow: 0 2px 8px rgba(221,160,221,0.4);
+}
+body.dark .gif-tab { background: #3A2D50; color: #BBA8DD; }
+body.dark .gif-tab.active { background: linear-gradient(135deg, #FFB6C1, #DDA0DD); color: white; }
+
+.gif-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #F0E4F8;
+  color: #888;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.gif-close:hover { background: #FFB6C1; color: white; }
+
+/* Search */
+.gif-search-wrap {
+  display: flex;
+  align-items: center;
+  margin: 10px 12px 6px;
+  background: #F7F0FA;
+  border-radius: 12px;
+  padding: 0 10px;
+  gap: 6px;
+  border: 1.5px solid transparent;
+  transition: border-color 0.15s;
+}
+.gif-search-wrap:focus-within { border-color: #DDA0DD; }
+.gif-search-icon { font-size: 14px; flex-shrink: 0; }
+.gif-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.gif-search-clear {
+  font-size: 12px; color: #aaa;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.gif-search-clear:hover { background: #FFB6C1; color: white; }
+body.dark .gif-search-wrap { background: #3A2D50; }
+body.dark .gif-search-input { color: #EDE6FF; }
+
+/* Keyword suggestions strip */
+.gif-suggestions { padding: 0 12px; }
+.gif-suggestions-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #B08ABD;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+.gif-grid-suggest {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 4px !important;
+  max-height: 80px;
+  overflow: hidden;
+}
+.gif-suggestions-divider {
+  font-size: 11px;
+  font-weight: 700;
+  color: #BBAACC;
+  margin: 8px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Main scroll area */
+.gif-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 12px 4px;
+  min-height: 0;
+}
+.gif-scroll::-webkit-scrollbar { width: 4px; }
+.gif-scroll::-webkit-scrollbar-thumb { background: #DDA0DD; border-radius: 4px; }
+
+/* Grid */
+.gif-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+/* Item */
+.gif-item {
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: #F0E8F8;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  padding: 0;
+}
+.gif-item:hover {
+  border-color: #FFB6C1;
+  transform: scale(1.04);
+  box-shadow: 0 4px 12px rgba(255,182,193,0.4);
+}
+.gif-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* States */
+.gif-loading {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.gif-skeleton {
+  border-radius: 10px;
+  aspect-ratio: 1;
+  background: linear-gradient(90deg, #F0E8F8 25%, #EDE0F5 50%, #F0E8F8 75%);
+  background-size: 200% 100%;
+  animation: gif-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes gif-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.gif-empty {
+  text-align: center;
+  padding: 24px;
+  color: #BBAACC;
+  font-size: 13px;
+}
+
+.gif-no-key {
+  text-align: center;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.gif-no-key span { font-size: 28px; }
+.gif-no-key p { font-size: 12px; color: #888; line-height: 1.5; margin: 0; }
+.gif-no-key code { background: #F0E8F8; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+.gif-no-key a { font-size: 12px; color: #DDA0DD; font-weight: 700; text-decoration: underline; }
+
+/* Footer */
+.gif-footer {
+  padding: 6px 12px 8px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #F0E4F8;
+}
+
+/* ---- GIF bubble in chat ---- */
+.bubble-gif {
+  display: block;
+  max-width: 240px;
+}
+.bubble-gif-img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 12px;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.bubble-gif-img:hover { transform: scale(1.02); }
+
+/* Dark mode overrides for gif picker */
+body.dark .gif-item { background: #3A2D50; }
+body.dark .gif-skeleton { background: linear-gradient(90deg, #3A2D50 25%, #4A3D6A 50%, #3A2D50 75%); background-size: 200% 100%; }
+body.dark .gif-footer { border-color: #4A3D6A; }

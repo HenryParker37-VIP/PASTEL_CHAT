@@ -135,8 +135,20 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
               </div>
             )}
 
+            {/* GIF / Sticker */}
+            {message.media?.type === 'gif' && !message.isRecalled && (
+              <div className="bubble-gif">
+                <img
+                  src={message.media.dataUrl}
+                  alt={message.media.name || 'GIF'}
+                  className="bubble-gif-img"
+                  onClick={() => window.open(message.media.dataUrl, '_blank')}
+                />
+              </div>
+            )}
+
             {/* Media attachment */}
-            {message.media && !message.isRecalled && (
+            {message.media && message.media.type !== 'gif' && !message.isRecalled && (
               message.media.type === 'image' ? (
                 <div className="bubble-media-img">
                   <img
