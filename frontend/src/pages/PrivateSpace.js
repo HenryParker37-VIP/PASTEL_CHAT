@@ -327,220 +327,205 @@ const PrivateSpace = () => {
         </div>
       )}
 
-      {/* Note Modal */}
-      {showNoteModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+      {/* ── Shared modal styles ─────────────────────────────────────────── */}
+      {/* backdrop */ }
+      {(showNoteModal || showReminderModal || showBirthdayModal) && (() => {
+        const BACKDROP = {
+          position: 'fixed', inset: 0,
+          background: 'rgba(10,8,24,0.72)',
+          backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500
-        }} onClick={() => setShowNoteModal(false)}>
-          <div
-            style={{
-              background: 'white', borderRadius: 20, padding: 28,
-              width: 'min(480px, 90vw)', maxHeight: '80vh', overflowY: 'auto',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.18)'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 20px', fontSize: 18 }}>📝 {t('mySpaceNewNote')}</h3>
-            <form onSubmit={handleCreateNote}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceNoteTitle')}
-              </label>
-              <input
-                className="input"
-                placeholder={t('mySpaceNoteTitle')}
-                value={noteTitle}
-                onChange={e => setNoteTitle(e.target.value)}
-                style={{ marginBottom: 16 }}
-                autoFocus
-              />
+        };
+        const CARD = {
+          background: 'linear-gradient(160deg, #1e1a35 0%, #251f3e 100%)',
+          border: '1px solid rgba(221,160,221,0.18)',
+          borderRadius: 24,
+          padding: '28px 26px 24px',
+          width: 'min(460px, 92vw)',
+          maxHeight: '88vh',
+          overflowY: 'auto',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,182,193,0.08)'
+        };
+        const LABEL = {
+          fontSize: 11, fontWeight: 700, color: '#c4a3dc',
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+          display: 'block', marginBottom: 6
+        };
+        const INPUT_EXTRA = {
+          background: 'rgba(255,255,255,0.06)',
+          border: '1.5px solid rgba(221,160,221,0.22)',
+          color: '#f0e8ff',
+          borderRadius: 12
+        };
+        const TITLE = { margin: '0 0 22px', fontSize: 18, fontWeight: 700, color: '#f5eeff' };
+        const BTN_SAVE = {
+          flex: 1, padding: '11px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+          color: 'white', fontSize: 14, fontWeight: 700,
+          boxShadow: '0 4px 14px rgba(221,160,221,0.35)'
+        };
+        const BTN_CANCEL = {
+          padding: '11px 18px', borderRadius: 14,
+          border: '1.5px solid rgba(221,160,221,0.25)',
+          background: 'transparent', cursor: 'pointer',
+          color: '#b09acc', fontSize: 14, fontWeight: 600
+        };
 
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceNoteContent')}
-              </label>
-              <textarea
-                className="input"
-                placeholder={t('mySpaceNoteContent')}
-                value={noteContent}
-                onChange={e => setNoteContent(e.target.value)}
-                style={{ marginBottom: 16, minHeight: 120, resize: 'vertical' }}
-              />
+        if (showNoteModal) return (
+          <div style={BACKDROP} onClick={() => setShowNoteModal(false)}>
+            <div style={CARD} onClick={e => e.stopPropagation()}>
+              <h3 style={TITLE}>📝 {t('mySpaceNewNote')}</h3>
+              <form onSubmit={handleCreateNote}>
+                <label style={LABEL}>{t('mySpaceNoteTitle')}</label>
+                <input
+                  className="input"
+                  placeholder={t('mySpaceNoteTitle')}
+                  value={noteTitle}
+                  onChange={e => setNoteTitle(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
+                  autoFocus
+                />
 
-              {friends.length > 0 && (
-                <>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 10 }}>
-                    {t('mySpaceShareWith')}
-                  </label>
-                  <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
-                    {friends.map(f => (
-                      <label
-                        key={f.friendId}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
-                          background: noteSharedWith.includes(f.friendId) ? '#FFF0F5' : '#FAFAFA',
-                          border: noteSharedWith.includes(f.friendId) ? '1.5px solid #DDA0DD' : '1.5px solid #EEE'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={noteSharedWith.includes(f.friendId)}
-                          onChange={() => toggleFriendShare(f.friendId)}
-                          style={{ accentColor: '#DDA0DD' }}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{f.customNickname}</span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
+                <label style={LABEL}>{t('mySpaceNoteContent')}</label>
+                <textarea
+                  className="input"
+                  placeholder={t('mySpaceNoteContent')}
+                  value={noteContent}
+                  onChange={e => setNoteContent(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 16, minHeight: 120, resize: 'vertical' }}
+                />
 
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button type="submit" className="btn" style={{ flex: 1 }}>
-                  💾 {t('save')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); }}
-                >
-                  {t('cancel')}
-                </button>
-              </div>
-            </form>
+                {friends.length > 0 && (
+                  <>
+                    <label style={{ ...LABEL, marginBottom: 10 }}>{t('mySpaceShareWith')}</label>
+                    <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
+                      {friends.map(f => (
+                        <label
+                          key={f.friendId}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
+                            background: noteSharedWith.includes(f.friendId)
+                              ? 'rgba(221,160,221,0.15)' : 'rgba(255,255,255,0.04)',
+                            border: noteSharedWith.includes(f.friendId)
+                              ? '1.5px solid rgba(221,160,221,0.5)' : '1.5px solid rgba(255,255,255,0.08)'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={noteSharedWith.includes(f.friendId)}
+                            onChange={() => toggleFriendShare(f.friendId)}
+                            style={{ accentColor: '#DDA0DD' }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: '#e8dcff' }}>{f.customNickname}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="submit" style={BTN_SAVE}>💾 {t('save')}</button>
+                  <button type="button" style={BTN_CANCEL}
+                    onClick={() => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); }}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
 
-      {/* Reminder Modal */}
-      {showReminderModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500
-        }} onClick={() => setShowReminderModal(false)}>
-          <div
-            style={{
-              background: 'white', borderRadius: 20, padding: 28,
-              width: 'min(420px, 90vw)', maxHeight: '80vh', overflowY: 'auto',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.18)'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 20px', fontSize: 18 }}>⏰ {t('mySpaceNewReminder')}</h3>
-            <form onSubmit={handleCreateReminder}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceReminderDate')}
-              </label>
-              <input
-                type="date"
-                className="input"
-                value={reminderDate}
-                onChange={e => setReminderDate(e.target.value)}
-                style={{ marginBottom: 16 }}
-                autoFocus
-              />
+        if (showReminderModal) return (
+          <div style={BACKDROP} onClick={() => setShowReminderModal(false)}>
+            <div style={CARD} onClick={e => e.stopPropagation()}>
+              <h3 style={TITLE}>⏰ {t('mySpaceNewReminder')}</h3>
+              <form onSubmit={handleCreateReminder}>
+                <label style={LABEL}>{t('mySpaceReminderDate')}</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={reminderDate}
+                  onChange={e => setReminderDate(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
+                  autoFocus
+                />
 
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceReminderTime')}
-              </label>
-              <input
-                type="time"
-                className="input"
-                value={reminderTime}
-                onChange={e => setReminderTime(e.target.value)}
-                style={{ marginBottom: 16 }}
-              />
+                <label style={LABEL}>{t('mySpaceReminderTime')}</label>
+                <input
+                  type="time"
+                  className="input"
+                  value={reminderTime}
+                  onChange={e => setReminderTime(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
+                />
 
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceReminderText')}
-              </label>
-              <textarea
-                className="input"
-                placeholder={t('mySpaceReminderText')}
-                value={reminderText}
-                onChange={e => setReminderText(e.target.value)}
-                style={{ marginBottom: 20, minHeight: 80, resize: 'vertical' }}
-              />
+                <label style={LABEL}>{t('mySpaceReminderText')}</label>
+                <textarea
+                  className="input"
+                  placeholder={t('mySpaceReminderText')}
+                  value={reminderText}
+                  onChange={e => setReminderText(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 20, minHeight: 80, resize: 'vertical' }}
+                />
 
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button type="submit" className="btn" style={{ flex: 1 }}>
-                  ⏰ {t('save')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); }}
-                >
-                  {t('cancel')}
-                </button>
-              </div>
-            </form>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="submit" style={BTN_SAVE}>⏰ {t('save')}</button>
+                  <button type="button" style={BTN_CANCEL}
+                    onClick={() => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); }}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
 
-      {/* Birthday Modal */}
-      {showBirthdayModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500
-        }} onClick={() => setShowBirthdayModal(false)}>
-          <div
-            style={{
-              background: 'white', borderRadius: 20, padding: 28,
-              width: 'min(420px, 90vw)', maxHeight: '80vh', overflowY: 'auto',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.18)'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 20px', fontSize: 18 }}>🎂 {t('mySpaceNewBirthday')}</h3>
-            <form onSubmit={handleCreateBirthday}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                {t('mySpaceFriendName')}
-              </label>
-              <select
-                className="input"
-                value={birthdayFriendId}
-                onChange={e => setBirthdayFriendId(e.target.value)}
-                style={{ marginBottom: 16 }}
-                autoFocus
-              >
-                <option value="">{t('mySpaceSelectFriend')}</option>
-                {friends.map(f => (
-                  <option key={f.friendId} value={f.friendId}>
-                    {f.customNickname}
-                  </option>
-                ))}
-              </select>
-
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                className="input"
-                value={birthdayDate}
-                max={new Date().toISOString().split('T')[0]}
-                onChange={e => setBirthdayDate(e.target.value)}
-                style={{ marginBottom: 20 }}
-              />
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button type="submit" className="btn" style={{ flex: 1 }}>
-                  🎂 {t('save')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); }}
+        if (showBirthdayModal) return (
+          <div style={BACKDROP} onClick={() => setShowBirthdayModal(false)}>
+            <div style={CARD} onClick={e => e.stopPropagation()}>
+              <h3 style={TITLE}>🎂 {t('mySpaceNewBirthday')}</h3>
+              <form onSubmit={handleCreateBirthday}>
+                <label style={LABEL}>{t('mySpaceFriendName')}</label>
+                <select
+                  className="input"
+                  value={birthdayFriendId}
+                  onChange={e => setBirthdayFriendId(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
+                  autoFocus
                 >
-                  {t('cancel')}
-                </button>
-              </div>
-            </form>
+                  <option value="" style={{ background: '#1e1a35' }}>{t('mySpaceSelectFriend')}</option>
+                  {friends.map(f => (
+                    <option key={f.friendId} value={f.friendId} style={{ background: '#1e1a35' }}>
+                      {f.customNickname}
+                    </option>
+                  ))}
+                </select>
+
+                <label style={LABEL}>Date of Birth</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={birthdayDate}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={e => setBirthdayDate(e.target.value)}
+                  style={{ ...INPUT_EXTRA, marginBottom: 24 }}
+                />
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="submit" style={BTN_SAVE}>🎂 {t('save')}</button>
+                  <button type="button" style={BTN_CANCEL}
+                    onClick={() => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); }}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+
+        return null;
+      })()}
     </div>
   );
 };
