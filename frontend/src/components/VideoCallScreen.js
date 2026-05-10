@@ -33,10 +33,20 @@ const CtrlBtn = ({ icon, label, active, danger, onClick, disabled }) => (
 );
 
 const VideoCallScreen = () => {
-  const { activeCall, localVideoRef, remoteVideoRef, endCall, toggleMute, toggleSpeaker, toggleCamera } = useCall();
-  const [elapsed, setElapsed] = useState(0);
+  const {
+    activeCall, isPiP,
+    localVideoRef, remoteVideoRef,
+    endCall, toggleMute, toggleSpeaker, toggleCamera, enterPiP,
+  } = useCall();
+
+  const [elapsed,      setElapsed]      = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [pipSupported, setPipSupported] = useState(false);
   const hideTimer = React.useRef(null);
+
+  useEffect(() => {
+    setPipSupported(!!document.pictureInPictureEnabled);
+  }, []);
 
   useEffect(() => {
     if (!activeCall?.startTime) return;
@@ -60,6 +70,9 @@ const VideoCallScreen = () => {
   if (!activeCall || activeCall.callType !== 'video') return null;
   const { peer, status, isMuted, isSpeaker, isCameraOff } = activeCall;
 
+  // If in PiP mode, the browser shows its own floating window — hide our full-screen UI
+  if (isPiP) return null;
+
   return (
     <div
       onClick={handleTouch}
@@ -69,7 +82,7 @@ const VideoCallScreen = () => {
         display: 'flex', flexDirection: 'column'
       }}
     >
-      {/* Remote video — fills screen */}
+      {/* Remote video */}
       <video
         ref={remoteVideoRef}
         autoPlay
@@ -77,13 +90,12 @@ const VideoCallScreen = () => {
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
       />
 
-      {/* Placeholder when connecting */}
+      {/* Connecting placeholder */}
       {status !== 'connected' && (
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(160deg, #1a1a2e, #2d1b3d)',
-          zIndex: 1
+          background: 'linear-gradient(160deg, #1a1a2e, #2d1b3d)', zIndex: 1
         }}>
           <img src={peer?.avatar} alt="" style={{ width: 90, height: 90, borderRadius: '50%', marginBottom: 16, border: '3px solid rgba(255,255,255,0.2)' }} />
           <div style={{ color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{peer?.name}</div>
@@ -93,21 +105,16 @@ const VideoCallScreen = () => {
         </div>
       )}
 
-      {/* Local video — picture-in-picture */}
+      {/* Local video PiP */}
       <div style={{
         position: 'absolute', top: 60, right: 16, zIndex: 10,
-        width: 100, height: 140,
-        borderRadius: 14,
-        overflow: 'hidden',
+        width: 100, height: 140, borderRadius: 14, overflow: 'hidden',
         border: '2px solid rgba(255,255,255,0.3)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-        background: '#111'
+        boxShadow: '0 4px 20px rgba(0,0,0,0.5)', background: '#111'
       }}>
         <video
           ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
+          autoPlay playsInline muted
           style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
         />
         {isCameraOff && (
@@ -119,22 +126,37 @@ const VideoCallScreen = () => {
         )}
       </div>
 
-      {/* Top bar — peer name + timer */}
+      {/* Top bar */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
         padding: '16px 20px',
         background: 'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)',
         display: 'flex', alignItems: 'center', gap: 12,
-        opacity: showControls ? 1 : 0,
-        transition: 'opacity 0.3s'
+        opacity: showControls ? 1 : 0, transition: 'opacity 0.3s'
       }}>
         <img src={peer?.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%' }} />
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>{peer?.name}</div>
           <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
             {status === 'connected' ? formatDuration(elapsed) : (status === 'calling' ? 'Calling…' : 'Connecting…')}
           </div>
         </div>
+        {/* Picture-in-Picture button */}
+        {pipSupported && status === 'connected' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); enterPiP(); }}
+            title="Picture in Picture"
+            style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, border: '1px solid rgba(255,255,255,0.2)',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >⧉</button>
+        )}
       </div>
 
       {/* Bottom controls */}
@@ -143,13 +165,12 @@ const VideoCallScreen = () => {
         padding: '20px 28px 44px',
         background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-        opacity: showControls ? 1 : 0,
-        transition: 'opacity 0.3s'
+        opacity: showControls ? 1 : 0, transition: 'opacity 0.3s'
       }}>
-        <CtrlBtn icon={isCameraOff ? '📷' : '📸'} label={isCameraOff ? 'Camera off' : 'Camera'} active={isCameraOff} onClick={toggleCamera} disabled={status === 'calling'} />
-        <CtrlBtn icon={isMuted ? '🔇' : '🎙️'} label={isMuted ? 'Unmute' : 'Mute'} active={isMuted} onClick={toggleMute} disabled={status === 'calling'} />
+        <CtrlBtn icon={isCameraOff ? '📷' : '📸'} label={isCameraOff ? 'Cam off' : 'Camera'} active={isCameraOff} onClick={toggleCamera} disabled={status === 'calling'} />
+        <CtrlBtn icon={isMuted ? '🔇' : '🎙️'}    label={isMuted ? 'Unmute' : 'Mute'}     active={isMuted}    onClick={toggleMute}   disabled={status === 'calling'} />
         <CtrlBtn icon="📵" label="End" danger onClick={endCall} />
-        <CtrlBtn icon={isSpeaker ? '🔊' : '🔈'} label={isSpeaker ? 'Speaker' : 'Earpiece'} active={isSpeaker} onClick={toggleSpeaker} disabled={status === 'calling'} />
+        <CtrlBtn icon={isSpeaker ? '🔊' : '🔈'}   label={isSpeaker ? 'Speaker' : 'Earpiece'} active={isSpeaker} onClick={toggleSpeaker} disabled={status === 'calling'} />
         <CtrlBtn icon="🔄" label="Flip" onClick={() => {}} disabled={status === 'calling'} />
       </div>
     </div>
