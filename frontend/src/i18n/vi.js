@@ -125,6 +125,8 @@ const vi = {
   // Install guide
   homeInstall: 'Cài đặt trên màn hình chính',
   homeInstallDesc: 'Lưu ứng dụng vào điện thoại để truy cập nhanh.',
+  homeSharedPhotos: 'Chia sẻ Ảnh',
+  homeSharedPhotosDesc: 'Chia sẻ và xem ảnh với bạn bè thân thiết theo thời gian thực.',
   installTitle: '📱 Cài đặt Pastel Chat',
   installSubtitle: 'Thêm ứng dụng vào màn hình chính để truy cập nhanh.',
   installIos: 'iPhone & iPad',

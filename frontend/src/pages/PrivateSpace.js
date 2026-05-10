@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
+import PhotoFeed from '../components/PhotoFeed';
 
 const PrivateSpace = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { socket } = useSocket();
   const { t } = useLang();
-  const [tab, setTab] = useState('notes');
+  const [tab, setTab] = useState(searchParams.get('tab') || 'notes');
   const [notes, setNotes] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
+  const [photos, setPhotos] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -36,18 +41,28 @@ const PrivateSpace = () => {
     loadData();
   }, [user]);
 
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('new-photo-shared', (photo) => {
+      setPhotos(prev => [photo, ...prev]);
+    });
+    return () => socket.off('new-photo-shared');
+  }, [socket]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [notesRes, remindersRes, birthdaysRes, friendsRes] = await Promise.all([
+      const [notesRes, remindersRes, birthdaysRes, photosRes, friendsRes] = await Promise.all([
         api.get('/private-space/notes'),
         api.get('/private-space/reminders'),
         api.get('/private-space/birthdays'),
+        api.get('/private-space/photos'),
         api.get('/friends')
       ]);
       setNotes(notesRes.data || []);
       setReminders(remindersRes.data || []);
       setBirthdays(birthdaysRes.data || []);
+      setPhotos(photosRes.data || []);
       setFriends(friendsRes.data || []);
     } catch (e) {
       console.error('Failed to load private space data:', e);
@@ -149,6 +164,18 @@ const PrivateSpace = () => {
     );
   };
 
+  const handlePhotoUpload = async (formData) => {
+    try {
+      const { data } = await api.post('/private-space/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setPhotos(prev => [data, ...prev]);
+    } catch (e) {
+      console.error('Failed to upload photo:', e);
+      throw e;
+    }
+  };
+
   return (
     <div className="container">
       <button className="btn btn-ghost" onClick={() => navigate('/home')} style={{ marginBottom: 18 }}>
@@ -160,6 +187,7 @@ const PrivateSpace = () => {
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
         {[
           { key: 'notes', label: t('mySpaceNotes'), emoji: '📝' },
+          { key: 'photos', label: t('mySpacePhotos'), emoji: '📸' },
           { key: 'reminders', label: t('mySpaceReminders'), emoji: '⏰' },
           { key: 'birthdays', label: t('mySpaceBirthdays'), emoji: '🎂' }
         ].map(item => (
@@ -182,6 +210,16 @@ const PrivateSpace = () => {
           </button>
         ))}
       </div>
+
+      {/* Photos Tab */}
+      {tab === 'photos' && (
+        <PhotoFeed
+          photos={photos}
+          friends={friends}
+          onUpload={handlePhotoUpload}
+          loading={loading}
+        />
+      )}
 
       {/* Notes Tab */}
       {tab === 'notes' && (

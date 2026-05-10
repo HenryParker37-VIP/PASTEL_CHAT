@@ -31,20 +31,20 @@ const TILES = [
     grad: 'linear-gradient(135deg, #B0E0E6 0%, #7DC9C9 100%)',
   },
   {
+    emoji: '📸',
+    key: 'photos',
+    labelKey: 'homeSharedPhotos',
+    descKey: 'homeSharedPhotosDesc',
+    path: '/my-space?tab=photos',
+    grad: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+  },
+  {
     emoji: '✨',
     key: 'myspace',
     labelKey: 'homeMySpace',
     descKey: 'homeMySpaceDesc',
     path: '/my-space',
     grad: 'linear-gradient(135deg, #DDA0DD 0%, #C07BC0 100%)',
-  },
-  {
-    emoji: '📱',
-    key: 'install',
-    labelKey: 'homeInstall',
-    descKey: 'homeInstallDesc',
-    path: '/install',
-    grad: 'linear-gradient(135deg, #FFDAB9 0%, #FFB347 100%)',
   },
   {
     emoji: '🔒',
