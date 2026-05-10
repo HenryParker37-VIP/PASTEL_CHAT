@@ -11,8 +11,11 @@ export function register(config) {
       navigator.serviceWorker
         .register(SW_URL)
         .then((registration) => {
-          // Subscribe to push notifications once SW is active
-          const subscribe = () => subscribeToPush(registration);
+          // Only re-subscribe on SW activate if user is already logged in
+          // (first-time subscribe happens in AuthContext after login)
+          const subscribe = () => {
+            if (localStorage.getItem('token')) subscribeToPush(registration);
+          };
           if (registration.active) {
             subscribe();
           } else {
