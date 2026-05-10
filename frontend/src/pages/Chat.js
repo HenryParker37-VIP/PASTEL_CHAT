@@ -208,7 +208,7 @@ const Chat = () => {
       flexDirection: 'column',
       height: '100vh',
       overflow: 'hidden',
-      background: '#FFF8F3'
+      background: 'var(--cream)'
     }}>
       <Header />
 
@@ -224,7 +224,7 @@ const Chat = () => {
             position: isMobile() ? 'absolute' : 'relative',
             top: 0, left: 0, bottom: 0,
             zIndex: isMobile() ? 20 : 'auto',
-            background: '#FFF8F3'
+            background: 'var(--cream)'
           }}>
             {isMobile() && (
               <button
@@ -254,8 +254,8 @@ const Chat = () => {
             display: 'flex',
             alignItems: 'center',
             padding: '6px 12px',
-            borderBottom: '1px solid #EEE0D8',
-            background: 'white',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--card-bg)',
             gap: '8px',
             flexShrink: 0
           }}>
@@ -263,9 +263,9 @@ const Chat = () => {
               onClick={() => setSidebarOpen((v) => !v)}
               title={sidebarOpen ? 'Hide online users' : 'Show online users'}
               style={{
-                background: 'none', border: '1px solid #EEE0D8',
+                background: 'none', border: '1px solid var(--border)',
                 borderRadius: '8px', padding: '4px 10px',
-                fontSize: '12px', color: '#AAAAAA',
+                fontSize: '12px', color: 'var(--subtext)',
                 cursor: 'pointer', transition: 'all 0.15s',
                 flexShrink: 0
               }}
@@ -276,7 +276,7 @@ const Chat = () => {
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = 'none';
-                e.currentTarget.style.borderColor = '#EEE0D8';
+                e.currentTarget.style.borderColor = 'var(--border)';
                 e.currentTarget.style.color = '#AAAAAA';
               }}
             >
@@ -299,7 +299,7 @@ const Chat = () => {
                 </button>
                 <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
                   <span style={{
-                    fontSize: 13, fontWeight: 600, color: '#4A4A4A',
+                    fontSize: 13, fontWeight: 600, color: 'var(--text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     display: 'block'
                   }}>
@@ -366,15 +366,15 @@ const Chat = () => {
           {/* Friend profile card (collapsible) */}
           {profileOpen && friend && (
             <div style={{
-              background: 'white', borderBottom: '1px solid #EEE0D8',
+              background: 'var(--card-bg)', borderBottom: '1px solid var(--border)',
               padding: '14px 16px', flexShrink: 0,
               display: 'flex', alignItems: 'center', gap: 14
             }}>
               <img src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#4A4A4A' }}>{friend.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{friend.name}</div>
                 {friend.status && <div style={{ fontSize: 13, color: '#B08ABD', marginTop: 1 }}>{friend.status}</div>}
-                {friend.bio && <div style={{ fontSize: 13, color: '#888', marginTop: 4, wordBreak: 'break-word' }}>{friend.bio}</div>}
+                {friend.bio && <div style={{ fontSize: 13, color: 'var(--subtext)', marginTop: 4, wordBreak: 'break-word' }}>{friend.bio}</div>}
                 <div style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb', marginTop: 4 }}>
                   {friend.isOnline ? '🟢 Online now' : '⚫ Offline'}
                 </div>
@@ -386,15 +386,15 @@ const Chat = () => {
           {/* Search bar (collapsible) */}
           {searchOpen && (
             <div style={{
-              background: 'white',
-              borderBottom: '1px solid #EEE0D8',
+              background: 'var(--card-bg)',
+              borderBottom: '1px solid var(--border)',
               padding: '8px 12px',
               flexShrink: 0,
               position: 'relative'
             }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: '#F7F0FA', borderRadius: 20, padding: '6px 14px',
+                background: 'var(--search-bg)', borderRadius: 20, padding: '6px 14px',
                 border: '1.5px solid #DDA0DD'
               }}>
                 <span style={{ fontSize: 14, color: '#B08ABD' }}>🔍</span>
@@ -405,7 +405,7 @@ const Chat = () => {
                   placeholder="Search messages..."
                   style={{
                     flex: 1, border: 'none', outline: 'none',
-                    background: 'transparent', fontSize: 14, color: '#4A4A4A'
+                    background: 'transparent', fontSize: 14, color: 'var(--text)'
                   }}
                   onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)}
                 />
@@ -421,9 +421,9 @@ const Chat = () => {
               {(searchResults.length > 0 || searchLoading) && (
                 <div style={{
                   position: 'absolute', top: '100%', left: 12, right: 12,
-                  background: 'white', borderRadius: 12, zIndex: 100,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  border: '1px solid #EEE0D8',
+                  background: 'var(--card-bg)', borderRadius: 12, zIndex: 100,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                  border: '1px solid var(--border)',
                   maxHeight: 300, overflowY: 'auto'
                 }}>
                   {searchLoading ? (
@@ -431,14 +431,13 @@ const Chat = () => {
                       Searching...
                     </div>
                   ) : searchResults.length === 0 ? (
-                    <div style={{ padding: '16px', textAlign: 'center', color: '#aaa', fontSize: 13 }}>
+                    <div style={{ padding: '16px', textAlign: 'center', color: 'var(--subtext)', fontSize: 13 }}>
                       No results
                     </div>
                   ) : (
                     searchResults.map((msg) => {
                       const isOwn = (msg.senderId?._id || msg.senderId) === user?._id;
                       const senderName = isOwn ? 'You' : (friend?.name || 'Friend');
-                      // Highlight matched text
                       const q = searchQuery.trim();
                       const idx = msg.content.toLowerCase().indexOf(q.toLowerCase());
                       let preview;
@@ -451,7 +450,7 @@ const Chat = () => {
                         preview = (
                           <span>
                             {before.slice(-20)}
-                            <mark style={{ background: '#FFE0B2', borderRadius: 2, padding: '0 1px' }}>{match}</mark>
+                            <mark style={{ background: '#FFE0B2', borderRadius: 2, padding: '0 1px', color: '#4A4A4A' }}>{match}</mark>
                             {after}
                           </span>
                         );
@@ -464,18 +463,18 @@ const Chat = () => {
                             display: 'flex', alignItems: 'flex-start', gap: 10,
                             width: '100%', padding: '10px 14px',
                             background: 'none', border: 'none', cursor: 'pointer',
-                            textAlign: 'left', borderBottom: '1px solid #F7F0FA',
-                            transition: 'background 0.15s'
+                            textAlign: 'left', borderBottom: '1px solid var(--border)',
+                            transition: 'background 0.15s', color: 'var(--text)'
                           }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#FFF0F5')}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft-pink)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: '#B08ABD' }}>{senderName}</span>
-                              <span style={{ fontSize: 11, color: '#bbb' }}>{formatSearchTime(msg.timestamp)}</span>
+                              <span style={{ fontSize: 11, color: 'var(--subtext)' }}>{formatSearchTime(msg.timestamp)}</span>
                             </div>
-                            <div style={{ fontSize: 13, color: '#4A4A4A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {preview}
                             </div>
                           </div>
