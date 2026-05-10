@@ -14,7 +14,8 @@ const store = {
   feedback: [],     // { _id, userId, type, message, createdAt }
   notes: [],        // { _id, userId, title, content, sharedWith: [userId], createdAt }
   reminders: [],    // { _id, userId, date, time, text, createdAt }
-  birthdays: []     // { _id, userId, friendId, friendName, date (MM-DD), createdAt }
+  birthdays: [],    // { _id, userId, friendId, friendName, date (MM-DD), createdAt }
+  sharedPhotos: []  // { _id, dataUrl, caption, uploadedBy: {_id,name,avatar}, createdAt }
 };
 
 function load() {
@@ -30,6 +31,7 @@ function load() {
       store.notes = loaded.notes || [];
       store.reminders = loaded.reminders || [];
       store.birthdays = loaded.birthdays || [];
+      store.sharedPhotos = loaded.sharedPhotos || [];
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
@@ -523,6 +525,18 @@ function deleteBirthday(birthdayId) {
   return false;
 }
 
+// ===== Shared Photos =====
+function addSharedPhoto({ _id, dataUrl, caption, uploadedBy, createdAt }) {
+  const photo = { _id, dataUrl, caption, uploadedBy, createdAt };
+  store.sharedPhotos.unshift(photo);
+  if (store.sharedPhotos.length > 200) store.sharedPhotos = store.sharedPhotos.slice(0, 200);
+  persist();
+  return photo;
+}
+function getSharedPhotos() {
+  return store.sharedPhotos.slice(0, 50);
+}
+
 // ===== Feedback =====
 function createFeedback(userId, type, message) {
   const fb = {
@@ -553,5 +567,6 @@ module.exports = {
   createNote, findNote, getUserNotes, deleteNote, updateNote,
   createReminder, getUserReminders, findReminder, deleteReminder,
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
+  addSharedPhoto, getSharedPhotos,
   createFeedback
 };
