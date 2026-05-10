@@ -22,7 +22,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   );
 }
 
-async function sendCallPush(toUserId, payload) {
+async function sendPush(toUserId, payload) {
   if (!process.env.VAPID_PUBLIC_KEY) return;
   const subs = getPushSubscriptions(toUserId);
   for (const sub of subs) {
@@ -118,6 +118,17 @@ const setupSocket = (io) => {
         preview: populated.content.slice(0, 80),
         messageId: populated._id
       });
+      // Push notification for when recipient's app is closed/backgrounded
+      const preview = populated.content
+        ? populated.content.slice(0, 80)
+        : validMedia ? `Sent ${validMedia.type === 'image' ? 'a photo' : 'a file'}` : '📎 Attachment';
+      sendPush(to, {
+        type:  'new_message',
+        title: user.name,
+        body:  preview,
+        tag:   `msg-${user._id}`,
+        url:   '/',
+      });
     });
 
     // ── WebRTC call signaling ─────────────────────────────────────────────
@@ -131,7 +142,7 @@ const setupSocket = (io) => {
         callType: type
       });
       // Send push if the callee is offline / backgrounded
-      sendCallPush(to, {
+      sendPush(to, {
         type:        'incoming_call',
         callType:    type,
         callerId:    user._id,
