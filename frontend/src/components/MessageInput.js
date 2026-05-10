@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import GifStickerPicker from './GifStickerPicker';
 
 const EMOJI_LIST = ['😀','😂','🥰','😍','🤩','😎','🥳','🤗','😊','😉',
   '❤️','💕','💖','💗','🌸','🌺','✨','🌟','💫','⭐',
@@ -17,6 +18,7 @@ function formatBytes(bytes) {
 const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [sending, setSending] = useState(false);
   const [media, setMedia] = useState(null); // { type, dataUrl, name, size, preview }
   const textareaRef = useRef(null);
@@ -94,6 +96,16 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     }
   };
 
+  const handleGifSelect = async ({ url, preview, title }) => {
+    setShowGifPicker(false);
+    setSending(true);
+    try {
+      await onSend('', { type: 'gif', dataUrl: url, preview, name: title || 'sticker' });
+    } finally {
+      setSending(false);
+    }
+  };
+
   const insertEmoji = (emoji) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -157,15 +169,35 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         </div>
       )}
 
+      {/* GIF / Sticker picker */}
+      {showGifPicker && (
+        <GifStickerPicker
+          keyword={text}
+          onSelect={handleGifSelect}
+          onClose={() => setShowGifPicker(false)}
+        />
+      )}
+
       {/* Input row */}
       <div className="input-row">
         {/* Emoji */}
         <button
           className={`icon-btn ${showEmoji ? 'active' : ''}`}
-          onClick={() => setShowEmoji(v => !v)}
+          onClick={() => { setShowEmoji(v => !v); setShowGifPicker(false); }}
           title="Emoji"
           type="button"
         >😊</button>
+
+        {/* GIF / Sticker */}
+        <button
+          className={`icon-btn gif-icon-btn ${showGifPicker ? 'active' : ''}`}
+          onClick={() => { setShowGifPicker(v => !v); setShowEmoji(false); }}
+          title="GIFs & Stickers"
+          type="button"
+          disabled={disabled || sending}
+        >
+          <span className="gif-btn-label">GIF</span>
+        </button>
 
         {/* File attach */}
         <button
