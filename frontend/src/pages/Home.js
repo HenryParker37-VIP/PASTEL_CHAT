@@ -5,18 +5,134 @@ import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import TypewriterText from '../components/TypewriterText';
 
+const TILES = [
+  {
+    emoji: '🎨',
+    key: 'profile',
+    labelKey: 'homeChangeName',
+    descKey: 'homeChangeNameDesc',
+    path: '/profile',
+    grad: 'linear-gradient(135deg, #FFB6C1 0%, #FF8FA3 100%)',
+  },
+  {
+    emoji: '💬',
+    key: 'chat',
+    labelKey: 'homeChatFriends',
+    descKey: 'homeChatFriendsDesc',
+    path: '/friends',
+    grad: 'linear-gradient(135deg, #ADD8E6 0%, #7EC8E3 100%)',
+  },
+  {
+    emoji: '👥',
+    key: 'groups',
+    labelKey: 'homeGroups',
+    descKey: 'homeGroupsDesc',
+    path: '/friends',
+    grad: 'linear-gradient(135deg, #B0E0E6 0%, #7DC9C9 100%)',
+  },
+  {
+    emoji: '✨',
+    key: 'myspace',
+    labelKey: 'homeMySpace',
+    descKey: 'homeMySpaceDesc',
+    path: '/my-space',
+    grad: 'linear-gradient(135deg, #DDA0DD 0%, #C07BC0 100%)',
+  },
+  {
+    emoji: '📱',
+    key: 'install',
+    labelKey: 'homeInstall',
+    descKey: 'homeInstallDesc',
+    path: '/install',
+    grad: 'linear-gradient(135deg, #FFDAB9 0%, #FFB347 100%)',
+  },
+  {
+    emoji: '🔒',
+    key: 'privacy',
+    labelKey: 'homePrivacy',
+    descKey: 'homePrivacyDesc',
+    path: '/privacy',
+    grad: 'linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 100%)',
+  },
+];
+
 const Home = () => {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
   const navigate = useNavigate();
   const { t } = useLang();
   const [time, setTime] = useState(new Date());
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 700);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <div className="home-mobile-wrap">
+        {/* Mobile header */}
+        <div className="home-mobile-header">
+          <div className="home-mobile-user">
+            <img className="home-mobile-avatar sticker-wiggle" src={user?.avatar} alt="" />
+            <div>
+              <p className="home-mobile-name">{user?.name}</p>
+              <p className="home-mobile-status">
+                <span className="home-mobile-dot" style={{ background: connected ? '#7bd389' : '#ccc' }} />
+                {connected ? t('connected') : t('connecting')}
+              </p>
+            </div>
+          </div>
+          <button className="home-mobile-logout" onClick={logout}>{t('logout')}</button>
+        </div>
+
+        {/* Greeting */}
+        <div className="home-mobile-greeting">
+          <TypewriterText
+            words={[t('homeWelcome', user?.name?.split(' ')[0] || 'friend'), t('homeWelcomeAlt'), 'Shall we chat? 🌸']}
+            typingSpeed={80}
+          />
+        </div>
+
+        {/* 2×3 App icon grid */}
+        <div className="home-mobile-grid">
+          {TILES.map((tile, i) => (
+            <button
+              key={tile.key}
+              className="home-mobile-tile pop-in"
+              style={{ animationDelay: `${i * 0.06}s`, background: tile.grad }}
+              onClick={() => navigate(tile.path)}
+            >
+              <span className="home-mobile-emoji float" style={{ animationDelay: `${i * 0.15}s` }}>
+                {tile.emoji}
+              </span>
+              <span className="home-mobile-label">{t(tile.labelKey)}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Login code */}
+        {user?.loginCode && (
+          <div className="home-mobile-code-wrap">
+            <p className="home-mobile-code-hint">{t('homeLoginCode')}</p>
+            <div className="code-display">{user.loginCode}</div>
+          </div>
+        )}
+
+        {/* Time */}
+        <p className="home-mobile-time">{time.toLocaleTimeString()}</p>
+      </div>
+    );
+  }
+
+  // ── Desktop layout (unchanged) ────────────────────────────────────────────
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -47,41 +163,18 @@ const Home = () => {
       </div>
 
       <div className="home-grid">
-        <div className="home-tile pop-in" style={{ animationDelay: '0.05s' }} onClick={() => navigate('/profile')}>
-          <span className="emoji float">🎨</span>
-          <h3>{t('homeChangeName')}</h3>
-          <p>{t('homeChangeNameDesc')}</p>
-        </div>
-
-        <div className="home-tile pop-in" style={{ animationDelay: '0.1s' }} onClick={() => navigate('/friends')}>
-          <span className="emoji float" style={{ animationDelay: '0.15s' }}>💬</span>
-          <h3>{t('homeChatFriends')}</h3>
-          <p>{t('homeChatFriendsDesc')}</p>
-        </div>
-
-        <div className="home-tile pop-in" style={{ animationDelay: '0.15s' }} onClick={() => navigate('/friends')}>
-          <span className="emoji float" style={{ animationDelay: '0.2s' }}>👥</span>
-          <h3>{t('homeGroups')}</h3>
-          <p>{t('homeGroupsDesc')}</p>
-        </div>
-
-        <div className="home-tile pop-in" style={{ animationDelay: '0.2s' }} onClick={() => navigate('/my-space')}>
-          <span className="emoji float" style={{ animationDelay: '0.25s' }}>✨</span>
-          <h3>{t('homeMySpace')}</h3>
-          <p>{t('homeMySpaceDesc')}</p>
-        </div>
-
-        <div className="home-tile pop-in" style={{ animationDelay: '0.25s' }} onClick={() => navigate('/install')}>
-          <span className="emoji float" style={{ animationDelay: '0.3s' }}>📱</span>
-          <h3>{t('homeInstall')}</h3>
-          <p>{t('homeInstallDesc')}</p>
-        </div>
-
-        <div className="home-tile pop-in" style={{ animationDelay: '0.3s' }} onClick={() => navigate('/privacy')}>
-          <span className="emoji float" style={{ animationDelay: '0.35s' }}>🔒</span>
-          <h3>{t('homePrivacy')}</h3>
-          <p>{t('homePrivacyDesc')}</p>
-        </div>
+        {TILES.map((tile, i) => (
+          <div
+            key={tile.key}
+            className="home-tile pop-in"
+            style={{ animationDelay: `${0.05 + i * 0.05}s` }}
+            onClick={() => navigate(tile.path)}
+          >
+            <span className="emoji float" style={{ animationDelay: `${i * 0.15}s` }}>{tile.emoji}</span>
+            <h3>{t(tile.labelKey)}</h3>
+            <p>{t(tile.descKey)}</p>
+          </div>
+        ))}
       </div>
 
       {user?.loginCode && (
