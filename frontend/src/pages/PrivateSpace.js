@@ -210,32 +210,41 @@ const PrivateSpace = () => {
   };
 
   return (
-    <div className="container">
-      <button className="btn btn-ghost" onClick={() => navigate('/home')} style={{ marginBottom: 18 }}>
+    <div className="container" style={{ paddingBottom: 40 }}>
+      <button className="btn btn-ghost" onClick={() => navigate('/home')} style={{ marginBottom: 24 }}>
         {t('back')}
       </button>
-      <h2 style={{ margin: '4px 0 20px' }}>{t('mySpaceTitle')}</h2>
+
+      {/* Header section */}
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ margin: '0 0 6px', fontSize: 32, fontWeight: 800, background: 'linear-gradient(135deg, #FFB6C1, #DDA0DD)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          {t('mySpaceTitle')}
+        </h1>
+        <p style={{ margin: 0, fontSize: 14, color: '#999' }}>Keep your memories, reminders, and celebrations in one special place</p>
+      </div>
 
       {/* Tab navigation */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 28, overflowX: 'auto', paddingBottom: 4 }}>
         {[
-          { key: 'notes', label: t('mySpaceNotes'), emoji: '📝' },
-          { key: 'reminders', label: t('mySpaceReminders'), emoji: '⏰' },
-          { key: 'birthdays', label: t('mySpaceBirthdays'), emoji: '🎂' }
+          { key: 'notes', label: t('mySpaceNotes'), emoji: '📝', color: '#FFB6C1' },
+          { key: 'reminders', label: t('mySpaceReminders'), emoji: '⏰', color: '#87CEEB' },
+          { key: 'birthdays', label: t('mySpaceBirthdays'), emoji: '🎂', color: '#FFD700' }
         ].map(item => (
           <button
             key={item.key}
             onClick={() => setTab(item.key)}
             style={{
-              padding: '8px 14px',
-              background: tab === item.key ? 'linear-gradient(135deg, #FFB6C1, #DDA0DD)' : '#F5F5F5',
-              border: 'none',
-              borderRadius: 10,
-              color: tab === item.key ? 'white' : '#666',
-              fontWeight: tab === item.key ? 600 : 500,
+              padding: '10px 18px',
+              background: tab === item.key ? `linear-gradient(135deg, ${item.color}, ${item.color}dd)` : 'rgba(255,255,255,0.08)',
+              border: tab === item.key ? 'none' : `1px solid rgba(255,255,255,0.12)`,
+              borderRadius: 12,
+              color: tab === item.key ? 'white' : '#aaa',
+              fontWeight: tab === item.key ? 700 : 600,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              transition: 'all 0.2s'
+              transition: 'all 0.25s ease',
+              fontSize: 14,
+              boxShadow: tab === item.key ? `0 4px 16px ${item.color}40` : 'none'
             }}
           >
             {item.emoji} {item.label}
@@ -249,13 +258,29 @@ const PrivateSpace = () => {
           <button
             className="btn btn-lavender"
             onClick={() => setShowNoteModal(true)}
-            style={{ marginBottom: 20 }}
+            style={{ marginBottom: 24, padding: '12px 24px', fontSize: 15, fontWeight: 600 }}
           >
-            {t('mySpaceNewNote')}
+            + {t('mySpaceNewNote')}
           </button>
           {notes.length === 0 && (
-            <div className="card" style={{ textAlign: 'center' }}>
-              <p style={{ margin: 0, color: '#888' }}>{t('mySpaceNoNotes')}</p>
+            <div style={{
+              textAlign: 'center', padding: '48px 24px',
+              background: 'linear-gradient(135deg, rgba(255,182,193,0.08), rgba(221,160,221,0.08))',
+              borderRadius: 16, border: '1px solid rgba(255,182,193,0.2)'
+            }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>📝</div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#fff' }}>No notes yet</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#999' }}>Start capturing your thoughts and ideas</p>
+              <button
+                onClick={() => setShowNoteModal(true)}
+                style={{
+                  padding: '8px 16px', background: 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
+                  border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer',
+                  fontSize: 13
+                }}
+              >
+                Create your first note
+              </button>
             </div>
           )}
           <div style={{ display: 'grid', gap: 12 }}>
@@ -293,13 +318,29 @@ const PrivateSpace = () => {
           <button
             className="btn btn-lavender"
             onClick={() => setShowReminderModal(true)}
-            style={{ marginBottom: 20 }}
+            style={{ marginBottom: 24, padding: '12px 24px', fontSize: 15, fontWeight: 600 }}
           >
-            {t('mySpaceNewReminder')}
+            + {t('mySpaceNewReminder')}
           </button>
           {reminders.length === 0 && (
-            <div className="card" style={{ textAlign: 'center' }}>
-              <p style={{ margin: 0, color: '#888' }}>{t('mySpaceNoReminders')}</p>
+            <div style={{
+              textAlign: 'center', padding: '48px 24px',
+              background: 'linear-gradient(135deg, rgba(135,206,235,0.08), rgba(176,224,230,0.08))',
+              borderRadius: 16, border: '1px solid rgba(135,206,235,0.2)'
+            }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>⏰</div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#fff' }}>No reminders yet</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#999' }}>Never miss an important moment</p>
+              <button
+                onClick={() => setShowReminderModal(true)}
+                style={{
+                  padding: '8px 16px', background: 'linear-gradient(135deg, #87CEEB, #B0E0E6)',
+                  border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer',
+                  fontSize: 13
+                }}
+              >
+                Set your first reminder
+              </button>
             </div>
           )}
           <div style={{ display: 'grid', gap: 12 }}>
@@ -334,13 +375,29 @@ const PrivateSpace = () => {
           <button
             className="btn btn-lavender"
             onClick={() => setShowBirthdayModal(true)}
-            style={{ marginBottom: 20 }}
+            style={{ marginBottom: 24, padding: '12px 24px', fontSize: 15, fontWeight: 600 }}
           >
-            {t('mySpaceNewBirthday')}
+            + {t('mySpaceNewBirthday')}
           </button>
           {birthdays.length === 0 && (
-            <div className="card" style={{ textAlign: 'center' }}>
-              <p style={{ margin: 0, color: '#888' }}>{t('mySpaceNoBirthdays')}</p>
+            <div style={{
+              textAlign: 'center', padding: '48px 24px',
+              background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,165,0,0.08))',
+              borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)'
+            }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>🎂</div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#fff' }}>No birthdays tracked</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#999' }}>Celebrate special days with friends</p>
+              <button
+                onClick={() => setShowBirthdayModal(true)}
+                style={{
+                  padding: '8px 16px', background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                  border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer',
+                  fontSize: 13
+                }}
+              >
+                Add a birthday
+              </button>
             </div>
           )}
           <div style={{ display: 'grid', gap: 12 }}>
