@@ -85,10 +85,13 @@ const SharedPhotos = () => {
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
       height: '100dvh', background: '#0d0d0d',
       paddingTop: 'env(safe-area-inset-top)'
     }}>
+      {/* Constrained column — stays phone-width on iPad */}
+      <div style={{ width: '100%', maxWidth: 460, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -278,6 +281,8 @@ const SharedPhotos = () => {
           <p style={{ color: '#666', fontSize: 12, marginTop: 16 }}>Tap anywhere to close</p>
         </div>
       )}
+
+      </div>{/* end constrained column */}
     </div>
   );
 };
