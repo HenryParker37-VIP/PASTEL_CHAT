@@ -131,6 +131,46 @@ input, textarea {
 }
 .float { animation: float 3s ease-in-out infinite; }
 
+/* ---------- Modal animations ---------- */
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.86) translateY(18px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@keyframes modalOut {
+  from { opacity: 1; transform: scale(1)    translateY(0); }
+  to   { opacity: 0; transform: scale(0.9)  translateY(10px); }
+}
+@keyframes backdropIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes backdropOut { from { opacity: 1; } to { opacity: 0; } }
+
+.modal-in       { animation: modalIn    0.32s cubic-bezier(0.34,1.52,0.64,1) both; }
+.modal-out      { animation: modalOut   0.2s  cubic-bezier(0.4,0,1,1) both; }
+.backdrop-in    { animation: backdropIn  0.22s ease both; }
+.backdrop-out   { animation: backdropOut 0.2s  ease both; }
+
+/* ---------- Reminder alarm ---------- */
+
+@keyframes alarmPop {
+  0%   { opacity: 0; transform: translateY(-28px) scale(0.88); }
+  65%  { transform: translateY(5px) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes bellSwing {
+  0%, 100% { transform: rotate(0deg);   }
+  15%       { transform: rotate(-12deg); }
+  35%       { transform: rotate(12deg);  }
+  55%       { transform: rotate(-8deg);  }
+  75%       { transform: rotate(8deg);   }
+}
+@keyframes alarmGlow {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(255,182,193,0.5), 0 24px 60px rgba(0,0,0,0.6); }
+  50%      { box-shadow: 0 0 0 14px rgba(255,182,193,0),   0 24px 60px rgba(0,0,0,0.6); }
+}
+.alarm-popup { animation: alarmPop  0.5s cubic-bezier(0.34,1.52,0.64,1) both; }
+.alarm-bell  { animation: bellSwing 0.7s ease-in-out infinite; display: inline-block; }
+.alarm-glow  { animation: alarmGlow 1.4s ease-in-out infinite; }
+
 /* ---------- Reusable components ---------- */
 
 .card {

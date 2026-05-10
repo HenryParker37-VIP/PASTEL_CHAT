@@ -1,8 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
+
+// Synthesise a soft multi-tone bell chime via Web Audio API
+const playBell = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const chime = (freq, t, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t); osc.stop(t + dur);
+    };
+    const now = ctx.currentTime;
+    // First ring
+    chime(880,  now,        1.6);
+    chime(1109, now + 0.28, 1.3);
+    chime(660,  now + 0.56, 1.8);
+    // Second ring after 2 s
+    chime(880,  now + 2.1,  1.6);
+    chime(1109, now + 2.4,  1.3);
+    chime(660,  now + 2.7,  1.8);
+  } catch (_) { /* AudioContext unavailable */ }
+};
 
 const PrivateSpace = () => {
   const navigate = useNavigate();
@@ -32,9 +59,42 @@ const PrivateSpace = () => {
   const [birthdayFriendId, setBirthdayFriendId] = useState('');
   const [birthdayDate, setBirthdayDate] = useState('');
 
+  // Animation + alarm state
+  const [closingModal, setClosingModal] = useState(null); // 'note'|'reminder'|'birthday'
+  const [activeAlarm, setActiveAlarm] = useState(null);   // fired reminder object
+  const firedRef = useRef(new Set());                      // IDs already rung
+
+  useEffect(() => { loadData(); }, [user]);
+
+  // Animated close: play exit anim, then actually hide
+  const closeModal = (which, reset) => {
+    setClosingModal(which);
+    setTimeout(() => { setClosingModal(null); reset(); }, 210);
+  };
+
+  // Reminder ticker — checks every 30 s
   useEffect(() => {
-    loadData();
-  }, [user]);
+    const check = () => {
+      const now = new Date();
+      const yy  = now.getFullYear();
+      const mm  = String(now.getMonth() + 1).padStart(2, '0');
+      const dd  = String(now.getDate()).padStart(2, '0');
+      const hh  = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const today = `${yy}-${mm}-${dd}`;
+      const timeNow = `${hh}:${min}`;
+      reminders.forEach(r => {
+        if (r.date === today && r.time === timeNow && !firedRef.current.has(r._id)) {
+          firedRef.current.add(r._id);
+          setActiveAlarm(r);
+          playBell();
+        }
+      });
+    };
+    check(); // run immediately on mount / reminder change
+    const id = setInterval(check, 30_000);
+    return () => clearInterval(id);
+  }, [reminders]);
 
   const loadData = async () => {
     setLoading(true);
@@ -327,96 +387,81 @@ const PrivateSpace = () => {
         </div>
       )}
 
-      {/* ── Shared modal styles ─────────────────────────────────────────── */}
-      {/* backdrop */ }
-      {(showNoteModal || showReminderModal || showBirthdayModal) && (() => {
-        const BACKDROP = {
+      {/* ── Animated modals ──────────────────────────────────────────────── */}
+      {(() => {
+        if (!showNoteModal && !showReminderModal && !showBirthdayModal && !closingModal) return null;
+
+        const exiting = closingModal;
+        const BACKDROP = (which) => ({
           position: 'fixed', inset: 0,
-          background: 'rgba(10,8,24,0.72)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500
-        };
+          background: 'rgba(10,8,24,0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500,
+          className: exiting === which ? 'backdrop-out' : 'backdrop-in'
+        });
+        const cardClass = (which) => exiting === which ? 'modal-out' : 'modal-in';
         const CARD = {
           background: 'linear-gradient(160deg, #1e1a35 0%, #251f3e 100%)',
           border: '1px solid rgba(221,160,221,0.18)',
-          borderRadius: 24,
-          padding: '28px 26px 24px',
-          width: 'min(460px, 92vw)',
-          maxHeight: '88vh',
-          overflowY: 'auto',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,182,193,0.08)'
+          borderRadius: 24, padding: '28px 26px 24px',
+          width: 'min(460px, 92vw)', maxHeight: '88vh', overflowY: 'auto',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)'
         };
         const LABEL = {
           fontSize: 11, fontWeight: 700, color: '#c4a3dc',
-          letterSpacing: '0.06em', textTransform: 'uppercase',
+          letterSpacing: '0.07em', textTransform: 'uppercase',
           display: 'block', marginBottom: 6
         };
         const INPUT_EXTRA = {
-          background: 'rgba(255,255,255,0.06)',
-          border: '1.5px solid rgba(221,160,221,0.22)',
-          color: '#f0e8ff',
-          borderRadius: 12
+          background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(221,160,221,0.22)',
+          color: '#f0e8ff', borderRadius: 12
         };
         const TITLE = { margin: '0 0 22px', fontSize: 18, fontWeight: 700, color: '#f5eeff' };
         const BTN_SAVE = {
-          flex: 1, padding: '11px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+          flex: 1, padding: '12px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
           background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
           color: 'white', fontSize: 14, fontWeight: 700,
-          boxShadow: '0 4px 14px rgba(221,160,221,0.35)'
+          boxShadow: '0 4px 16px rgba(221,160,221,0.4)'
         };
         const BTN_CANCEL = {
-          padding: '11px 18px', borderRadius: 14,
+          padding: '12px 18px', borderRadius: 14,
           border: '1.5px solid rgba(221,160,221,0.25)',
           background: 'transparent', cursor: 'pointer',
           color: '#b09acc', fontSize: 14, fontWeight: 600
         };
 
-        if (showNoteModal) return (
-          <div style={BACKDROP} onClick={() => setShowNoteModal(false)}>
-            <div style={CARD} onClick={e => e.stopPropagation()}>
+        // Note modal
+        if (showNoteModal || exiting === 'note') return (
+          <div
+            style={{ position:'fixed', inset:0, background:'rgba(10,8,24,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}
+            className={exiting === 'note' ? 'backdrop-out' : 'backdrop-in'}
+            onClick={() => closeModal('note', () => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); })}
+          >
+            <div className={cardClass('note')} style={CARD} onClick={e => e.stopPropagation()}>
               <h3 style={TITLE}>📝 {t('mySpaceNewNote')}</h3>
               <form onSubmit={handleCreateNote}>
                 <label style={LABEL}>{t('mySpaceNoteTitle')}</label>
-                <input
-                  className="input"
-                  placeholder={t('mySpaceNoteTitle')}
-                  value={noteTitle}
-                  onChange={e => setNoteTitle(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
-                  autoFocus
-                />
+                <input className="input" placeholder={t('mySpaceNoteTitle')} value={noteTitle}
+                  onChange={e => setNoteTitle(e.target.value)} style={{ ...INPUT_EXTRA, marginBottom: 16 }} autoFocus />
 
                 <label style={LABEL}>{t('mySpaceNoteContent')}</label>
-                <textarea
-                  className="input"
-                  placeholder={t('mySpaceNoteContent')}
-                  value={noteContent}
+                <textarea className="input" placeholder={t('mySpaceNoteContent')} value={noteContent}
                   onChange={e => setNoteContent(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 16, minHeight: 120, resize: 'vertical' }}
-                />
+                  style={{ ...INPUT_EXTRA, marginBottom: 16, minHeight: 120, resize: 'vertical' }} />
 
                 {friends.length > 0 && (
                   <>
                     <label style={{ ...LABEL, marginBottom: 10 }}>{t('mySpaceShareWith')}</label>
                     <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
                       {friends.map(f => (
-                        <label
-                          key={f.friendId}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
-                            background: noteSharedWith.includes(f.friendId)
-                              ? 'rgba(221,160,221,0.15)' : 'rgba(255,255,255,0.04)',
-                            border: noteSharedWith.includes(f.friendId)
-                              ? '1.5px solid rgba(221,160,221,0.5)' : '1.5px solid rgba(255,255,255,0.08)'
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={noteSharedWith.includes(f.friendId)}
-                            onChange={() => toggleFriendShare(f.friendId)}
-                            style={{ accentColor: '#DDA0DD' }}
-                          />
+                        <label key={f.friendId} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
+                          background: noteSharedWith.includes(f.friendId) ? 'rgba(221,160,221,0.15)' : 'rgba(255,255,255,0.04)',
+                          border: noteSharedWith.includes(f.friendId) ? '1.5px solid rgba(221,160,221,0.5)' : '1.5px solid rgba(255,255,255,0.08)'
+                        }}>
+                          <input type="checkbox" checked={noteSharedWith.includes(f.friendId)}
+                            onChange={() => toggleFriendShare(f.friendId)} style={{ accentColor: '#DDA0DD' }} />
                           <span style={{ fontSize: 13, fontWeight: 500, color: '#e8dcff' }}>{f.customNickname}</span>
                         </label>
                       ))}
@@ -427,7 +472,7 @@ const PrivateSpace = () => {
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="submit" style={BTN_SAVE}>💾 {t('save')}</button>
                   <button type="button" style={BTN_CANCEL}
-                    onClick={() => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); }}>
+                    onClick={() => closeModal('note', () => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); })}>
                     {t('cancel')}
                   </button>
                 </div>
@@ -436,43 +481,33 @@ const PrivateSpace = () => {
           </div>
         );
 
-        if (showReminderModal) return (
-          <div style={BACKDROP} onClick={() => setShowReminderModal(false)}>
-            <div style={CARD} onClick={e => e.stopPropagation()}>
+        // Reminder modal
+        if (showReminderModal || exiting === 'reminder') return (
+          <div
+            style={{ position:'fixed', inset:0, background:'rgba(10,8,24,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}
+            className={exiting === 'reminder' ? 'backdrop-out' : 'backdrop-in'}
+            onClick={() => closeModal('reminder', () => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); })}
+          >
+            <div className={cardClass('reminder')} style={CARD} onClick={e => e.stopPropagation()}>
               <h3 style={TITLE}>⏰ {t('mySpaceNewReminder')}</h3>
               <form onSubmit={handleCreateReminder}>
                 <label style={LABEL}>{t('mySpaceReminderDate')}</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={reminderDate}
-                  onChange={e => setReminderDate(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
-                  autoFocus
-                />
+                <input type="date" className="input" value={reminderDate}
+                  onChange={e => setReminderDate(e.target.value)} style={{ ...INPUT_EXTRA, marginBottom: 16 }} autoFocus />
 
                 <label style={LABEL}>{t('mySpaceReminderTime')}</label>
-                <input
-                  type="time"
-                  className="input"
-                  value={reminderTime}
-                  onChange={e => setReminderTime(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
-                />
+                <input type="time" className="input" value={reminderTime}
+                  onChange={e => setReminderTime(e.target.value)} style={{ ...INPUT_EXTRA, marginBottom: 16 }} />
 
                 <label style={LABEL}>{t('mySpaceReminderText')}</label>
-                <textarea
-                  className="input"
-                  placeholder={t('mySpaceReminderText')}
-                  value={reminderText}
+                <textarea className="input" placeholder={t('mySpaceReminderText')} value={reminderText}
                   onChange={e => setReminderText(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 20, minHeight: 80, resize: 'vertical' }}
-                />
+                  style={{ ...INPUT_EXTRA, marginBottom: 20, minHeight: 80, resize: 'vertical' }} />
 
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="submit" style={BTN_SAVE}>⏰ {t('save')}</button>
                   <button type="button" style={BTN_CANCEL}
-                    onClick={() => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); }}>
+                    onClick={() => closeModal('reminder', () => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); })}>
                     {t('cancel')}
                   </button>
                 </div>
@@ -481,41 +516,34 @@ const PrivateSpace = () => {
           </div>
         );
 
-        if (showBirthdayModal) return (
-          <div style={BACKDROP} onClick={() => setShowBirthdayModal(false)}>
-            <div style={CARD} onClick={e => e.stopPropagation()}>
+        // Birthday modal
+        if (showBirthdayModal || exiting === 'birthday') return (
+          <div
+            style={{ position:'fixed', inset:0, background:'rgba(10,8,24,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}
+            className={exiting === 'birthday' ? 'backdrop-out' : 'backdrop-in'}
+            onClick={() => closeModal('birthday', () => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); })}
+          >
+            <div className={cardClass('birthday')} style={CARD} onClick={e => e.stopPropagation()}>
               <h3 style={TITLE}>🎂 {t('mySpaceNewBirthday')}</h3>
               <form onSubmit={handleCreateBirthday}>
                 <label style={LABEL}>{t('mySpaceFriendName')}</label>
-                <select
-                  className="input"
-                  value={birthdayFriendId}
-                  onChange={e => setBirthdayFriendId(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 16 }}
-                  autoFocus
-                >
+                <select className="input" value={birthdayFriendId}
+                  onChange={e => setBirthdayFriendId(e.target.value)} style={{ ...INPUT_EXTRA, marginBottom: 16 }} autoFocus>
                   <option value="" style={{ background: '#1e1a35' }}>{t('mySpaceSelectFriend')}</option>
                   {friends.map(f => (
-                    <option key={f.friendId} value={f.friendId} style={{ background: '#1e1a35' }}>
-                      {f.customNickname}
-                    </option>
+                    <option key={f.friendId} value={f.friendId} style={{ background: '#1e1a35' }}>{f.customNickname}</option>
                   ))}
                 </select>
 
                 <label style={LABEL}>Date of Birth</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={birthdayDate}
+                <input type="date" className="input" value={birthdayDate}
                   max={new Date().toISOString().split('T')[0]}
-                  onChange={e => setBirthdayDate(e.target.value)}
-                  style={{ ...INPUT_EXTRA, marginBottom: 24 }}
-                />
+                  onChange={e => setBirthdayDate(e.target.value)} style={{ ...INPUT_EXTRA, marginBottom: 24 }} />
 
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="submit" style={BTN_SAVE}>🎂 {t('save')}</button>
                   <button type="button" style={BTN_CANCEL}
-                    onClick={() => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); }}>
+                    onClick={() => closeModal('birthday', () => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); })}>
                     {t('cancel')}
                   </button>
                 </div>
@@ -526,6 +554,71 @@ const PrivateSpace = () => {
 
         return null;
       })()}
+
+      {/* ── Reminder alarm popup ─────────────────────────────────────────── */}
+      {activeAlarm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(8,6,20,0.82)',
+          backdropFilter: 'blur(10px)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 600
+        }}>
+          <div className="alarm-popup alarm-glow" style={{
+            background: 'linear-gradient(160deg, #211b3a 0%, #2c2050 100%)',
+            border: '1px solid rgba(255,182,193,0.3)',
+            borderRadius: 28, padding: '36px 30px 28px',
+            width: 'min(360px, 88vw)', textAlign: 'center',
+            boxShadow: '0 32px 80px rgba(0,0,0,0.7)'
+          }}>
+            <div className="alarm-bell" style={{ fontSize: 52, marginBottom: 8 }}>🔔</div>
+            <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#c4a3dc', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Reminder
+            </p>
+            <p style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: '#f5eeff', lineHeight: 1.35 }}>
+              {activeAlarm.text}
+            </p>
+            <p style={{ margin: '0 0 28px', fontSize: 13, color: '#9b87bb' }}>
+              {activeAlarm.date} · {activeAlarm.time}
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => {
+                  // Snooze: re-fire in 5 minutes
+                  firedRef.current.delete(activeAlarm._id);
+                  const future = new Date();
+                  future.setMinutes(future.getMinutes() + 5);
+                  const snoozeReminder = {
+                    ...activeAlarm,
+                    _id: activeAlarm._id + '_snooze_' + Date.now(),
+                    date: future.toISOString().split('T')[0],
+                    time: `${String(future.getHours()).padStart(2,'0')}:${String(future.getMinutes()).padStart(2,'0')}`
+                  };
+                  setReminders(prev => [...prev, snoozeReminder]);
+                  setActiveAlarm(null);
+                }}
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 14,
+                  border: '1.5px solid rgba(221,160,221,0.3)',
+                  background: 'rgba(255,255,255,0.06)', cursor: 'pointer',
+                  color: '#d4b8f0', fontSize: 14, fontWeight: 600
+                }}
+              >
+                💤 Snooze 5 min
+              </button>
+              <button
+                onClick={() => setActiveAlarm(null)}
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 14, border: 'none', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                  color: 'white', fontSize: 14, fontWeight: 700,
+                  boxShadow: '0 4px 16px rgba(221,160,221,0.4)'
+                }}
+              >
+                ✓ Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
