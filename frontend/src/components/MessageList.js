@@ -42,7 +42,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
         padding: '12px 0',
         display: 'flex',
         flexDirection: 'column',
-        background: '#FFF8F3'
+        background: 'var(--cream)'
       }}
     >
       {loading && <LoadingAnimation />}

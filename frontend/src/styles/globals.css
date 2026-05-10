@@ -1108,6 +1108,27 @@ body.dark .login-tabs button.active { background: #2A2445; }
 
 body.dark .signature { background: linear-gradient(transparent, rgba(30, 26, 46, 0.97) 40%); }
 
+body.dark .chat-input-area {
+  background: #2A2445;
+  border-color: #3E2F60;
+}
+body.dark .input-pill {
+  background: #1E1A2E;
+  border-color: transparent;
+}
+body.dark .input-pill:focus-within {
+  border-color: #DDA0DD;
+}
+body.dark .icon-btn { background: #3A2D50; }
+body.dark .icon-btn:hover { background: #4A3868; }
+body.dark .icon-btn.active { background: #4A3868; }
+body.dark .emoji-picker {
+  background: #2A2445;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+body.dark .reply-bar { background: rgba(221,160,221,0.08); }
+body.dark .reply-bar-text { color: #9A8ABE; }
+
 body.dark .home-tile p { color: #9A8ABE; }
 body.dark .home-tile:hover { border-color: #4A3868; }
 
