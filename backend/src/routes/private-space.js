@@ -3,7 +3,8 @@ const authMiddleware = require('../middleware/auth');
 const {
   createNote, getUserNotes, deleteNote, updateNote,
   createReminder, getUserReminders, deleteReminder,
-  createBirthday, getUserBirthdays, deleteBirthday
+  createBirthday, getUserBirthdays, deleteBirthday,
+  getSharedPhotos
 } = require('../db/store');
 
 const router = express.Router();
@@ -71,6 +72,11 @@ router.get('/birthdays', authMiddleware, (req, res) => {
 router.delete('/birthdays/:id', authMiddleware, (req, res) => {
   if (!deleteBirthday(req.params.id)) return res.status(404).json({ error: 'not found' });
   res.json({ ok: true });
+});
+
+// ===== Shared Photos =====
+router.get('/shared-photos', authMiddleware, (req, res) => {
+  res.json(getSharedPhotos());
 });
 
 module.exports = router;
