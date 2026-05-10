@@ -123,6 +123,19 @@ const Home = () => {
           <div className="home-mobile-code-wrap">
             <p className="home-mobile-code-hint">{t('homeLoginCode')}</p>
             <div className="code-display">{user.loginCode}</div>
+            <div
+              onClick={() => navigate('/install')}
+              style={{
+                marginTop: 12,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                cursor: 'pointer'
+              }}
+            >
+              <span style={{ fontSize: 15 }}>📲</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+            </div>
           </div>
         )}
 
@@ -182,6 +195,19 @@ const Home = () => {
           <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>{t('homeLoginCode')}</p>
           <div className="code-display">{user.loginCode}</div>
           <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
+          <div
+            onClick={() => navigate('/install')}
+            style={{
+              marginTop: 14,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '7px 16px', borderRadius: 20,
+              background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+              cursor: 'pointer', border: 'none'
+            }}
+          >
+            <span style={{ fontSize: 15 }}>📲</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+          </div>
         </div>
       )}
     </div>
