@@ -35,7 +35,7 @@ const TILES = [
     key: 'photos',
     labelKey: 'homeSharedPhotos',
     descKey: 'homeSharedPhotosDesc',
-    path: '/my-space?tab=photos',
+    path: '/shared-photos',
     grad: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
   },
   {
