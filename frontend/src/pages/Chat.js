@@ -43,9 +43,9 @@ const Chat = () => {
       .catch(() => navigate('/friends'));
   }, [friendId, navigate]);
 
-  // Fetch message history
+  // Fetch message history — depends on user so it re-runs if auth reloads
   const fetchMessages = useCallback(async () => {
-    if (!friendId) return;
+    if (!friendId || !user) return;
     setLoading(true);
     try {
       const { data } = await api.get(`/messages/with/${friendId}?limit=80`);
@@ -55,7 +55,7 @@ const Chat = () => {
     } finally {
       setLoading(false);
     }
-  }, [friendId]);
+  }, [friendId, user]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
@@ -112,6 +112,8 @@ const Chat = () => {
     socket.on(`msg_reaction:${roomKey}`, onReaction);
     socket.on(`msg_reaction:${reverseKey}`, onReaction);
     socket.on(`typing:${user._id}`, onTyping);
+    // Re-fetch on socket reconnect to catch messages missed while disconnected
+    socket.on('connect', fetchMessages);
 
     return () => {
       socket.off(`msg:${roomKey}`, onMessage);
@@ -121,8 +123,9 @@ const Chat = () => {
       socket.off(`msg_reaction:${roomKey}`, onReaction);
       socket.off(`msg_reaction:${reverseKey}`, onReaction);
       socket.off(`typing:${user._id}`, onTyping);
+      socket.off('connect', fetchMessages);
     };
-  }, [socket, friendId, user]);
+  }, [socket, friendId, user, fetchMessages]);
 
   // Collapse sidebar on resize to mobile
   useEffect(() => {
