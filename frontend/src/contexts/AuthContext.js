@@ -62,7 +62,10 @@ export const AuthProvider = ({ children }) => {
       trySubscribePush();
       return { success: true, user: data.user };
     } catch (err) {
-      return { success: false, error: err.response?.data?.message || 'Register failed' };
+      if (!err.response) {
+        return { success: false, error: 'Cannot reach the server. Make sure you\'re connected and the app is properly configured.' };
+      }
+      return { success: false, error: err.response?.data?.message || 'Registration failed. Please try again.' };
     }
   };
 
@@ -74,7 +77,10 @@ export const AuthProvider = ({ children }) => {
       trySubscribePush();
       return { success: true, user: data.user };
     } catch (err) {
-      return { success: false, error: err.response?.data?.message || 'Login failed' };
+      if (!err.response) {
+        return { success: false, error: 'Cannot reach the server. Check your connection.' };
+      }
+      return { success: false, error: err.response?.data?.message || 'Login failed. Check your code and try again.' };
     }
   };
 
