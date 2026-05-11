@@ -1,255 +1,285 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { stickerApi } from '../services/api';
+import StickerStore from './StickerStore';
 
-const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || '';
-const BASE = 'https://api.giphy.com/v1';
-const LIMIT = 24;
+// Tenor v2 API — LIVDSRZULELA is Google's official public test key for Tenor
+const TENOR_KEY = process.env.REACT_APP_TENOR_API_KEY || 'LIVDSRZULELA';
+const TENOR_BASE = 'https://tenor.googleapis.com/v2';
+const LIMIT = 20;
 
-// ── Built-in emoji sticker packs (no API key needed) ────────────────────────
-const STICKER_PACKS = [
-  {
-    id: 'love',
-    label: '💕 Love',
-    stickers: ['❤️','💕','💖','💗','💓','💞','💘','💝','🥰','😍','😘','💋','💌','💑','👫','🫶','❣️','💟','🩷','🫀'],
-  },
-  {
-    id: 'happy',
-    label: '😊 Happy',
-    stickers: ['😀','😃','😄','😁','🥳','🎉','🎊','✨','🌟','⭐','🌈','😊','😉','🤗','😆','🥰','🤩','😎','🙌','👏'],
-  },
-  {
-    id: 'animals',
-    label: '🐱 Cute Animals',
-    stickers: ['🐱','🐶','🐰','🐹','🐻','🐼','🐨','🦊','🐸','🐧','🦋','🐝','🦄','🐙','🦋','🐳','🦭','🦝','🐻‍❄️','🦔'],
-  },
-  {
-    id: 'food',
-    label: '🍰 Sweets',
-    stickers: ['🍰','🧁','🎂','🍩','🍪','🍫','🍭','🍬','🧇','🍡','🌮','🍜','🍣','🍕','🧋','🍓','🍑','🍒','🍇','🫐'],
-  },
-  {
-    id: 'nature',
-    label: '🌸 Nature',
-    stickers: ['🌸','🌺','🌻','🌹','🌷','🌼','💐','🌿','🍀','🌱','🌙','☀️','🌊','🦋','🌈','⛅','🌸','🪷','🌴','🍁'],
-  },
-  {
-    id: 'celebrate',
-    label: '🎉 Party',
-    stickers: ['🎉','🎊','🎈','🎁','🎀','🥂','🍾','🎆','🎇','✨','🌟','💫','⭐','🎵','🎶','🎸','🎹','🥳','🏆','🎯'],
-  },
-  {
-    id: 'mood',
-    label: '😅 Moods',
-    stickers: ['😭','😢','🥺','😬','😤','😡','🤯','😱','😰','😓','🤔','🤷','🤦','🙄','😴','🥱','😶','🤐','😏','😌'],
-  },
-  {
-    id: 'magic',
-    label: '✨ Magic',
-    stickers: ['✨','💫','⭐','🌟','🔮','🪄','🧿','🌙','💎','👑','🦄','🧚','🧜','🧝','🪐','🌌','🔭','💠','🫧','🌀'],
-  },
-];
-
-async function fetchGiphy(path, params = {}) {
-  const url = new URL(`${BASE}${path}`);
-  url.searchParams.set('api_key', GIPHY_KEY);
+async function fetchTenor(endpoint, params = {}) {
+  const url = new URL(`${TENOR_BASE}${endpoint}`);
+  url.searchParams.set('key', TENOR_KEY);
   url.searchParams.set('limit', LIMIT);
-  url.searchParams.set('rating', 'g');
+  url.searchParams.set('media_filter', 'gif,tinygif,nanogif');
+  url.searchParams.set('contentfilter', 'medium');
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error('Giphy request failed');
-  const json = await res.json();
-  return json.data;
-}
 
-function extractUrl(item) {
-  return item?.images?.fixed_height?.url || item?.images?.original?.url || '';
-}
-function extractPreview(item) {
-  return item?.images?.fixed_height_small?.url || item?.images?.fixed_height?.url || '';
-}
+  console.log('[Tenor] Fetching:', url.toString());
 
-// Tabs shown depend on whether a Giphy key exists
-const buildTabs = () => {
-  const tabs = [{ id: 'stickers', label: '🩷 Stickers' }];
-  if (GIPHY_KEY) {
-    tabs.push({ id: 'gifs', label: '🎞️ GIFs' });
-    tabs.push({ id: 'animated', label: '✨ Animated' });
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Tenor ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    console.log('[Tenor] Response:', data);
+
+    if (!data.results) {
+      console.warn('[Tenor] No results in response');
+      return [];
+    }
+
+    return data.results;
+  } catch (err) {
+    console.error('[Tenor] Fetch error:', err);
+    throw err;
   }
-  return tabs;
-};
-const TABS = buildTabs();
+}
 
-const GifStickerPicker = ({ keyword = '', onSelect, onClose }) => {
-  const [activeTab, setActiveTab] = useState(TABS[0].id);
-  const [activePack, setActivePack] = useState(STICKER_PACKS[0].id);
+const gifUrl = (item) =>
+  item?.media_formats?.gif?.url || item?.media_formats?.tinygif?.url || '';
+const gifPreview = (item) =>
+  item?.media_formats?.tinygif?.url || item?.media_formats?.nanogif?.url || item?.media_formats?.gif?.url || '';
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GifStickerPicker = ({ onSelect, onClose }) => {
+  const [tab, setTab] = useState('stickers'); // 'stickers' | 'gifs' | 'store'
   const [search, setSearch] = useState('');
-  const [giphyItems, setGiphyItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const searchRef = useRef(null);
-  const debounceRef = useRef(null);
 
-  const loadGiphy = useCallback(async (query, tab) => {
-    if (!GIPHY_KEY) return;
-    setLoading(true);
+  // Sticker state
+  const [myPacks, setMyPacks] = useState([]);
+  const [activePack, setActivePack] = useState(null);
+  const [packsLoading, setPacksLoading] = useState(true);
+
+  // GIF state
+  const [gifs, setGifs] = useState([]);
+  const [gifsLoading, setGifsLoading] = useState(false);
+  const [gifError, setGifError] = useState(null);
+
+  const debounceRef = useRef(null);
+  const searchRef = useRef(null);
+
+  // ── Load user's sticker packs ─────────────────────────────────────────────
+  const loadMyPacks = useCallback(async () => {
+    setPacksLoading(true);
     try {
-      const isSticker = tab === 'animated';
-      const endpoint = query
-        ? isSticker ? '/stickers/search' : '/gifs/search'
-        : isSticker ? '/stickers/trending' : '/gifs/trending';
-      const params = query ? { q: query } : {};
-      const data = await fetchGiphy(endpoint, params);
-      setGiphyItems(data);
+      const { data } = await stickerApi.getMyPacks();
+      setMyPacks(data.packs || []);
+      if (data.packs?.length > 0 && !activePack) {
+        setActivePack(data.packs[0].id);
+      }
     } catch (e) {
-      console.error('[GifPicker]', e);
+      console.error('[Picker] loadMyPacks', e);
     } finally {
-      setLoading(false);
+      setPacksLoading(false);
+    }
+  }, []); // eslint-disable-line
+
+  useEffect(() => { loadMyPacks(); }, [loadMyPacks]);
+
+  // ── Load GIFs via Tenor ───────────────────────────────────────────────────
+  const loadGifs = useCallback(async (query) => {
+    setGifsLoading(true);
+    setGifError(null);
+    try {
+      const endpoint = query ? '/search' : '/featured';
+      const params = query ? { q: query } : {};
+      console.log('[Picker] Loading GIFs:', { endpoint, params });
+      const data = await fetchTenor(endpoint, params);
+      console.log('[Picker] Got', data.length, 'GIFs');
+      setGifs(data);
+      if (data.length === 0) {
+        setGifError('No GIFs found. Try a different search.');
+      }
+    } catch (e) {
+      console.error('[Picker] loadGifs error:', e);
+      setGifError(`GIF error: ${e.message || 'Failed to load'}`);
+      setGifs([]);
+    } finally {
+      setGifsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'stickers') {
-      loadGiphy(search, activeTab);
-    }
-  }, [activeTab, loadGiphy]); // eslint-disable-line
+    if (tab === 'gifs') loadGifs('');
+  }, [tab, loadGifs]);
 
   useEffect(() => {
-    if (activeTab === 'stickers') return;
+    if (tab !== 'gifs') return;
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => loadGiphy(search, activeTab), 400);
+    debounceRef.current = setTimeout(() => loadGifs(search), 450);
     return () => clearTimeout(debounceRef.current);
-  }, [search, activeTab, loadGiphy]);
+  }, [search, tab, loadGifs]);
 
-  // Filter stickers by search when in sticker mode
-  const currentPack = STICKER_PACKS.find(p => p.id === activePack) || STICKER_PACKS[0];
-  const filteredStickers = search.trim()
-    ? STICKER_PACKS.flatMap(p => p.stickers).filter(s => {
-        // Basic: show stickers from packs whose label matches, or all
-        return true;
-      })
-    : currentPack.stickers;
-
-  const handleSelectEmoji = (emoji) => {
-    onSelect({ type: 'emoji-sticker', url: null, preview: null, emoji, title: emoji });
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const sendSticker = (emoji, labelVi) => {
+    onSelect({ type: 'sticker', emoji, label: labelVi || emoji });
+    onClose();
   };
 
-  const handleSelectGiphy = (item) => {
-    onSelect({
-      type: 'gif',
-      url: extractUrl(item),
-      preview: extractPreview(item),
-      title: item.title || '',
-    });
+  const sendGif = (item) => {
+    onSelect({ type: 'gif', url: gifUrl(item), preview: gifPreview(item), title: item.title || 'GIF' });
+    onClose();
   };
+
+  // Current pack stickers (optionally filtered by search)
+  const currentPack = myPacks.find(p => p.id === activePack) || myPacks[0];
+  const visibleStickers = currentPack
+    ? (search.trim()
+        ? myPacks.flatMap(p => p.stickers || []).filter(s =>
+            s.labelVi?.toLowerCase().includes(search.toLowerCase()) ||
+            s.label?.toLowerCase().includes(search.toLowerCase())
+          ).slice(0, 40)
+        : currentPack.stickers || [])
+    : [];
+
+  if (tab === 'store') {
+    return (
+      <div className="gif-picker" onClick={e => e.stopPropagation()}>
+        <StickerStore
+          onClose={onClose}
+          onPacksChanged={() => { loadMyPacks(); setTab('stickers'); }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="gif-picker" onClick={e => e.stopPropagation()}>
-      {/* Header tabs */}
+      {/* ── Tab bar ── */}
       <div className="gif-picker-header">
         <div className="gif-tabs">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              className={`gif-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => { setActiveTab(tab.id); setSearch(''); }}
-            >{tab.label}</button>
-          ))}
+          <button className={`gif-tab ${tab === 'stickers' ? 'active' : ''}`}
+            onClick={() => { setTab('stickers'); setSearch(''); }}>🩷 Stickers</button>
+          <button className={`gif-tab ${tab === 'gifs' ? 'active' : ''}`}
+            onClick={() => { setTab('gifs'); setSearch(''); }}>🎞️ GIFs</button>
+          <button className={`gif-tab ${tab === 'store' ? 'active' : ''}`}
+            onClick={() => setTab('store')}>🛍️ Store</button>
         </div>
         <button className="gif-close" onClick={onClose}>✕</button>
       </div>
 
-      {/* Search */}
+      {/* ── Search bar ── */}
       <div className="gif-search-wrap">
         <span className="gif-search-icon">🔍</span>
         <input
           ref={searchRef}
           className="gif-search-input"
-          placeholder={activeTab === 'stickers' ? 'Filter stickers…' : 'Search GIFs…'}
+          placeholder={tab === 'stickers' ? 'Search stickers…' : 'Search GIFs…'}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          autoFocus
         />
-        {search && (
-          <button className="gif-search-clear" onClick={() => setSearch('')}>✕</button>
-        )}
+        {search && <button className="gif-search-clear" onClick={() => setSearch('')}>✕</button>}
       </div>
 
-      {/* Built-in emoji stickers */}
-      {activeTab === 'stickers' && (
+      {/* ── STICKERS tab ── */}
+      {tab === 'stickers' && (
         <>
-          {/* Pack selector */}
-          {!search && (
+          {!search && myPacks.length > 0 && (
             <div className="sticker-pack-tabs">
-              {STICKER_PACKS.map(pack => (
+              {myPacks.map(pack => (
                 <button
                   key={pack.id}
                   className={`sticker-pack-tab ${activePack === pack.id ? 'active' : ''}`}
                   onClick={() => setActivePack(pack.id)}
-                  title={pack.label}
+                  title={pack.nameVi || pack.name}
                 >
-                  {pack.label.split(' ')[0]}
+                  {pack.cover}
                 </button>
               ))}
+              <button className="sticker-pack-tab sticker-store-shortcut" onClick={() => setTab('store')} title="Get more sticker packs">＋</button>
             </div>
           )}
+
           <div className="gif-scroll">
-            <div className="gif-grid sticker-emoji-grid">
-              {(search.trim()
-                ? STICKER_PACKS.flatMap(p => p.stickers).filter((_, i) => i < 40)
-                : currentPack.stickers
-              ).map((emoji, i) => (
-                <button
-                  key={`${emoji}-${i}`}
-                  className="sticker-emoji-btn"
-                  onClick={() => handleSelectEmoji(emoji)}
-                  title={emoji}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            {packsLoading ? (
+              <div className="gif-loading">
+                {[...Array(12)].map((_, i) => <div key={i} className="gif-skeleton" style={{ borderRadius: 12, height: 52 }} />)}
+              </div>
+            ) : myPacks.length === 0 ? (
+              <div className="gif-empty" style={{ textAlign: 'center', padding: 24 }}>
+                <div style={{ fontSize: 40 }}>🛍️</div>
+                <p style={{ margin: '8px 0 4px', fontWeight: 700 }}>No sticker packs yet!</p>
+                <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px' }}>Visit the store to add packs</p>
+                <button className="btn btn-blue" onClick={() => setTab('store')}>Open Sticker Store</button>
+              </div>
+            ) : (
+              <div className="gif-grid sticker-emoji-grid">
+                {visibleStickers.map((s, i) => (
+                  <button
+                    key={`${s.id || i}`}
+                    className="sticker-emoji-btn"
+                    onClick={() => sendSticker(s.emoji, s.labelVi)}
+                    title={s.labelVi || s.label}
+                  >
+                    {s.emoji}
+                  </button>
+                ))}
+                {visibleStickers.length === 0 && search && (
+                  <div className="gif-empty">No stickers match "{search}"</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="gif-footer">
+            <span style={{ fontSize: 11, color: '#bbb' }}>
+              🩷 {currentPack?.nameVi || currentPack?.name || 'Pastel Stickers'} · {visibleStickers.length} stickers
+            </span>
+            <button style={{ fontSize: 11, color: '#DDA0DD', background: 'none', border: 'none', cursor: 'pointer' }}
+              onClick={() => setTab('store')}>+ More</button>
           </div>
         </>
       )}
 
-      {/* Giphy GIFs / Animated stickers */}
-      {activeTab !== 'stickers' && (
-        <div className="gif-scroll">
-          {loading ? (
-            <div className="gif-loading">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="gif-skeleton" />
-              ))}
-            </div>
-          ) : giphyItems.length === 0 ? (
-            <div className="gif-empty">No results found 😔</div>
-          ) : (
-            <div className="gif-grid">
-              {giphyItems.map(item => (
-                <button
-                  key={item.id}
-                  className="gif-item"
-                  onClick={() => handleSelectGiphy(item)}
-                  title={item.title}
-                >
-                  <img src={extractPreview(item)} alt={item.title} loading="lazy" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* ── GIFs tab ── */}
+      {tab === 'gifs' && (
+        <>
+          <div className="gif-scroll">
+            {gifsLoading ? (
+              <div className="gif-loading">
+                {[...Array(12)].map((_, i) => <div key={i} className="gif-skeleton" />)}
+              </div>
+            ) : gifError ? (
+              <div className="gif-empty" style={{ textAlign: 'center', padding: 20 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>😔</div>
+                <p style={{ fontSize: 13, color: '#aaa' }}>{gifError}</p>
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => loadGifs(search)}>Retry</button>
+              </div>
+            ) : gifs.length === 0 ? (
+              <div className="gif-empty">No GIFs found 😔</div>
+            ) : (
+              <div className="gif-grid">
+                {gifs.map(item => (
+                  <button
+                    key={item.id}
+                    className="gif-item"
+                    onClick={() => sendGif(item)}
+                    title={item.title}
+                  >
+                    <img
+                      src={gifPreview(item)}
+                      alt={item.title}
+                      loading="lazy"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="gif-footer">
+            <span style={{ fontSize: 11, color: '#bbb' }}>Powered by Tenor</span>
+          </div>
+        </>
       )}
-
-      {/* Footer */}
-      <div className="gif-footer">
-        {activeTab === 'stickers' ? (
-          <span style={{ fontSize: 10, color: '#ccc' }}>🩷 Built-in Pastel Stickers</span>
-        ) : (
-          <img
-            src="https://developers.giphy.com/branch/master/static/header-logo-8974b8ae658f704a5b48a2d039b8ad93.gif"
-            alt="Powered by GIPHY"
-            style={{ height: 14, opacity: 0.6 }}
-          />
-        )}
-      </div>
     </div>
   );
 };
