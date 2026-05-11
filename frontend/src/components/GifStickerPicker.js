@@ -2,26 +2,27 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { stickerApi } from '../services/api';
 import StickerStore from './StickerStore';
 
-// Giphy public beta key — works for non-commercial / dev use
-const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || 'dc6zaTOxFJmzC';
-const GIPHY_BASE = 'https://api.giphy.com/v1';
-const LIMIT = 21;
+// Tenor v2 API — LIVDSRZULELA is Google's official public test key for Tenor
+const TENOR_KEY = process.env.REACT_APP_TENOR_API_KEY || 'LIVDSRZULELA';
+const TENOR_BASE = 'https://tenor.googleapis.com/v2';
+const LIMIT = 20;
 
-async function fetchGiphy(endpoint, params = {}) {
-  const url = new URL(`${GIPHY_BASE}${endpoint}`);
-  url.searchParams.set('api_key', GIPHY_KEY);
+async function fetchTenor(endpoint, params = {}) {
+  const url = new URL(`${TENOR_BASE}${endpoint}`);
+  url.searchParams.set('key', TENOR_KEY);
   url.searchParams.set('limit', LIMIT);
-  url.searchParams.set('rating', 'g');
+  url.searchParams.set('media_filter', 'gif,tinygif,nanogif');
+  url.searchParams.set('contentfilter', 'medium');
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error('Giphy error');
-  return (await res.json()).data;
+  if (!res.ok) throw new Error(`Tenor error ${res.status}`);
+  return (await res.json()).results || [];
 }
 
 const gifUrl = (item) =>
-  item?.images?.fixed_height?.url || item?.images?.original?.url || '';
+  item?.media_formats?.gif?.url || item?.media_formats?.tinygif?.url || '';
 const gifPreview = (item) =>
-  item?.images?.fixed_height_small?.url || item?.images?.fixed_height?.url || '';
+  item?.media_formats?.tinygif?.url || item?.media_formats?.nanogif?.url || item?.media_formats?.gif?.url || '';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
   // GIF state
   const [gifs, setGifs] = useState([]);
   const [gifsLoading, setGifsLoading] = useState(false);
+  const [gifError, setGifError] = useState(null);
 
   const debounceRef = useRef(null);
   const searchRef = useRef(null);
@@ -59,16 +61,18 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
 
   useEffect(() => { loadMyPacks(); }, [loadMyPacks]);
 
-  // ── Load GIFs ─────────────────────────────────────────────────────────────
+  // ── Load GIFs via Tenor ───────────────────────────────────────────────────
   const loadGifs = useCallback(async (query) => {
     setGifsLoading(true);
+    setGifError(null);
     try {
-      const endpoint = query ? '/gifs/search' : '/gifs/trending';
+      const endpoint = query ? '/search' : '/featured';
       const params = query ? { q: query } : {};
-      const data = await fetchGiphy(endpoint, params);
+      const data = await fetchTenor(endpoint, params);
       setGifs(data);
     } catch (e) {
       console.error('[Picker] loadGifs', e);
+      setGifError('Could not load GIFs. Check your connection.');
       setGifs([]);
     } finally {
       setGifsLoading(false);
@@ -113,10 +117,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
       <div className="gif-picker" onClick={e => e.stopPropagation()}>
         <StickerStore
           onClose={onClose}
-          onPacksChanged={() => {
-            loadMyPacks();
-            setTab('stickers');
-          }}
+          onPacksChanged={() => { loadMyPacks(); setTab('stickers'); }}
         />
       </div>
     );
@@ -127,18 +128,12 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
       {/* ── Tab bar ── */}
       <div className="gif-picker-header">
         <div className="gif-tabs">
-          <button
-            className={`gif-tab ${tab === 'stickers' ? 'active' : ''}`}
-            onClick={() => { setTab('stickers'); setSearch(''); }}
-          >🩷 Stickers</button>
-          <button
-            className={`gif-tab ${tab === 'gifs' ? 'active' : ''}`}
-            onClick={() => { setTab('gifs'); setSearch(''); }}
-          >🎞️ GIFs</button>
-          <button
-            className={`gif-tab ${tab === 'store' ? 'active' : ''}`}
-            onClick={() => setTab('store')}
-          >🛍️ Store</button>
+          <button className={`gif-tab ${tab === 'stickers' ? 'active' : ''}`}
+            onClick={() => { setTab('stickers'); setSearch(''); }}>🩷 Stickers</button>
+          <button className={`gif-tab ${tab === 'gifs' ? 'active' : ''}`}
+            onClick={() => { setTab('gifs'); setSearch(''); }}>🎞️ GIFs</button>
+          <button className={`gif-tab ${tab === 'store' ? 'active' : ''}`}
+            onClick={() => setTab('store')}>🛍️ Store</button>
         </div>
         <button className="gif-close" onClick={onClose}>✕</button>
       </div>
@@ -153,15 +148,12 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        {search && (
-          <button className="gif-search-clear" onClick={() => setSearch('')}>✕</button>
-        )}
+        {search && <button className="gif-search-clear" onClick={() => setSearch('')}>✕</button>}
       </div>
 
       {/* ── STICKERS tab ── */}
       {tab === 'stickers' && (
         <>
-          {/* Pack tabs */}
           {!search && myPacks.length > 0 && (
             <div className="sticker-pack-tabs">
               {myPacks.map(pack => (
@@ -174,12 +166,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
                   {pack.cover}
                 </button>
               ))}
-              {/* Store shortcut */}
-              <button
-                className="sticker-pack-tab sticker-store-shortcut"
-                onClick={() => setTab('store')}
-                title="Get more sticker packs"
-              >＋</button>
+              <button className="sticker-pack-tab sticker-store-shortcut" onClick={() => setTab('store')} title="Get more sticker packs">＋</button>
             </div>
           )}
 
@@ -193,9 +180,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
                 <div style={{ fontSize: 40 }}>🛍️</div>
                 <p style={{ margin: '8px 0 4px', fontWeight: 700 }}>No sticker packs yet!</p>
                 <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px' }}>Visit the store to add packs</p>
-                <button className="btn btn-blue" onClick={() => setTab('store')}>
-                  Open Sticker Store
-                </button>
+                <button className="btn btn-blue" onClick={() => setTab('store')}>Open Sticker Store</button>
               </div>
             ) : (
               <div className="gif-grid sticker-emoji-grid">
@@ -220,10 +205,8 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
             <span style={{ fontSize: 11, color: '#bbb' }}>
               🩷 {currentPack?.nameVi || currentPack?.name || 'Pastel Stickers'} · {visibleStickers.length} stickers
             </span>
-            <button
-              style={{ fontSize: 11, color: '#DDA0DD', background: 'none', border: 'none', cursor: 'pointer' }}
-              onClick={() => setTab('store')}
-            >+ More</button>
+            <button style={{ fontSize: 11, color: '#DDA0DD', background: 'none', border: 'none', cursor: 'pointer' }}
+              onClick={() => setTab('store')}>+ More</button>
           </div>
         </>
       )}
@@ -236,6 +219,12 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
               <div className="gif-loading">
                 {[...Array(12)].map((_, i) => <div key={i} className="gif-skeleton" />)}
               </div>
+            ) : gifError ? (
+              <div className="gif-empty" style={{ textAlign: 'center', padding: 20 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>😔</div>
+                <p style={{ fontSize: 13, color: '#aaa' }}>{gifError}</p>
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => loadGifs(search)}>Retry</button>
+              </div>
             ) : gifs.length === 0 ? (
               <div className="gif-empty">No GIFs found 😔</div>
             ) : (
@@ -247,19 +236,19 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
                     onClick={() => sendGif(item)}
                     title={item.title}
                   >
-                    <img src={gifPreview(item)} alt={item.title} loading="lazy" />
+                    <img
+                      src={gifPreview(item)}
+                      alt={item.title}
+                      loading="lazy"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </button>
                 ))}
               </div>
             )}
           </div>
           <div className="gif-footer">
-            <span style={{ fontSize: 11, color: '#bbb' }}>Powered by</span>
-            <img
-              src="https://developers.giphy.com/branch/master/static/header-logo-8974b8ae658f704a5b48a2d039b8ad93.gif"
-              alt="GIPHY"
-              style={{ height: 12, marginLeft: 4, opacity: 0.7 }}
-            />
+            <span style={{ fontSize: 11, color: '#bbb' }}>Powered by Tenor</span>
           </div>
         </>
       )}
