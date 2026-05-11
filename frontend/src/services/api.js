@@ -34,4 +34,13 @@ api.interceptors.response.use(
   }
 );
 
+// ── Sticker API helpers ───────────────────────────────────────────────────────
+export const stickerApi = {
+  getAllPacks: () => api.get('/stickers/packs'),
+  getPack: (packId) => api.get(`/stickers/packs/${packId}`),
+  addPack: (packId) => api.post(`/stickers/packs/${packId}/add`),
+  removePack: (packId) => api.delete(`/stickers/packs/${packId}/remove`),
+  getMyPacks: () => api.get('/stickers/my-packs'),
+};
+
 export default api;
