@@ -322,6 +322,24 @@ export const CallProvider = ({ children }) => {
     cleanupCall();
   }, [socket, cleanupCall]);
 
+  // ── Capacitor native app handling ────────────────────────────────────────
+  // Placed after answerCall/rejectCall declarations to avoid TDZ errors
+  useEffect(() => {
+    const onCapacitorAppResume = () => resumeAudio();
+    const onCapacitorCallAnswer = () => answerCall();
+    const onCapacitorCallDecline = () => rejectCall();
+
+    window.addEventListener('capacitor:app-resumed', onCapacitorAppResume);
+    window.addEventListener('capacitor:call-answer', onCapacitorCallAnswer);
+    window.addEventListener('capacitor:call-decline', onCapacitorCallDecline);
+
+    return () => {
+      window.removeEventListener('capacitor:app-resumed', onCapacitorAppResume);
+      window.removeEventListener('capacitor:call-answer', onCapacitorCallAnswer);
+      window.removeEventListener('capacitor:call-decline', onCapacitorCallDecline);
+    };
+  }, [answerCall, rejectCall, resumeAudio]);
+
   // ── In-call controls ─────────────────────────────────────────────────────────
 
   const toggleMute = useCallback(() => {
