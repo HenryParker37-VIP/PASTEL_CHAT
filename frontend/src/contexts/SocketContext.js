@@ -21,9 +21,29 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
-    // Socket.io connects to the same backend URL the REST client uses.
-    // In production this is injected by Vercel via REACT_APP_BACKEND_URL.
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001';
+    // Determine backend URL: env var → current domain → localhost fallback
+    function getBackendUrl() {
+      // 1. Try environment variable (Vercel, production builds)
+      if (typeof process !== 'undefined' && process.env?.REACT_APP_BACKEND_URL) {
+        return process.env.REACT_APP_BACKEND_URL;
+      }
+
+      // 2. On deployed site (Vercel), use same origin as frontend
+      if (typeof window !== 'undefined') {
+        const host = window.location.host;
+        const protocol = window.location.protocol;
+
+        // If on Vercel or custom domain, assume backend is at same domain
+        if (host.includes('vercel.app') || host.includes('pastel-chat.com')) {
+          return `${protocol}//${host}`;
+        }
+      }
+
+      // 3. Development fallback
+      return 'http://localhost:5001';
+    }
+
+    const BACKEND_URL = getBackendUrl();
 
     const newSocket = io(
       BACKEND_URL,
