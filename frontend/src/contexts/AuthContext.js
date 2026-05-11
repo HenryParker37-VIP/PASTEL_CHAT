@@ -1,9 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { subscribeToPush } from '../services/push';
+import { initializeCapacitorPush } from '../services/capacitor-push';
 
 async function trySubscribePush() {
   try {
+    // Try Capacitor push first (native mobile app)
+    try {
+      const capacitorReady = await initializeCapacitorPush();
+      if (capacitorReady) return;
+    } catch (err) {
+      console.warn('[Push] Capacitor push failed (expected on web):', err.message);
+    }
+
+    // Fall back to web push
     if (!('serviceWorker' in navigator)) return;
     const reg = await navigator.serviceWorker.ready;
     await subscribeToPush(reg);

@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/filesystem": "^6.0.0",
+    "@capacitor/ios": "^6.2.1",
+    "@capacitor/push-notifications": "^6.0.0",
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.6.2",
     "react": "^18.2.0",
@@ -15,7 +20,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "cap:add:ios": "npx cap add ios",
+    "cap:build:ios": "npm run build && npx cap copy && npx cap open ios",
+    "cap:sync:ios": "npm run build && npx cap sync ios",
+    "cap:open:ios": "npx cap open ios"
   },
   "browserslist": {
     "production": [
@@ -31,6 +40,7 @@
   },
   "proxy": "http://localhost:5001",
   "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
     "sharp": "^0.34.5"
   }
 }

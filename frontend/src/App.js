@@ -54,7 +54,6 @@ const GlobalSocketListener = ({ onHappyBirthday }) => {
         push({ emoji: '👥', title: `Added to "${payload.group?.name}"`, body: `by ${payload.from?.name}` });
       }
       if (payload.type === 'happy_birthday') {
-        // Friend is wishing us a happy birthday — show the overlay for ourselves
         onHappyBirthday({ friendName: user.name, age: payload.age, isOwn: true });
       }
     };

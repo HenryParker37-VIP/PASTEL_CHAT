@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Minimal Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #FFF0F5; }
+        .test { padding: 10px; margin: 10px 0; background: white; border-radius: 5px; border-left: 4px solid #FFB6C1; }
+        .pass { border-left-color: green; color: green; }
+        .fail { border-left-color: red; color: red; }
+    </style>
+    <script src="/capacitor.js"></script>
+</head>
+<body>
+    <h1>Pastel Chat - Minimal Test</h1>
+    <div id="tests"></div>
+
+    <script>
+        const testsDiv = document.getElementById('tests');
+
+        function addTest(name, passed, message) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (passed ? 'pass' : 'fail');
+            div.innerHTML = (passed ? '✓' : '✗') + ' ' + name + (message ? ': ' + message : '');
+            testsDiv.appendChild(div);
+        }
+
+        // Test 1: DOM Ready
+        addTest('DOM Ready', true);
+
+        // Test 2: Capacitor loaded
+        const hasCapacitor = typeof window.Capacitor !== 'undefined';
+        addTest('Capacitor Bridge', hasCapacitor, hasCapacitor ? 'Loaded' : 'Missing');
+
+        // Test 3: Capacitor plugins
+        if (hasCapacitor) {
+            try {
+                const plugins = window.Capacitor.Plugins;
+                const hasApp = plugins.App !== undefined;
+                addTest('Capacitor App Plugin', hasApp);
+            } catch (e) {
+                addTest('Capacitor Plugins Access', false, e.message);
+            }
+        }
+
+        // Test 4: localStorage
+        try {
+            localStorage.setItem('test', 'works');
+            const val = localStorage.getItem('test');
+            localStorage.removeItem('test');
+            addTest('localStorage', val === 'works');
+        } catch (e) {
+            addTest('localStorage', false, e.message);
+        }
+
+        // Test 5: Try loading React bundle
+        const script = document.createElement('script');
+        script.src = '/static/js/main.653583f8.js';
+        script.onload = () => addTest('React Bundle Load', true);
+        script.onerror = (e) => addTest('React Bundle Load', false, e.message || 'Failed to load');
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>
