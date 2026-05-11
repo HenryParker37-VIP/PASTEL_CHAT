@@ -15,6 +15,7 @@ const privateSpaceRoutes = require('./routes/private-space');
 const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
+const stickerRoutes = require('./routes/stickers');
 const setupSocket = require('./socket');
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/private-space', privateSpaceRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/admin', adminRoutes);
 app.use('/push', pushRoutes);
+app.use('/stickers', stickerRoutes);
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
