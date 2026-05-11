@@ -583,6 +583,7 @@ input, textarea {
 /* ── Chat input area ───────────────────────────────────────────────────── */
 
 .chat-input-area {
+  position: relative;
   padding: 10px 14px calc(42px + env(safe-area-inset-bottom));
   background: white;
   border-top: 1px solid #F0E6F0;
@@ -1643,3 +1644,70 @@ body.dark .gif-search-input { color: #EDE6FF; }
 body.dark .gif-item { background: #3A2D50; }
 body.dark .gif-skeleton { background: linear-gradient(90deg, #3A2D50 25%, #4A3D6A 50%, #3A2D50 75%); background-size: 200% 100%; }
 body.dark .gif-footer { border-color: #4A3D6A; }
+
+/* ── Emoji sticker pack tabs ──────────────────────────────────────────────── */
+.sticker-pack-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid #F0E4F8;
+}
+.sticker-pack-tabs::-webkit-scrollbar { display: none; }
+.sticker-pack-tab {
+  flex-shrink: 0;
+  background: none;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  padding: 4px 8px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+.sticker-pack-tab:hover { background: #F7EFF8; }
+.sticker-pack-tab.active { background: #F7EFF8; border-color: #DDA0DD; }
+body.dark .sticker-pack-tab:hover { background: #3A2D50; }
+body.dark .sticker-pack-tab.active { background: #3A2D50; border-color: #C9A6E0; }
+
+/* ── Emoji sticker grid ────────────────────────────────────────────────────── */
+.sticker-emoji-grid {
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 4px !important;
+}
+.sticker-emoji-btn {
+  background: none;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  padding: 6px;
+  font-size: 26px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s, border-color 0.12s;
+  line-height: 1;
+  text-align: center;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sticker-emoji-btn:hover {
+  background: #F7EFF8;
+  border-color: #DDA0DD;
+  transform: scale(1.15);
+}
+.sticker-emoji-btn:active { transform: scale(0.95); }
+body.dark .sticker-emoji-btn:hover { background: #3A2D50; border-color: #C9A6E0; }
+
+/* Large emoji sticker bubble in chat */
+.bubble-emoji-sticker {
+  font-size: 48px;
+  line-height: 1.1;
+  display: inline-block;
+  padding: 4px;
+  cursor: default;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(180,120,200,0.25));
+  transition: transform 0.2s;
+}
+.bubble-emoji-sticker:hover { transform: scale(1.08) rotate(-3deg); }

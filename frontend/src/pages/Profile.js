@@ -1,17 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import AvatarPicker from '../components/AvatarPicker';
-import AVATARS, { getAvatarUrl } from '../data/avatars';
-
-const extractSeed = (url) => {
-  try {
-    const m = url && url.match(/[?&]seed=([^&]+)/);
-    return m ? decodeURIComponent(m[1]) : AVATARS[0].seed;
-  } catch {
-    return AVATARS[0].seed;
-  }
-};
+import AvatarCustomizer from '../components/AvatarCustomizer';
 
 const isCustomPhoto = (url) => url && url.startsWith('data:');
 
@@ -60,9 +50,10 @@ const Profile = () => {
   const { user, updateName, updateProfile, checkName } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState(user?.name || '');
-  const [avatar, setAvatar] = useState(extractSeed(user?.avatar));
+  // avatarUrl holds the full resolved URL regardless of mode
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || '');
   const [customPhoto, setCustomPhoto] = useState(isCustomPhoto(user?.avatar) ? user.avatar : null);
-  const [avatarMode, setAvatarMode] = useState(isCustomPhoto(user?.avatar) ? 'photo' : 'sticker');
+  const [avatarMode, setAvatarMode] = useState(isCustomPhoto(user?.avatar) ? 'photo' : 'custom');
   const [bio, setBio] = useState(user?.bio || '');
   const [status, setStatus] = useState(user?.status || '');
   const [saveStatus, setSaveStatus] = useState('');
@@ -109,7 +100,7 @@ const Profile = () => {
 
     if (ok) {
       const patch = { bio, status };
-      const newAvatarUrl = avatarMode === 'photo' && customPhoto ? customPhoto : getAvatarUrl(avatar);
+      const newAvatarUrl = avatarMode === 'photo' && customPhoto ? customPhoto : avatarUrl;
       if (newAvatarUrl !== user.avatar) patch.avatar = newAvatarUrl;
       const r2 = await updateProfile(patch);
       if (!r2.success) { setSaveStatus(r2.error); ok = false; }
@@ -136,7 +127,7 @@ const Profile = () => {
           <div style={{ position: 'relative' }}>
             <img
               className="avatar-lg sticker-bounce"
-              src={avatarMode === 'photo' && customPhoto ? customPhoto : getAvatarUrl(avatar)}
+              src={avatarMode === 'photo' && customPhoto ? customPhoto : (avatarUrl || user?.avatar)}
               alt=""
               style={{ objectFit: 'cover', borderRadius: '50%' }}
             />
@@ -245,31 +236,22 @@ const Profile = () => {
 
           {/* Avatar */}
           <div>
-            <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 8 }}>Profile picture</span>
-
-            {/* Mode tabs */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-              {[{ key: 'sticker', label: '🐾 Sticker face' }, { key: 'photo', label: '📷 My photo' }].map(tab => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setAvatarMode(tab.key)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 600,
-                    background: avatarMode === tab.key ? 'linear-gradient(135deg, #FFB6C1, #DDA0DD)' : 'var(--search-bg)',
-                    color: avatarMode === tab.key ? 'white' : 'var(--subtext)',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, color: '#888', fontWeight: 600 }}>Profile picture</span>
+              <button
+                type="button"
+                onClick={() => { setAvatarMode(v => v === 'photo' ? 'custom' : 'photo'); }}
+                style={{
+                  padding: '4px 12px', borderRadius: 20,
+                  border: '1.5px solid #DDA0DD', background: 'transparent',
+                  color: '#B08ABD', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {avatarMode === 'photo' ? '🎨 Switch to Avatar' : '📷 Upload Photo'}
+              </button>
             </div>
 
-            {avatarMode === 'sticker' ? (
-              <AvatarPicker selected={avatar} onSelect={setAvatar} />
-            ) : (
+            {avatarMode === 'photo' ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                 {customPhoto ? (
                   <div style={{ position: 'relative' }}>
@@ -280,7 +262,7 @@ const Profile = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => { setCustomPhoto(null); setAvatarMode('sticker'); }}
+                      onClick={() => { setCustomPhoto(null); setAvatarMode('custom'); }}
                       style={{
                         position: 'absolute', top: -4, right: -4,
                         width: 22, height: 22, borderRadius: '50%',
@@ -326,6 +308,11 @@ const Profile = () => {
                   style={{ display: 'none' }}
                 />
               </div>
+            ) : (
+              <AvatarCustomizer
+                currentAvatarUrl={avatarUrl || user?.avatar}
+                onAvatarChange={setAvatarUrl}
+              />
             )}
           </div>
 
