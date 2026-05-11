@@ -96,11 +96,16 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     }
   };
 
-  const handleGifSelect = async ({ url, preview, title }) => {
+  const handleGifSelect = async ({ type, url, preview, emoji, title }) => {
     setShowGifPicker(false);
     setSending(true);
     try {
-      await onSend('', { type: 'gif', dataUrl: url, preview, name: title || 'sticker' });
+      if (type === 'emoji-sticker') {
+        // Emoji sticker — send as plain text message (renders large in chat)
+        await onSend(emoji, null);
+      } else {
+        await onSend('', { type: 'gif', dataUrl: url, preview, name: title || 'sticker' });
+      }
     } finally {
       setSending(false);
     }

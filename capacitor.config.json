@@ -1,0 +1,31 @@
+{
+  "appId": "com.pastelchat.app",
+  "appName": "Pastel Chat",
+  "webDir": "frontend/build",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost",
+    "iosScheme": "capacitor"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"],
+      "requestPermissions": true
+    },
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "backgroundColor": "#FFF0F5",
+      "showSpinner": true,
+      "spinnerColor": "#FFB6C1"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#FFB6C1",
+      "sound": "beep.wav"
+    }
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#FFF0F5"
+  }
+}

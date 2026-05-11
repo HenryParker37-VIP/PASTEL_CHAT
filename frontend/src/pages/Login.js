@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import AvatarPicker from '../components/AvatarPicker';
+import AvatarCustomizer from '../components/AvatarCustomizer';
 import TypewriterText from '../components/TypewriterText';
-import AVATARS, { getAvatarUrl } from '../data/avatars';
+import { getAvatarUrl } from '../data/avatars';
 
 const randomCuteName = () => {
   const adjectives = ['Fluffy', 'Sunny', 'Cozy', 'Peachy', 'Sparkly', 'Cheery', 'Dreamy', 'Mochi', 'Cloudy', 'Honey', 'Bubbly', 'Cuddly'];
@@ -26,7 +26,7 @@ function getStoredAccount() {
 const Login = () => {
   const [tab, setTab] = useState('register');
   const [name, setName] = useState(randomCuteName());
-  const [avatar, setAvatar] = useState(AVATARS[Math.floor(Math.random() * AVATARS.length)].seed);
+  const [avatarUrl, setAvatarUrl] = useState(() => getAvatarUrl('Peach'));
   const [loginCode, setLoginCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -52,7 +52,6 @@ const Login = () => {
     setError('');
     if (!name.trim()) return setError('Please pick a name');
     setBusy(true);
-    const avatarUrl = getAvatarUrl(avatar);
     const r = await register(name.trim(), avatarUrl);
     setBusy(false);
     if (!r.success) return setError(r.error);
@@ -218,14 +217,14 @@ const Login = () => {
               </div>
             </label>
 
-            <label>
-              <span style={{ fontSize: 13, color: '#888' }}>Pick a sticker face</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 0' }}>
-                <img className="avatar-lg sticker-bounce" src={getAvatarUrl(avatar)} alt="" style={{ width: 64, height: 64 }} />
-                <p style={{ fontSize: 12, color: '#888', margin: 0 }}>Tap any sticker below to choose ✿</p>
-              </div>
-              <AvatarPicker selected={avatar} onSelect={setAvatar} />
-            </label>
+            <div>
+              <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 8 }}>Pick your avatar ✿</span>
+              <AvatarCustomizer
+                currentAvatarUrl={avatarUrl}
+                onAvatarChange={setAvatarUrl}
+                compact
+              />
+            </div>
 
             {error && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
 

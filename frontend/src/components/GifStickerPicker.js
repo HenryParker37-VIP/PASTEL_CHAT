@@ -4,6 +4,50 @@ const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || '';
 const BASE = 'https://api.giphy.com/v1';
 const LIMIT = 24;
 
+// ── Built-in emoji sticker packs (no API key needed) ────────────────────────
+const STICKER_PACKS = [
+  {
+    id: 'love',
+    label: '💕 Love',
+    stickers: ['❤️','💕','💖','💗','💓','💞','💘','💝','🥰','😍','😘','💋','💌','💑','👫','🫶','❣️','💟','🩷','🫀'],
+  },
+  {
+    id: 'happy',
+    label: '😊 Happy',
+    stickers: ['😀','😃','😄','😁','🥳','🎉','🎊','✨','🌟','⭐','🌈','😊','😉','🤗','😆','🥰','🤩','😎','🙌','👏'],
+  },
+  {
+    id: 'animals',
+    label: '🐱 Cute Animals',
+    stickers: ['🐱','🐶','🐰','🐹','🐻','🐼','🐨','🦊','🐸','🐧','🦋','🐝','🦄','🐙','🦋','🐳','🦭','🦝','🐻‍❄️','🦔'],
+  },
+  {
+    id: 'food',
+    label: '🍰 Sweets',
+    stickers: ['🍰','🧁','🎂','🍩','🍪','🍫','🍭','🍬','🧇','🍡','🌮','🍜','🍣','🍕','🧋','🍓','🍑','🍒','🍇','🫐'],
+  },
+  {
+    id: 'nature',
+    label: '🌸 Nature',
+    stickers: ['🌸','🌺','🌻','🌹','🌷','🌼','💐','🌿','🍀','🌱','🌙','☀️','🌊','🦋','🌈','⛅','🌸','🪷','🌴','🍁'],
+  },
+  {
+    id: 'celebrate',
+    label: '🎉 Party',
+    stickers: ['🎉','🎊','🎈','🎁','🎀','🥂','🍾','🎆','🎇','✨','🌟','💫','⭐','🎵','🎶','🎸','🎹','🥳','🏆','🎯'],
+  },
+  {
+    id: 'mood',
+    label: '😅 Moods',
+    stickers: ['😭','😢','🥺','😬','😤','😡','🤯','😱','😰','😓','🤔','🤷','🤦','🙄','😴','🥱','😶','🤐','😏','😌'],
+  },
+  {
+    id: 'magic',
+    label: '✨ Magic',
+    stickers: ['✨','💫','⭐','🌟','🔮','🪄','🧿','🌙','💎','👑','🦄','🧚','🧜','🧝','🪐','🌌','🔭','💠','🫧','🌀'],
+  },
+];
+
 async function fetchGiphy(path, params = {}) {
   const url = new URL(`${BASE}${path}`);
   url.searchParams.set('api_key', GIPHY_KEY);
@@ -23,86 +67,90 @@ function extractPreview(item) {
   return item?.images?.fixed_height_small?.url || item?.images?.fixed_height?.url || '';
 }
 
-const TABS = ['GIFs', 'Stickers'];
+// Tabs shown depend on whether a Giphy key exists
+const buildTabs = () => {
+  const tabs = [{ id: 'stickers', label: '🩷 Stickers' }];
+  if (GIPHY_KEY) {
+    tabs.push({ id: 'gifs', label: '🎞️ GIFs' });
+    tabs.push({ id: 'animated', label: '✨ Animated' });
+  }
+  return tabs;
+};
+const TABS = buildTabs();
 
 const GifStickerPicker = ({ keyword = '', onSelect, onClose }) => {
-  const [activeTab, setActiveTab] = useState('GIFs');
+  const [activeTab, setActiveTab] = useState(TABS[0].id);
+  const [activePack, setActivePack] = useState(STICKER_PACKS[0].id);
   const [search, setSearch] = useState('');
-  const [items, setItems] = useState([]);
+  const [giphyItems, setGiphyItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [suggested, setSuggested] = useState([]);
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
-  const load = useCallback(async (query, tab) => {
+  const loadGiphy = useCallback(async (query, tab) => {
     if (!GIPHY_KEY) return;
     setLoading(true);
     try {
-      const isSticker = tab === 'Stickers';
+      const isSticker = tab === 'animated';
       const endpoint = query
         ? isSticker ? '/stickers/search' : '/gifs/search'
         : isSticker ? '/stickers/trending' : '/gifs/trending';
       const params = query ? { q: query } : {};
       const data = await fetchGiphy(endpoint, params);
-      setItems(data);
+      setGiphyItems(data);
     } catch (e) {
-      console.error(e);
+      console.error('[GifPicker]', e);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Load suggestions based on keyword user is typing in message box
-  const loadSuggested = useCallback(async (kw, tab) => {
-    if (!GIPHY_KEY || !kw.trim()) { setSuggested([]); return; }
-    try {
-      const isSticker = tab === 'Stickers';
-      const endpoint = isSticker ? '/stickers/search' : '/gifs/search';
-      const data = await fetchGiphy(endpoint, { q: kw, limit: 8 });
-      setSuggested(data);
-    } catch (e) {
-      setSuggested([]);
+  useEffect(() => {
+    if (activeTab !== 'stickers') {
+      loadGiphy(search, activeTab);
     }
-  }, []);
+  }, [activeTab, loadGiphy]); // eslint-disable-line
 
-  // Initial load & tab change
   useEffect(() => {
-    load(search, activeTab);
-  }, [activeTab, load]); // eslint-disable-line
-
-  // Search debounce
-  useEffect(() => {
+    if (activeTab === 'stickers') return;
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => load(search, activeTab), 400);
+    debounceRef.current = setTimeout(() => loadGiphy(search, activeTab), 400);
     return () => clearTimeout(debounceRef.current);
-  }, [search, activeTab, load]);
+  }, [search, activeTab, loadGiphy]);
 
-  // Keyword suggestions from chat input
-  useEffect(() => {
-    loadSuggested(keyword, activeTab);
-  }, [keyword, activeTab, loadSuggested]);
+  // Filter stickers by search when in sticker mode
+  const currentPack = STICKER_PACKS.find(p => p.id === activePack) || STICKER_PACKS[0];
+  const filteredStickers = search.trim()
+    ? STICKER_PACKS.flatMap(p => p.stickers).filter(s => {
+        // Basic: show stickers from packs whose label matches, or all
+        return true;
+      })
+    : currentPack.stickers;
 
-  const handleSelect = (item) => {
+  const handleSelectEmoji = (emoji) => {
+    onSelect({ type: 'emoji-sticker', url: null, preview: null, emoji, title: emoji });
+  };
+
+  const handleSelectGiphy = (item) => {
     onSelect({
+      type: 'gif',
       url: extractUrl(item),
       preview: extractPreview(item),
       title: item.title || '',
     });
   };
 
-  const showSuggested = suggested.length > 0 && !search;
-
   return (
     <div className="gif-picker" onClick={e => e.stopPropagation()}>
-      {/* Header */}
+      {/* Header tabs */}
       <div className="gif-picker-header">
         <div className="gif-tabs">
           {TABS.map(tab => (
             <button
-              key={tab}
-              className={`gif-tab ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >{tab}</button>
+              key={tab.id}
+              className={`gif-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab.id); setSearch(''); }}
+            >{tab.label}</button>
           ))}
         </div>
         <button className="gif-close" onClick={onClose}>✕</button>
@@ -114,7 +162,7 @@ const GifStickerPicker = ({ keyword = '', onSelect, onClose }) => {
         <input
           ref={searchRef}
           className="gif-search-input"
-          placeholder={`Search ${activeTab}…`}
+          placeholder={activeTab === 'stickers' ? 'Filter stickers…' : 'Search GIFs…'}
           value={search}
           onChange={e => setSearch(e.target.value)}
           autoFocus
@@ -124,65 +172,83 @@ const GifStickerPicker = ({ keyword = '', onSelect, onClose }) => {
         )}
       </div>
 
-      {/* Keyword suggestions strip */}
-      {showSuggested && (
-        <div className="gif-suggestions">
-          <div className="gif-suggestions-label">✨ Based on what you're typing</div>
-          <div className="gif-grid gif-grid-suggest">
-            {suggested.map(item => (
-              <button
-                key={item.id}
-                className="gif-item"
-                onClick={() => handleSelect(item)}
-                title={item.title}
-              >
-                <img src={extractPreview(item)} alt={item.title} loading="lazy" />
-              </button>
-            ))}
+      {/* Built-in emoji stickers */}
+      {activeTab === 'stickers' && (
+        <>
+          {/* Pack selector */}
+          {!search && (
+            <div className="sticker-pack-tabs">
+              {STICKER_PACKS.map(pack => (
+                <button
+                  key={pack.id}
+                  className={`sticker-pack-tab ${activePack === pack.id ? 'active' : ''}`}
+                  onClick={() => setActivePack(pack.id)}
+                  title={pack.label}
+                >
+                  {pack.label.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="gif-scroll">
+            <div className="gif-grid sticker-emoji-grid">
+              {(search.trim()
+                ? STICKER_PACKS.flatMap(p => p.stickers).filter((_, i) => i < 40)
+                : currentPack.stickers
+              ).map((emoji, i) => (
+                <button
+                  key={`${emoji}-${i}`}
+                  className="sticker-emoji-btn"
+                  onClick={() => handleSelectEmoji(emoji)}
+                  title={emoji}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="gif-suggestions-divider">All {activeTab}</div>
+        </>
+      )}
+
+      {/* Giphy GIFs / Animated stickers */}
+      {activeTab !== 'stickers' && (
+        <div className="gif-scroll">
+          {loading ? (
+            <div className="gif-loading">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="gif-skeleton" />
+              ))}
+            </div>
+          ) : giphyItems.length === 0 ? (
+            <div className="gif-empty">No results found 😔</div>
+          ) : (
+            <div className="gif-grid">
+              {giphyItems.map(item => (
+                <button
+                  key={item.id}
+                  className="gif-item"
+                  onClick={() => handleSelectGiphy(item)}
+                  title={item.title}
+                >
+                  <img src={extractPreview(item)} alt={item.title} loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Main grid */}
-      <div className="gif-scroll">
-        {!GIPHY_KEY ? (
-          <div className="gif-no-key">
-            <span>🔑</span>
-            <p>Add <code>REACT_APP_GIPHY_API_KEY</code> to your <code>.env</code> to enable {activeTab}.</p>
-            <a href="https://developers.giphy.com/" target="_blank" rel="noreferrer">Get a free key →</a>
-          </div>
-        ) : loading ? (
-          <div className="gif-loading">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="gif-skeleton" />
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="gif-empty">No results found 😔</div>
-        ) : (
-          <div className="gif-grid">
-            {items.map(item => (
-              <button
-                key={item.id}
-                className="gif-item"
-                onClick={() => handleSelect(item)}
-                title={item.title}
-              >
-                <img src={extractPreview(item)} alt={item.title} loading="lazy" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Powered by Giphy */}
+      {/* Footer */}
       <div className="gif-footer">
-        <img
-          src="https://developers.giphy.com/branch/master/static/header-logo-8974b8ae658f704a5b48a2d039b8ad93.gif"
-          alt="Powered by GIPHY"
-          style={{ height: 14, opacity: 0.6 }}
-        />
+        {activeTab === 'stickers' ? (
+          <span style={{ fontSize: 10, color: '#ccc' }}>🩷 Built-in Pastel Stickers</span>
+        ) : (
+          <img
+            src="https://developers.giphy.com/branch/master/static/header-logo-8974b8ae658f704a5b48a2d039b8ad93.gif"
+            alt="Powered by GIPHY"
+            style={{ height: 14, opacity: 0.6 }}
+          />
+        )}
       </div>
     </div>
   );
