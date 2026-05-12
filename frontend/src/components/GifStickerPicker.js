@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { stickerApi } from '../services/api';
 import StickerStore from './StickerStore';
+import StickerDisplay from './StickerDisplay';
 
 // Giphy API
 const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || 'UdbjLjW3ybC1o4BljzlKM3zijH4VA9vj';
@@ -123,8 +124,14 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
   }, [search, tab, loadGifs]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const sendSticker = (emoji, labelVi) => {
-    onSelect({ type: 'sticker', emoji, label: labelVi || emoji });
+  const sendSticker = (sticker) => {
+    onSelect({
+      type: 'sticker',
+      emoji: sticker.emoji,
+      label: sticker.labelVi || sticker.label,
+      imageUrl: sticker.imageUrl,
+      name: sticker.label || sticker.emoji,
+    });
     onClose();
   };
 
@@ -228,10 +235,16 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
                   <button
                     key={`${s.id || i}`}
                     className="sticker-emoji-btn"
-                    onClick={() => sendSticker(s.emoji, s.labelVi)}
+                    onClick={() => sendSticker(s)}
                     title={s.labelVi || s.label}
+                    style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}
                   >
-                    {s.emoji}
+                    <StickerDisplay
+                      emoji={s.emoji}
+                      imageUrl={s.imageUrl}
+                      label={s.labelVi || s.label}
+                      size="small"
+                    />
                   </button>
                 ))}
                 {visibleStickers.length === 0 && search && (
