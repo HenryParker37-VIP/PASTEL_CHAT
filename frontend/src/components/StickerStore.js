@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { stickerApi } from '../services/api';
+import StickerDisplay from './StickerDisplay';
 
 const StickerStore = ({ onClose, onPacksChanged }) => {
   const [packs, setPacks] = useState([]);
@@ -76,7 +77,12 @@ const StickerStore = ({ onClose, onPacksChanged }) => {
         <div className="store-preview-grid">
           {(selected.stickers || []).map((s, i) => (
             <div key={i} className="store-preview-item" title={s.labelVi || s.label}>
-              {s.emoji}
+              <StickerDisplay
+                emoji={s.emoji}
+                imageUrl={s.imageUrl}
+                label={s.labelVi || s.label}
+                size="medium"
+              />
             </div>
           ))}
         </div>
@@ -110,33 +116,77 @@ const StickerStore = ({ onClose, onPacksChanged }) => {
 
       <div className="store-subtitle">Tap a pack to preview · {packs.filter(p => p.isAdded).length} added</div>
 
-      {/* Pack list */}
+      {/* Pack grid */}
       {loading ? (
-        <div className="store-loading">
+        <div className="store-pack-grid">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="store-skeleton" />
+            <div key={i} className="store-pack-card-skeleton" />
           ))}
         </div>
       ) : (
-        <div className="store-pack-list">
+        <div className="store-pack-grid">
           {packs.map(pack => (
-            <div key={pack.id} className="store-pack-row" onClick={() => openDetail(pack)}>
-              <div className="store-pack-cover">{pack.cover}</div>
-              <div className="store-pack-meta">
-                <div className="store-pack-name">{pack.nameVi || pack.name}</div>
-                <div className="store-pack-tags">
-                  {pack.tags?.slice(0, 2).map(t => (
-                    <span key={t} className="store-tag">#{t}</span>
-                  ))}
-                </div>
-              </div>
-              <button
-                className={`store-add-btn ${pack.isAdded ? 'added' : ''}`}
-                disabled={busy === pack.id}
-                onClick={e => { e.stopPropagation(); togglePack(pack); }}
+            <div
+              key={pack.id}
+              className="store-pack-card"
+              onClick={() => openDetail(pack)}
+              style={{
+                position: 'relative',
+                borderRadius: 12,
+                overflow: 'hidden',
+                border: '1px solid #ddd',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {/* Cover */}
+              <div
+                style={{
+                  height: 120,
+                  backgroundColor: '#f5f5f5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 48,
+                  borderBottom: '1px solid #e0e0e0'
+                }}
               >
-                {busy === pack.id ? '…' : pack.isAdded ? '✓' : '+'}
-              </button>
+                {pack.cover}
+              </div>
+
+              {/* Meta */}
+              <div style={{ padding: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>
+                  {pack.nameVi || pack.name}
+                </div>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>
+                  {pack.stickerCount || 20} stickers
+                </div>
+                <button
+                  className={`btn ${pack.isAdded ? 'btn-ghost' : 'btn-blue'}`}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    fontSize: 12,
+                    borderRadius: 6,
+                  }}
+                  disabled={busy === pack.id}
+                  onClick={e => {
+                    e.stopPropagation();
+                    togglePack(pack);
+                  }}
+                >
+                  {busy === pack.id ? '…' : pack.isAdded ? '✓ Added' : '+ Add'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
