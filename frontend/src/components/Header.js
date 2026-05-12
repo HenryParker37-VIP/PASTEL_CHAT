@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import TelegramSetup from './TelegramSetup';
+import AvatarImg from './AvatarImg';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -118,7 +119,7 @@ const Header = () => {
           onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
         >
           {user?.avatar ? (
-            <img
+            <AvatarImg
               src={user.avatar}
               alt={user.name}
               style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
