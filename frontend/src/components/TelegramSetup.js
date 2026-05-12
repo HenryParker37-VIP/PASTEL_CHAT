@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
 const TelegramSetup = ({ onClose, onConnected }) => {
@@ -8,6 +8,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
   const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const pollRef = useRef(null);
   const [preferences, setPreferences] = useState({
     enableTelegramNotifications: true,
     enableTelegramCalls: true,
@@ -32,6 +33,9 @@ const TelegramSetup = ({ onClose, onConnected }) => {
 
   useEffect(() => {
     checkTelegramStatus();
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, []);
 
   const checkTelegramStatus = async () => {
@@ -64,8 +68,10 @@ const TelegramSetup = ({ onClose, onConnected }) => {
       }
 
       setVerificationCode(response.data.verificationCode);
-      setInstructions(response.data.instructions || 'Open your Telegram app and search for @PastelChatBot');
+      setInstructions(response.data.instructions || 'Open your Telegram app and search for @PastelChat_Notification_bot');
       setStep('connect');
+      // Start polling immediately — verification completes automatically when bot receives /verify
+      setTimeout(() => startPollingVerification(), 500);
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Failed to initiate Telegram connection. Please try again.';
       console.error('Connect error:', errorMsg, err);
@@ -75,32 +81,41 @@ const TelegramSetup = ({ onClose, onConnected }) => {
     }
   };
 
-  const handleVerify = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await api.post('/api/telegram/verify', {
-        code: verificationCode
-      });
+  const startPollingVerification = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setStep('verifying');
 
-      if (response.data?.verified) {
-        setStep('verifying');
-        setTimeout(() => {
-          setStep('connected');
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutes at 2s intervals
+
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const response = await api.post('/api/telegram/verify');
+        if (response.data?.verified) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
           if (response.data?.preferences) {
             setPreferences(response.data.preferences);
           }
-        }, 1500);
-      } else {
-        setError('Verification not confirmed. Please try again.');
+          setStep('connected');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setError('Verification timed out. Please try again.');
+          setStep('connect');
+        }
+      } catch (err) {
+        const msg = err.response?.data?.message || '';
+        if (msg.includes('expired')) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setError('Code expired. Please start again.');
+          setStep('intro');
+          setVerificationCode('');
+        }
       }
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Verification failed. Please check the code.';
-      console.error('Verify error:', errorMsg, err);
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
+    }, 2000);
   };
 
   const handleSavePreferences = async () => {
@@ -287,66 +302,83 @@ const TelegramSetup = ({ onClose, onConnected }) => {
               </div>
             </div>
 
-            <p style={{ fontSize: 13, color: colors.secondaryText, marginBottom: 16 }}>
-              Send the code to your Telegram bot, then tap the button below.
+            <p style={{ fontSize: 13, color: colors.secondaryText, marginBottom: 16, lineHeight: 1.5 }}>
+              Open Telegram, find <strong>@PastelChat_Notification_bot</strong>, and send the code above.
+              The app will connect automatically.
             </p>
 
-            {error && (
-              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 16 }}>
-                {error}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => {
-                  setStep('intro');
-                  setTelegramUsername('');
-                  setVerificationCode('');
-                  setError('');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  border: `1px solid ${colors.inputBorder}`,
-                  borderRadius: 8,
-                  background: colors.inputBg,
-                  color: colors.text,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleVerify}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderRadius: 8,
-                  background: '#6366f1',
-                  color: 'white',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1
-                }}
-              >
-                {loading ? '...' : 'I sent the code'}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setStep('intro');
+                setTelegramUsername('');
+                setVerificationCode('');
+                setError('');
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                border: `1px solid ${colors.inputBorder}`,
+                borderRadius: 8,
+                background: 'transparent',
+                color: colors.secondaryText,
+                fontSize: 14,
+                cursor: 'pointer'
+              }}
+            >
+              Back
+            </button>
           </>
         )}
 
         {step === 'verifying' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-            <p style={{ fontSize: 14, color: colors.secondaryText, marginBottom: 16 }}>
-              Verifying your Telegram connection...
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: colors.text }}>
+              Waiting for Telegram...
+            </h2>
+            <p style={{ fontSize: 14, color: colors.secondaryText, marginBottom: 20, lineHeight: 1.6 }}>
+              Send this message to the bot in Telegram:
             </p>
+            <div style={{
+              background: colors.codeBg, borderRadius: 10, padding: '12px 20px',
+              fontFamily: 'monospace', fontSize: 20, fontWeight: 700,
+              color: colors.codeText, letterSpacing: 3, marginBottom: 16
+            }}>
+              /verify {verificationCode}
+            </div>
+            <p style={{ fontSize: 12, color: colors.secondaryText, marginBottom: 16 }}>
+              The app will connect automatically once verified.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+              {[0,1,2].map(i => (
+                <div key={i} style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: colors.codeText,
+                  animation: 'pulse 1.2s ease-in-out infinite',
+                  animationDelay: `${i * 0.2}s`,
+                  opacity: 0.7
+                }} />
+              ))}
+            </div>
+            {error && (
+              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 12 }}>{error}</div>
+            )}
+            <button
+              onClick={() => {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setStep('intro');
+                setVerificationCode('');
+                setError('');
+              }}
+              style={{
+                padding: '8px 20px', border: `1px solid ${colors.inputBorder}`,
+                borderRadius: 8, background: 'transparent',
+                color: colors.secondaryText, fontSize: 13, cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
           </div>
         )}
 
