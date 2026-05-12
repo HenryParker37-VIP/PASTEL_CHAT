@@ -137,22 +137,30 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <ThemeProvider>
-    <LangProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <SocketProvider>
-            <CallProvider>
-              <Router>
-                <AppRoutes />
-              </Router>
-            </CallProvider>
-          </SocketProvider>
-        </ToastProvider>
-      </AuthProvider>
-    </LangProvider>
-  </ThemeProvider>
-);
+const App = () => {
+  React.useEffect(() => {
+    console.log('[App] Initialized');
+    console.log('[App] Backend URL:', process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com');
+    console.log('[App] Environment:', process.env.NODE_ENV);
+  }, []);
+
+  return (
+    <ThemeProvider>
+      <LangProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <SocketProvider>
+              <CallProvider>
+                <Router>
+                  <AppRoutes />
+                </Router>
+              </CallProvider>
+            </SocketProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </LangProvider>
+    </ThemeProvider>
+  );
+};
 
 export default App;

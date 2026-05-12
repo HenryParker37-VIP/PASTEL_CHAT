@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { stickerApi } from '../services/api';
 import StickerStore from './StickerStore';
 
-// Tenor v2 API — LIVDSRZULELA is Google's official public test key for Tenor
-const TENOR_KEY = process.env.REACT_APP_TENOR_API_KEY || 'LIVDSRZULELA';
+// Tenor v2 API — use proper public key or fallback
+const TENOR_KEY = process.env.REACT_APP_TENOR_API_KEY || 'AIzaSyDYH8XWx_2AGH-D2wB9tXU67DZ7PaIL9ak';
 const TENOR_BASE = 'https://tenor.googleapis.com/v2';
 const LIMIT = 20;
 
@@ -13,10 +13,39 @@ async function fetchTenor(endpoint, params = {}) {
   url.searchParams.set('limit', LIMIT);
   url.searchParams.set('media_filter', 'gif,tinygif,nanogif');
   url.searchParams.set('contentfilter', 'medium');
+  url.searchParams.set('country', 'US');
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Tenor error ${res.status}`);
-  return (await res.json()).results || [];
+
+  console.log('[Tenor] Fetching:', endpoint, 'with params:', params);
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[Tenor] Response error:', res.status, errText);
+      throw new Error(`Tenor ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    console.log('[Tenor] Got', data.results?.length || 0, 'results');
+
+    if (!data.results) {
+      console.warn('[Tenor] No results field in response:', data);
+      return [];
+    }
+
+    return data.results;
+  } catch (err) {
+    console.error('[Tenor] Fetch error:', err.message);
+    throw err;
+  }
 }
 
 const gifUrl = (item) =>
@@ -68,11 +97,16 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
     try {
       const endpoint = query ? '/search' : '/featured';
       const params = query ? { q: query } : {};
+      console.log('[Picker] Loading GIFs:', { endpoint, params });
       const data = await fetchTenor(endpoint, params);
+      console.log('[Picker] Got', data.length, 'GIFs');
       setGifs(data);
+      if (data.length === 0) {
+        setGifError('No GIFs found. Try a different search.');
+      }
     } catch (e) {
-      console.error('[Picker] loadGifs', e);
-      setGifError('Could not load GIFs. Check your connection.');
+      console.error('[Picker] loadGifs error:', e);
+      setGifError(`GIF error: ${e.message || 'Failed to load'}`);
       setGifs([]);
     } finally {
       setGifsLoading(false);

@@ -1,13 +1,7 @@
 import axios from 'axios';
 
-// Read backend URL from env (Vercel / .env.production sets this).
-// Falls back to localhost for dev when the var is missing.
-let BACKEND_URL;
-try {
-  BACKEND_URL = (typeof process !== 'undefined' && process.env?.REACT_APP_BACKEND_URL) || 'http://localhost:5001';
-} catch (e) {
-  BACKEND_URL = 'http://localhost:5001';
-}
+// Initialize with default URL, will be updated at app startup
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
 
 const api = axios.create({
   baseURL: BACKEND_URL,
