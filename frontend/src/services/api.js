@@ -37,4 +37,14 @@ export const stickerApi = {
   getMyPacks: () => api.get('/stickers/my-packs'),
 };
 
+// ── Telegram API helpers ──────────────────────────────────────────────────────
+export const telegramApi = {
+  getStatus: () => api.get('/api/telegram/status'),
+  connect: (telegramUsername) => api.post('/api/telegram/connect', { telegramUsername }),
+  verify: (code, chatId) => api.post('/api/telegram/verify', { code, chatId }),
+  disconnect: () => api.post('/api/telegram/disconnect'),
+  updatePreferences: (preferences) => api.put('/api/telegram/preferences', preferences),
+  sendTestNotification: () => api.post('/api/telegram/send-test-notification'),
+};
+
 export default api;

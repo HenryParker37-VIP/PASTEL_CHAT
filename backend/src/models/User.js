@@ -32,6 +32,44 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  telegramChatId: {
+    type: String,
+    sparse: true
+  },
+  telegramUsername: {
+    type: String,
+    sparse: true
+  },
+  telegramConnected: {
+    type: Boolean,
+    default: false
+  },
+  telegramVerified: {
+    type: Boolean,
+    default: false
+  },
+  telegramVerificationCode: {
+    type: String,
+    sparse: true
+  },
+  telegramVerificationExpires: {
+    type: Date,
+    sparse: true
+  },
+  notificationPreferences: {
+    enableTelegramNotifications: {
+      type: Boolean,
+      default: true
+    },
+    enableTelegramCalls: {
+      type: Boolean,
+      default: true
+    },
+    enableTelegramMessages: {
+      type: Boolean,
+      default: true
+    }
   }
 });
 
