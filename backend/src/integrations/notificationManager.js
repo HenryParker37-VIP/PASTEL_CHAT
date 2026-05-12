@@ -71,7 +71,14 @@ async function notifyUser(userId, notificationType, notificationData = {}) {
   if (shouldNotify && text) {
     try {
       const isCall = notificationType === 'incoming_call' || notificationType === 'missed_call';
-      const options = isCall ? { replyMarkup: buildOpenAppButton() } : {};
+      const options = isCall ? {
+        replyMarkup: buildOpenAppButton(null, {
+          callType: notificationData.callType || 'voice',
+          callerName: sender?.name || 'Friend',
+          callerId: sender?._id || '',
+          callerAvatar: sender?.avatar || ''
+        })
+      } : {};
       await sendTelegramNotification(user.telegramChatId, text, options);
     } catch (e) {
       console.error(`[NotificationManager] Failed to send ${notificationType} to Telegram:`, e.message);
