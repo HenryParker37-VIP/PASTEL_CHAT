@@ -21,29 +21,9 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
-    // Determine backend URL: env var → current domain → localhost fallback
-    function getBackendUrl() {
-      // 1. Try environment variable (Vercel, production builds)
-      if (typeof process !== 'undefined' && process.env?.REACT_APP_BACKEND_URL) {
-        return process.env.REACT_APP_BACKEND_URL;
-      }
-
-      // 2. On deployed site (Vercel), use same origin as frontend
-      if (typeof window !== 'undefined') {
-        const host = window.location.host;
-        const protocol = window.location.protocol;
-
-        // If on Vercel or custom domain, assume backend is at same domain
-        if (host.includes('vercel.app') || host.includes('pastel-chat.com')) {
-          return `${protocol}//${host}`;
-        }
-      }
-
-      // 3. Development fallback
-      return 'http://localhost:5001';
-    }
-
-    const BACKEND_URL = getBackendUrl();
+    // Use explicit backend URL instead of detection logic
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
+    console.log('[Socket] Connecting to:', BACKEND_URL);
 
     const newSocket = io(
       BACKEND_URL,
@@ -55,9 +35,18 @@ export const SocketProvider = ({ children }) => {
       }
     );
 
-    newSocket.on('connect', () => setConnected(true));
-    newSocket.on('disconnect', () => setConnected(false));
+    newSocket.on('connect', () => {
+      console.log('[Socket] Connected to backend');
+      setConnected(true);
+    });
+    newSocket.on('disconnect', () => {
+      console.log('[Socket] Disconnected from backend');
+      setConnected(false);
+    });
     newSocket.on('online_users', (users) => setOnlineUsers(users));
+    newSocket.on('connect_error', (err) => {
+      console.error('[Socket] Connection error:', err);
+    });
 
     socketRef.current = newSocket;
     setSocket(newSocket);
