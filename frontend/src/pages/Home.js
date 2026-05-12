@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import TypewriterText from '../components/TypewriterText';
+import TelegramSetup from '../components/TelegramSetup';
 
 const TILES = [
   {
@@ -63,6 +64,7 @@ const Home = () => {
   const { t } = useLang();
   const [time, setTime] = useState(new Date());
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  const [showTelegramSetup, setShowTelegramSetup] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -116,6 +118,20 @@ const Home = () => {
               <span className="home-mobile-label">{t(tile.labelKey)}</span>
             </button>
           ))}
+          {/* Telegram Notifications */}
+          <button
+            className="home-mobile-tile pop-in"
+            style={{
+              animationDelay: `${TILES.length * 0.06}s`,
+              background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)'
+            }}
+            onClick={() => setShowTelegramSetup(true)}
+          >
+            <span className="home-mobile-emoji float" style={{ animationDelay: `${TILES.length * 0.15}s` }}>
+              📱
+            </span>
+            <span className="home-mobile-label">Telegram</span>
+          </button>
         </div>
 
         {/* Login code */}
@@ -141,6 +157,13 @@ const Home = () => {
 
         {/* Time */}
         <p className="home-mobile-time">{time.toLocaleTimeString()}</p>
+
+        {showTelegramSetup && (
+          <TelegramSetup
+            onClose={() => setShowTelegramSetup(false)}
+            onConnected={() => setShowTelegramSetup(false)}
+          />
+        )}
       </div>
     );
   }
@@ -188,6 +211,20 @@ const Home = () => {
             <p>{t(tile.descKey)}</p>
           </div>
         ))}
+        {/* Telegram Notifications */}
+        <div
+          className="home-tile pop-in"
+          style={{
+            animationDelay: `${0.05 + TILES.length * 0.05}s`,
+            background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
+            cursor: 'pointer'
+          }}
+          onClick={() => setShowTelegramSetup(true)}
+        >
+          <span className="emoji float" style={{ animationDelay: `${TILES.length * 0.15}s` }}>📱</span>
+          <h3 style={{ color: 'white' }}>Telegram</h3>
+          <p style={{ color: 'rgba(255,255,255,0.9)' }}>Get notifications via Telegram, even when the app is closed</p>
+        </div>
       </div>
 
       {user?.loginCode && (
@@ -209,6 +246,13 @@ const Home = () => {
             <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
           </div>
         </div>
+      )}
+
+      {showTelegramSetup && (
+        <TelegramSetup
+          onClose={() => setShowTelegramSetup(false)}
+          onConnected={() => setShowTelegramSetup(false)}
+        />
       )}
     </div>
   );
