@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
 const stickerRoutes = require('./routes/stickers');
 const telegramRoutes = require('./routes/telegram');
+const callsRoutes = require('./routes/calls');
 const setupSocket = require('./socket');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
 
@@ -53,6 +54,7 @@ app.use('/push', pushRoutes);
 app.use('/stickers', stickerRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/telegram', telegramRoutes);
+app.use('/api/calls', callsRoutes);
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
 

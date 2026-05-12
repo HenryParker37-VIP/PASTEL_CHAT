@@ -14,6 +14,7 @@ const {
   removePushSubscription
 } = require('../db/store');
 const { notifyIncomingCall } = require('../integrations/notificationManager');
+const { setPendingCall, clearPendingCall } = require('../db/store');
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
@@ -135,27 +136,41 @@ const setupSocket = (io) => {
     // ── WebRTC call signaling ─────────────────────────────────────────────
     // All events are forwarded to the target user; server never inspects SDP/ICE.
 
+    // Track last Telegram notification per (caller → callee) to avoid duplicates
+    const notifiedCalls = new Set();
+
     socket.on('call:invite', ({ to, callType }) => {
       if (!to) return;
       const type = callType === 'video' ? 'video' : 'voice';
-      io.emit(`call:incoming:${to}`, {
-        from: { _id: user._id, name: user.name, avatar: user.avatar },
+      const caller = { _id: user._id, name: user.name, avatar: user.avatar };
+
+      io.emit(`call:incoming:${to}`, { from: caller, callType: type });
+
+      // Store server-side so Safari can restore call state on next page load
+      setPendingCall(to, {
+        callerId: user._id,
+        callerName: user.name,
+        callerAvatar: user.avatar || '',
         callType: type
       });
-      // Send push notification
+
+      // Push notification
       sendPush(to, {
-        type:        'incoming_call',
-        callType:    type,
-        callerId:    user._id,
-        callerName:  user.name,
-        callerAvatar: user.avatar,
+        type: 'incoming_call', callType: type,
+        callerId: user._id, callerName: user.name, callerAvatar: user.avatar,
       });
-      // Send Telegram notification (async, non-blocking)
-      notifyIncomingCall(to, { name: user.name, avatar: user.avatar }, type).catch(() => {});
+
+      // Telegram — deduplicate per call session (one invite per socket connection)
+      const callKey = `${user._id}→${to}`;
+      if (!notifiedCalls.has(callKey)) {
+        notifiedCalls.add(callKey);
+        notifyIncomingCall(to, { _id: user._id, name: user.name, avatar: user.avatar }, type).catch(() => {});
+      }
     });
 
     socket.on('call:accept', ({ to }) => {
       if (!to) return;
+      clearPendingCall(user._id); // callee accepted — clear their pending call
       io.emit(`call:accepted:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar }
       });
@@ -163,11 +178,14 @@ const setupSocket = (io) => {
 
     socket.on('call:reject', ({ to }) => {
       if (!to) return;
+      clearPendingCall(user._id); // callee rejected
       io.emit(`call:rejected:${to}`, { from: user._id });
     });
 
     socket.on('call:end', ({ to }) => {
       if (!to) return;
+      clearPendingCall(to);       // caller ended — clear callee's pending call
+      clearPendingCall(user._id);
       io.emit(`call:ended:${to}`, { from: user._id });
     });
 
