@@ -18,6 +18,7 @@ const pushRoutes = require('./routes/push');
 const stickerRoutes = require('./routes/stickers');
 const telegramRoutes = require('./routes/telegram');
 const setupSocket = require('./socket');
+const { findUserByVerificationCode, updateUser } = require('./db/store');
 
 const app = express();
 const server = http.createServer(app);
@@ -131,8 +132,29 @@ const startTelegramPolling = () => {
         } else if (text && text.startsWith('/verify ')) {
           const code = text.slice(8).trim().toUpperCase();
           console.log(`[Telegram] /verify received — code: ${code}, chatId: ${chatId}`);
-          await sendMessage(chatId, '✅ Code received! Return to Pastel Chat to complete setup.');
-          io.emit('telegram:verification', { code, chatId, username: from.username });
+
+          // Find user with this verification code and complete verification
+          const user = findUserByVerificationCode(code);
+          if (user) {
+            const expired = user.telegramVerificationExpires && new Date() > new Date(user.telegramVerificationExpires);
+            if (expired) {
+              await sendMessage(chatId, '⏰ Verification code expired. Please restart the setup in Pastel Chat.');
+            } else {
+              updateUser(user._id, {
+                telegramChatId: String(chatId),
+                telegramConnected: true,
+                telegramVerified: true,
+                telegramVerificationCode: null,
+                telegramVerificationExpires: null
+              });
+              console.log(`[Telegram] ✅ Verified user ${user.name} (chatId: ${chatId})`);
+              await sendMessage(chatId, '🎉 Connected to Pastel Chat! You\'ll now receive notifications here.');
+              // Notify the frontend via Socket.IO so it auto-completes
+              io.emit('telegram:verified', { userId: String(user._id), chatId });
+            }
+          } else {
+            await sendMessage(chatId, '❌ Invalid or expired code. Please restart the setup in Pastel Chat.');
+          }
         }
       }
     } catch (e) {

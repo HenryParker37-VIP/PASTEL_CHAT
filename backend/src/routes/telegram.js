@@ -188,6 +188,23 @@ router.post('/webhook', async (req, res) => {
     const telegramUserId = from.id;
     const username = from.username;
 
+    // Handle /start command
+    if (text === '/start') {
+      const welcomeMessage = `🌸 Welcome to Pastel Chat Notifications!\n\nI'm here to send you reliable notifications for:\n✅ Incoming calls\n✅ Messages & stickers\n✅ Friend requests\n\nTo connect your Pastel Chat account:\n1. Open the Pastel Chat app\n2. Go to Home → Telegram button\n3. Enter your Telegram username\n4. I'll give you a verification code\n5. Send me: /verify CODE\n\nThat's it! 🎉`;
+
+      await fetch(`${TELEGRAM_API}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: welcomeMessage,
+          parse_mode: 'Markdown'
+        })
+      }).catch(e => console.error('[Telegram] Failed to send /start response:', e.message));
+
+      return res.json({ ok: true });
+    }
+
     // Parse /verify CODE command
     if (text && text.startsWith('/verify ')) {
       const code = text.slice(8).trim().toUpperCase();
@@ -229,53 +246,33 @@ router.post('/webhook', async (req, res) => {
 });
 
 // POST /api/telegram/verify
-// Frontend calls this after user sends /verify CODE to bot
-// This completes the verification flow
+// Frontend polls this to check if bot verification has completed.
+// The actual verification happens automatically in the polling loop (app.js)
+// when the user sends /verify CODE to the bot.
 router.post('/verify', authMiddleware, async (req, res) => {
   try {
-    const { code, chatId } = req.body;
-    if (!code || !chatId) {
-      return res.status(400).json({ message: 'Code and chatId required' });
-    }
-
     const user = findUserById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Verify code matches and hasn't expired
-    if (user.telegramVerificationCode !== code.toUpperCase()) {
-      return res.status(400).json({ message: 'Invalid verification code' });
+    if (user.telegramVerified && user.telegramChatId) {
+      return res.json({
+        verified: true,
+        connected: true,
+        preferences: user.notificationPreferences || {}
+      });
     }
 
-    if (new Date() > new Date(user.telegramVerificationExpires)) {
-      return res.status(400).json({ message: 'Verification code expired' });
+    // Not yet verified — check if code is expired
+    if (user.telegramVerificationExpires && new Date() > new Date(user.telegramVerificationExpires)) {
+      return res.status(400).json({ message: 'Verification code expired. Please start again.' });
     }
 
-    // Mark as verified and connected
-    updateUser(req.user._id, {
-      telegramChatId: String(chatId),
-      telegramConnected: true,
-      telegramVerified: true,
-      telegramVerificationCode: null,
-      telegramVerificationExpires: null
-    });
-
-    // Send confirmation message to Telegram
-    await fetch(`${TELEGRAM_API}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: '🎉 Successfully connected to Pastel Chat!\n\nYou will now receive notifications here.',
-        parse_mode: 'Markdown'
-      })
-    }).catch(e => console.error('[Telegram] Failed to send confirmation:', e.message));
-
-    res.json({ message: 'Telegram verified and connected', connected: true });
+    res.json({ verified: false, connected: false });
   } catch (e) {
     console.error('[Telegram/verify] Error:', e.message);
-    res.status(500).json({ message: 'Failed to verify Telegram connection' });
+    res.status(500).json({ message: 'Failed to check verification status' });
   }
 });
 
