@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
+import AvatarImg from './AvatarImg';
 
 const formatDuration = (ms) => {
   if (!ms) return '0:00';
@@ -90,7 +91,7 @@ const VoiceCallScreen = () => {
               }} />
             </>
           )}
-          <img
+          <AvatarImg
             src={peer?.avatar}
             alt={peer?.name}
             style={{ width: 110, height: 110, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.15)', display: 'block' }}

@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
+import AvatarImg from '../components/AvatarImg';
 
 const Friends = () => {
   const { user } = useAuth();
@@ -163,7 +164,7 @@ const Friends = () => {
           <div style={{ display: 'grid', gap: 8 }}>
             {requests.map(r => (
               <div key={r._id} className="friend-tile pop-in" style={{ cursor: 'default' }}>
-                <img className="avatar" src={r.avatar} alt="" />
+                <AvatarImg className="avatar" src={r.avatar} alt="" />
                 <div style={{ flex: 1 }}>
                   <p className="name">{r.name}</p>
                 </div>
@@ -192,7 +193,7 @@ const Friends = () => {
           <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
             {results.map(u => (
               <div key={u._id} className="friend-tile pop-in" style={{ cursor: 'default' }}>
-                <img className="avatar" src={u.avatar} alt="" />
+                <AvatarImg className="avatar" src={u.avatar} alt="" />
                 <div style={{ flex: 1 }}>
                   <p className="name">{u.name}</p>
                   <p className="sub">{isOnline(u._id) ? `🟢 ${t('online')}` : `⚪ ${t('offline')}`}</p>
@@ -213,7 +214,7 @@ const Friends = () => {
       <div className="friend-list" style={{ marginBottom: 28 }}>
         {friends.map(f => (
           <div key={f.friendId} className="friend-tile pop-in">
-            <img className="avatar" src={f.avatar} alt="" onClick={() => navigate(`/chat/${f.friendId}`)} />
+            <AvatarImg className="avatar" src={f.avatar} alt="" onClick={() => navigate(`/chat/${f.friendId}`)} />
             <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate(`/chat/${f.friendId}`)}>
               {editingId === f.friendId ? (
                 <input
@@ -342,7 +343,7 @@ const Friends = () => {
                           onChange={() => toggleMember(f.friendId)}
                           style={{ accentColor: '#DDA0DD' }}
                         />
-                        <img src={f.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                        <AvatarImg src={f.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
                         <span style={{ fontSize: 14, fontWeight: 500 }}>{f.customNickname}</span>
                       </label>
                     ))}

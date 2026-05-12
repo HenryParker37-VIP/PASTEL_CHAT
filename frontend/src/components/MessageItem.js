@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import GifMessage from './GifMessage';
 import StickerDisplay from './StickerDisplay';
+import AvatarImg from './AvatarImg';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -90,7 +91,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
       {!isOwn && (
         <div style={{ width: 32, flexShrink: 0, alignSelf: 'flex-end', marginRight: 8 }}>
           {senderAvatar ? (
-            <img
+            <AvatarImg
               src={senderAvatar}
               alt={senderName}
               style={{ width: 32, height: 32, borderRadius: '50%', display: 'block' }}

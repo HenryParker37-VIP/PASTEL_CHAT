@@ -5,6 +5,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import TypewriterText from '../components/TypewriterText';
 import TelegramSetup from '../components/TelegramSetup';
+import AvatarImg from '../components/AvatarImg';
 
 const TILES = [
   {
@@ -83,7 +84,7 @@ const Home = () => {
         {/* Mobile header */}
         <div className="home-mobile-header">
           <div className="home-mobile-user">
-            <img className="home-mobile-avatar sticker-wiggle" src={user?.avatar} alt="" />
+            <AvatarImg className="home-mobile-avatar sticker-wiggle" src={user?.avatar} alt="" />
             <div>
               <p className="home-mobile-name">{user?.name}</p>
               <p className="home-mobile-status">
@@ -176,7 +177,7 @@ const Home = () => {
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img className="avatar sticker-wiggle" src={user?.avatar} alt="" />
+          <AvatarImg className="avatar sticker-wiggle" src={user?.avatar} alt="" />
           <div>
             <p style={{ margin: 0, fontWeight: 700 }}>{user?.name}</p>
             <p style={{ margin: 0, fontSize: 12, color: '#888' }}>

@@ -12,17 +12,18 @@ import AVATARS, {
   parseCharacterUrl,
   detectAvatarMode,
 } from '../data/avatars';
+import { generateAvatarSVG } from './AvatarRenderer';
 
 function initCharacterOpts(avatarUrl) {
   const parsed = parseCharacterUrl(avatarUrl);
   return parsed || {
     skinColor: 'f8d9c4',
     hairColor: '4a2c2c',
-    hairStyle: 'variant01',
+    hairStyle: 'v01',
     bgColor: 'ffb6c1',
-    eyes: 'variant01',
+    expression: 'cheery',
     glasses: '',
-    outfit: 'variant01',
+    outfit: 'o1',
     earrings: false,
   };
 }
@@ -37,6 +38,10 @@ function initStickerState(avatarUrl) {
   } catch {
     return { seed: AVATARS[0].seed, bgColor: 'ffb6c1' };
   }
+}
+
+function randomFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 const SwatchRow = ({ label, items, selected, onSelect, size = 28 }) => (
@@ -122,15 +127,44 @@ const AvatarCustomizer = ({ currentAvatarUrl, onAvatarChange, compact = false })
     commit(getCharacterAvatarUrl(next));
   };
 
+  const handleRandomize = () => {
+    const useGlasses = Math.random() > 0.4;
+    const randomOpts = {
+      skinColor: randomFrom(SKIN_COLORS).hex,
+      hairColor: randomFrom(HAIR_COLORS).hex,
+      hairStyle: randomFrom(HAIR_STYLES).value,
+      bgColor: randomFrom(PASTEL_BG_COLORS).hex,
+      expression: randomFrom(EXPRESSIONS).value,
+      glasses: useGlasses ? randomFrom(ACCESSORIES.filter(a => a.value !== '')).value : '',
+      outfit: randomFrom(OUTFITS).value,
+      earrings: Math.random() > 0.5,
+    };
+    setCharOpts(randomOpts);
+    commit(getCharacterAvatarUrl(randomOpts));
+  };
+
+  // Live SVG preview for character mode
+  const charPreviewSvg = mode === 'character' ? generateAvatarSVG(charOpts) : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {/* Preview + mode switcher */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-        <img
-          src={previewUrl}
-          alt="Avatar preview"
-          style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '3px solid #F0E4F8', flexShrink: 0 }}
-        />
+        {mode === 'character' ? (
+          <div
+            style={{
+              width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
+              border: '3px solid #F0E4F8', flexShrink: 0,
+            }}
+            dangerouslySetInnerHTML={{ __html: charPreviewSvg }}
+          />
+        ) : (
+          <img
+            src={previewUrl}
+            alt="Avatar preview"
+            style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '3px solid #F0E4F8', flexShrink: 0 }}
+          />
+        )}
         <div>
           <div style={{ fontSize: 12, color: '#888', marginBottom: 8, fontWeight: 600 }}>Avatar Style</div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -205,6 +239,24 @@ const AvatarCustomizer = ({ currentAvatarUrl, onAvatarChange, compact = false })
       {/* ── Character mode ── */}
       {mode === 'character' && (
         <div style={{ maxHeight: compact ? 300 : 420, overflowY: 'auto', paddingRight: 2 }}>
+          {/* Randomize button */}
+          <button
+            type="button"
+            onClick={handleRandomize}
+            style={{
+              display: 'block', width: '100%', marginBottom: 14,
+              padding: '8px 12px', borderRadius: 20,
+              border: '1.5px solid #DDA0DD',
+              background: 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
+              color: 'white', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+          >
+            🎲 Randomize
+          </button>
+
           <SwatchRow label="Skin Tone" items={SKIN_COLORS} selected={charOpts.skinColor}
             onSelect={item => handleCharChange({ skinColor: item.hex })} />
           <SwatchRow label="Hair Color" items={HAIR_COLORS} selected={charOpts.hairColor}
@@ -213,8 +265,8 @@ const AvatarCustomizer = ({ currentAvatarUrl, onAvatarChange, compact = false })
             onSelect={item => handleCharChange({ hairStyle: item.value })} />
           <SwatchRow label="Background Color" items={PASTEL_BG_COLORS} selected={charOpts.bgColor}
             onSelect={item => handleCharChange({ bgColor: item.hex })} />
-          <OptionRow label="Expression" items={EXPRESSIONS} selected={charOpts.eyes}
-            onSelect={item => handleCharChange({ eyes: item.value })} />
+          <OptionRow label="Expression" items={EXPRESSIONS} selected={charOpts.expression}
+            onSelect={item => handleCharChange({ expression: item.value })} />
           <OptionRow label="Glasses" items={ACCESSORIES} selected={charOpts.glasses}
             onSelect={item => handleCharChange({ glasses: item.value })} />
           <OptionRow label="Outfit" items={OUTFITS} selected={charOpts.outfit}

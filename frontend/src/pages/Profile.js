@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AvatarCustomizer from '../components/AvatarCustomizer';
+import AvatarImg from '../components/AvatarImg';
 
 const isCustomPhoto = (url) => url && url.startsWith('data:');
 
@@ -125,7 +126,7 @@ const Profile = () => {
         {/* Avatar preview + name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
           <div style={{ position: 'relative' }}>
-            <img
+            <AvatarImg
               className="avatar-lg sticker-bounce"
               src={avatarMode === 'photo' && customPhoto ? customPhoto : (avatarUrl || user?.avatar)}
               alt=""

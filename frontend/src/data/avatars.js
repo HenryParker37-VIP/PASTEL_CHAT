@@ -1,7 +1,7 @@
 // DiceBear avatar helpers for PastelChat
 // Two modes:
 //   1. "sticker"   — fun-emoji style (50 preset seeds, pastel backgrounds)
-//   2. "character" — lorelei style  (customizable: skin, hair, bg, accessories)
+//   2. "character" — custom SVG chibi (via AvatarRenderer)
 
 // ── Sticker avatars (fun-emoji) ───────────────────────────────────────────
 const BG = 'ffb6c1,add8e6,dda0dd,ffe4e1,fff8f3,ffd1dc,b0e0e6,e6e6fa';
@@ -27,7 +27,7 @@ export const getAvatarUrl = (seed, bgColor) => {
   return `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${encodeURIComponent(seed || 'Peach')}&backgroundColor=${bg}&radius=50`;
 };
 
-// ── Character avatars (lorelei — supports skin/hair/accessories) ───────────
+// ── Character avatars (custom SVG chibi) ──────────────────────────────────
 export const SKIN_COLORS = [
   { id: 'light',    label: 'Light',    hex: 'f8d9c4' },
   { id: 'medium',   label: 'Medium',   hex: 'e8b89a' },
@@ -53,17 +53,17 @@ export const HAIR_COLORS = [
 ];
 
 export const HAIR_STYLES = [
-  { id: 'h1',  label: 'Short',       value: 'variant01' },
-  { id: 'h2',  label: 'Bob',         value: 'variant02' },
-  { id: 'h3',  label: 'Wavy',        value: 'variant03' },
-  { id: 'h4',  label: 'Long',        value: 'variant04' },
-  { id: 'h5',  label: 'Ponytail',    value: 'variant05' },
-  { id: 'h6',  label: 'Bun',         value: 'variant06' },
-  { id: 'h7',  label: 'Curly',       value: 'variant07' },
-  { id: 'h8',  label: 'Pixie',       value: 'variant08' },
-  { id: 'h9',  label: 'Braids',      value: 'variant09' },
-  { id: 'h10', label: 'Side-swept',  value: 'variant10' },
-  { id: 'h11', label: 'Twintails',   value: 'variant11' },
+  { id: 'h1',  label: 'Short',       value: 'v01' },
+  { id: 'h2',  label: 'Bob',         value: 'v02' },
+  { id: 'h3',  label: 'Wavy',        value: 'v03' },
+  { id: 'h4',  label: 'Long',        value: 'v04' },
+  { id: 'h5',  label: 'Ponytail',    value: 'v05' },
+  { id: 'h6',  label: 'Bun',         value: 'v06' },
+  { id: 'h7',  label: 'Curly',       value: 'v07' },
+  { id: 'h8',  label: 'Pixie',       value: 'v08' },
+  { id: 'h9',  label: 'Braids',      value: 'v09' },
+  { id: 'h10', label: 'Side-swept',  value: 'v10' },
+  { id: 'h11', label: 'Twintails',   value: 'v11' },
 ];
 
 export const PASTEL_BG_COLORS = [
@@ -80,78 +80,82 @@ export const PASTEL_BG_COLORS = [
 ];
 
 export const EXPRESSIONS = [
-  { id: 'cheery',   label: '😊 Cheery',   value: 'variant01' },
-  { id: 'curious',  label: '🤔 Curious',  value: 'variant02' },
-  { id: 'happy',    label: '😄 Happy',    value: 'variant03' },
-  { id: 'sleepy',   label: '😴 Sleepy',   value: 'variant04' },
-  { id: 'excited',  label: '🤩 Excited',  value: 'variant05' },
-  { id: 'calm',     label: '😌 Calm',     value: 'variant06' },
-  { id: 'wink',     label: '😉 Wink',     value: 'variant07' },
-  { id: 'heart',    label: '🥰 Heart',    value: 'variant08' },
+  { id: 'cheery',   label: '😊 Cheery',   value: 'cheery' },
+  { id: 'curious',  label: '🤔 Curious',  value: 'curious' },
+  { id: 'happy',    label: '😄 Happy',    value: 'happy' },
+  { id: 'sleepy',   label: '😴 Sleepy',   value: 'sleepy' },
+  { id: 'excited',  label: '🤩 Excited',  value: 'excited' },
+  { id: 'calm',     label: '😌 Calm',     value: 'calm' },
+  { id: 'wink',     label: '😉 Wink',     value: 'wink' },
+  { id: 'heart',    label: '🥰 Heart',    value: 'heart' },
 ];
 
 export const ACCESSORIES = [
   { id: 'none',      label: 'None',       value: '' },
-  { id: 'glasses1',  label: '👓 Glasses', value: 'variant01' },
-  { id: 'glasses2',  label: '🕶️ Shades',  value: 'variant02' },
-  { id: 'glasses3',  label: '🤓 Nerd',    value: 'variant03' },
-  { id: 'glasses4',  label: '💎 Cat-eye', value: 'variant04' },
-  { id: 'glasses5',  label: '✨ Round',   value: 'variant05' },
+  { id: 'glasses1',  label: '👓 Glasses', value: 'g1' },
+  { id: 'glasses2',  label: '🕶️ Shades',  value: 'g2' },
+  { id: 'glasses3',  label: '🤓 Nerd',    value: 'g3' },
+  { id: 'glasses4',  label: '💎 Cat-eye', value: 'g4' },
+  { id: 'glasses5',  label: '✨ Round',   value: 'g5' },
 ];
 
 export const OUTFITS = [
-  { id: 'o1',  label: '👕 Casual',     value: 'variant01' },
-  { id: 'o2',  label: '🎀 Cute',       value: 'variant02' },
-  { id: 'o3',  label: '🌸 Floral',     value: 'variant03' },
-  { id: 'o4',  label: '⭐ Sporty',     value: 'variant04' },
-  { id: 'o5',  label: '💼 Smart',      value: 'variant05' },
-  { id: 'o6',  label: '🎓 Academic',   value: 'variant06' },
-  { id: 'o7',  label: '🌙 Cozy',       value: 'variant07' },
-  { id: 'o8',  label: '🦋 Boho',       value: 'variant08' },
+  { id: 'o1',  label: '👕 Casual',     value: 'o1' },
+  { id: 'o2',  label: '🎀 Cute',       value: 'o2' },
+  { id: 'o3',  label: '🌸 Floral',     value: 'o3' },
+  { id: 'o4',  label: '⭐ Sporty',     value: 'o4' },
+  { id: 'o5',  label: '💼 Smart',      value: 'o5' },
+  { id: 'o6',  label: '🎓 Academic',   value: 'o6' },
+  { id: 'o7',  label: '🌙 Cozy',       value: 'o7' },
+  { id: 'o8',  label: '🦋 Boho',       value: 'o8' },
 ];
 
-// Build lorelei avatar URL from custom options
+// Build character avatar URL from custom options
+// Returns a compact chr: base64 string
 export const getCharacterAvatarUrl = (opts = {}) => {
   const {
     skinColor = 'f8d9c4',
     hairColor = '4a2c2c',
-    hairStyle = 'variant01',
+    hairStyle = 'v01',
     bgColor = 'ffb6c1',
-    eyes = 'variant01',
+    expression = 'cheery',
     glasses = '',
-    outfit = 'variant01',
+    outfit = 'o1',
     earrings = false,
   } = opts;
 
-  const params = new URLSearchParams({
-    seed: 'custom',
-    skinColor,
-    hairColor,
-    backgroundColor: bgColor,
-    radius: '50',
-  });
-  if (eyes) params.set('eyes', eyes);
-  if (hairStyle) params.set('hair', hairStyle);
-  if (glasses) params.set('glasses', glasses);
-  if (outfit) params.set('clothing', outfit);
-  if (earrings) params.set('earringsProbability', '100');
-
-  return `https://api.dicebear.com/7.x/lorelei/svg?${params.toString()}`;
+  const data = { skinColor, hairColor, hairStyle, bgColor, expression, glasses, outfit, earrings };
+  return 'chr:' + btoa(JSON.stringify(data));
 };
 
-// Parse an existing lorelei URL back into opts
+// Parse a chr: URL back into opts
 export const parseCharacterUrl = (url) => {
+  if (!url) return null;
   try {
+    if (url.startsWith('chr:')) {
+      const data = JSON.parse(atob(url.slice(4)));
+      return {
+        skinColor: data.skinColor || 'f8d9c4',
+        hairColor: data.hairColor || '4a2c2c',
+        hairStyle: data.hairStyle || 'v01',
+        bgColor: data.bgColor || 'ffb6c1',
+        expression: data.expression || 'cheery',
+        glasses: data.glasses || '',
+        outfit: data.outfit || 'o1',
+        earrings: !!data.earrings,
+      };
+    }
+    // Legacy lorelei URL support
     const u = new URL(url);
     if (!u.pathname.includes('lorelei')) return null;
     return {
       skinColor: u.searchParams.get('skinColor') || 'f8d9c4',
       hairColor: u.searchParams.get('hairColor') || '4a2c2c',
-      hairStyle: u.searchParams.get('hair') || 'variant01',
+      hairStyle: 'v01',
       bgColor: u.searchParams.get('backgroundColor') || 'ffb6c1',
-      eyes: u.searchParams.get('eyes') || 'variant01',
-      glasses: u.searchParams.get('glasses') || '',
-      outfit: u.searchParams.get('clothing') || 'variant01',
+      expression: 'cheery',
+      glasses: '',
+      outfit: 'o1',
       earrings: u.searchParams.get('earringsProbability') === '100',
     };
   } catch {
@@ -163,6 +167,7 @@ export const parseCharacterUrl = (url) => {
 export const detectAvatarMode = (url) => {
   if (!url) return 'sticker';
   if (url.startsWith('data:')) return 'photo';
+  if (url.startsWith('chr:')) return 'character';
   if (url.includes('lorelei')) return 'character';
   return 'sticker';
 };

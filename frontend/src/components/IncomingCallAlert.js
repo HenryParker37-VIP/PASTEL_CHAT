@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useCall } from '../contexts/CallContext';
+import AvatarImg from './AvatarImg';
 
 const IncomingCallAlert = () => {
   const { incomingCall, answerCall, rejectCall } = useCall();
@@ -66,7 +67,7 @@ const IncomingCallAlert = () => {
             border: '2px solid rgba(255,182,193,0.2)',
             animation: 'ringPulse 1.5s ease-out 0.3s infinite'
           }} />
-          <img
+          <AvatarImg
             src={from.avatar}
             alt={from.name}
             style={{ width: 80, height: 80, borderRadius: '50%', display: 'block', border: '3px solid rgba(255,255,255,0.2)' }}

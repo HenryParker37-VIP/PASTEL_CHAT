@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import OnlineUsers from '../components/OnlineUsers';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
+import AvatarImg from '../components/AvatarImg';
 
 const isMobile = () => window.innerWidth <= 700;
 
@@ -294,7 +295,7 @@ const Chat = () => {
                   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
                   title="View profile"
                 >
-                  <img
+                  <AvatarImg
                     src={friend.avatar}
                     alt=""
                     style={{ width: 32, height: 32, borderRadius: '50%', display: 'block' }}
@@ -373,7 +374,7 @@ const Chat = () => {
               padding: '14px 16px', flexShrink: 0,
               display: 'flex', alignItems: 'center', gap: 14
             }}>
-              <img src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%' }} />
+              <AvatarImg src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{friend.name}</div>
                 {friend.status && <div style={{ fontSize: 13, color: '#B08ABD', marginTop: 1 }}>{friend.status}</div>}
