@@ -64,8 +64,17 @@ router.post('/', authMiddleware, (req, res) => {
     // Validate media object
     let validMedia = null;
     if (media) {
+      // Sticker with imageUrl (new format)
+      if (media.type === 'sticker' && media.imageUrl) {
+        validMedia = {
+          type: 'sticker',
+          emoji: media.emoji ? String(media.emoji).slice(0, 10) : '📌',
+          imageUrl: String(media.imageUrl).slice(0, 2000),
+          name: media.name ? String(media.name).slice(0, 200) : 'Sticker'
+        };
+      }
       // GIF with URL (new format)
-      if (media.type === 'gif' && media.url) {
+      else if (media.type === 'gif' && media.url) {
         validMedia = {
           type: 'gif',
           url: String(media.url).slice(0, 2000),

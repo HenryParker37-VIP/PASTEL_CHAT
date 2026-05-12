@@ -96,17 +96,23 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     }
   };
 
-  const handleGifSelect = async ({ type, url, preview, emoji, label, title }) => {
+  const handleGifSelect = async ({ type, url, preview, emoji, label, title, imageUrl, name }) => {
     setShowGifPicker(false);
     setSending(true);
     try {
       if (type === 'sticker') {
-        // Emoji sticker from sticker store — send as plain text (renders large)
-        await onSend(emoji, null);
+        // Illustrated sticker — send as sticker media with imageUrl
+        await onSend(emoji, {
+          type: 'sticker',
+          emoji,
+          imageUrl,
+          name: name || label || emoji,
+        });
       } else if (type === 'emoji-sticker') {
+        // Legacy emoji sticker — send as plain text
         await onSend(emoji, null);
       } else {
-        // GIF — send as attachment with URL (new format)
+        // GIF — send as attachment with URL
         await onSend('', { type: 'gif', url, preview, name: title || 'GIF' });
       }
     } finally {

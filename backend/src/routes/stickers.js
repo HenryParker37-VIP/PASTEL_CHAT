@@ -2,6 +2,32 @@ const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { findUserById, store, persist, genId } = require('../db/store');
 
+// ── Helper function to convert emoji to OpenMoji CDN URL ────────────────────
+function getEmojiImageUrl(emoji) {
+  let code = '';
+  for (let i = 0; i < emoji.length; i++) {
+    const codePoint = emoji.codePointAt(i);
+    if (codePoint) {
+      code += codePoint.toString(16).toLowerCase() + '-';
+      i = emoji.length;
+    }
+  }
+  code = code.slice(0, -1);
+  return `https://cdn.jsdelivr.net/npm/openmoji@13.1.0/color/svg/${code}.svg`;
+}
+
+// ── Enhance sticker with imageUrl if missing ────────────────────────────────
+function enrichSticker(sticker) {
+  return {
+    ...sticker,
+    id: sticker.id || null,
+    imageUrl: sticker.imageUrl || getEmojiImageUrl(sticker.emoji),
+    width: sticker.width || 128,
+    height: sticker.height || 128,
+    category: sticker.category || 'default'
+  };
+}
+
 // ── In-memory sticker data (no MongoDB needed) ────────────────────────────────
 const SEED_PACKS = [
   {
@@ -349,7 +375,7 @@ router.get('/packs/:packSlug', (req, res) => {
     tags: pack.tags,
     isPremium: false,
     isAdded,
-    stickers: pack.stickers.map((s, i) => ({ id: `${pack.slug}_${i}`, ...s })),
+    stickers: pack.stickers.map((s, i) => ({ id: `${pack.slug}_${i}`, ...enrichSticker(s) })),
   });
 });
 
@@ -413,7 +439,7 @@ router.get('/my-packs', (req, res) => {
         name: pack.name,
         nameVi: pack.nameVi,
         cover: pack.cover,
-        stickers: pack.stickers.map((s, i) => ({ id: `${pack.slug}_${i}`, ...s })),
+        stickers: pack.stickers.map((s, i) => ({ id: `${pack.slug}_${i}`, ...enrichSticker(s) })),
       };
     })
     .filter(Boolean);

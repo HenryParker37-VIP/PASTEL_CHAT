@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import GifMessage from './GifMessage';
+import StickerDisplay from './StickerDisplay';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -133,6 +134,18 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
                   <div className="reply-preview-name">{replyPreview.name}</div>
                   <div className="reply-preview-text">{replyPreview.content}</div>
                 </div>
+              </div>
+            )}
+
+            {/* Sticker (illustrated) */}
+            {message.media?.type === 'sticker' && !message.isRecalled && (
+              <div className="bubble-sticker" style={{ marginTop: 8 }}>
+                <StickerDisplay
+                  emoji={message.media.emoji}
+                  imageUrl={message.media.imageUrl}
+                  label={message.media.name}
+                  size="large"
+                />
               </div>
             )}
 
