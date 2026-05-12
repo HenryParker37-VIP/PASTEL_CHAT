@@ -63,15 +63,28 @@ router.post('/', authMiddleware, (req, res) => {
 
     // Validate media object
     let validMedia = null;
-    if (media && media.dataUrl && media.name) {
-      const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
-      if (sizeBytes > 8 * 1024 * 1024) return res.status(400).json({ message: 'File too large (max 8MB)' });
-      validMedia = {
-        type: media.type === 'image' ? 'image' : 'file',
-        dataUrl: media.dataUrl,
-        name: String(media.name).slice(0, 200),
-        size: sizeBytes
-      };
+    if (media) {
+      // GIF with URL (new format)
+      if (media.type === 'gif' && media.url) {
+        validMedia = {
+          type: 'gif',
+          url: String(media.url).slice(0, 2000),
+          preview: media.preview ? String(media.preview).slice(0, 2000) : null,
+          name: media.name ? String(media.name).slice(0, 200) : 'GIF',
+          duration: media.duration || null
+        };
+      }
+      // Legacy format (base64 dataUrl) - keep for backward compatibility
+      else if (media.dataUrl && media.name) {
+        const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
+        if (sizeBytes > 8 * 1024 * 1024) return res.status(400).json({ message: 'File too large (max 8MB)' });
+        validMedia = {
+          type: media.type === 'image' ? 'image' : 'file',
+          dataUrl: media.dataUrl,
+          name: String(media.name).slice(0, 200),
+          size: sizeBytes
+        };
+      }
     }
 
     const msg = createMessage({

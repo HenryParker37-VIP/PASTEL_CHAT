@@ -106,8 +106,8 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
       } else if (type === 'emoji-sticker') {
         await onSend(emoji, null);
       } else {
-        // GIF — send as attachment
-        await onSend('', { type: 'gif', dataUrl: url, preview, name: title || 'GIF' });
+        // GIF — send as attachment with URL (new format)
+        await onSend('', { type: 'gif', url, preview, name: title || 'GIF' });
       }
     } finally {
       setSending(false);

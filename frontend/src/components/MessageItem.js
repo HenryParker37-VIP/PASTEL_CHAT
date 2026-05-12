@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import GifMessage from './GifMessage';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -138,11 +139,10 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
             {/* GIF / Sticker */}
             {message.media?.type === 'gif' && !message.isRecalled && (
               <div className="bubble-gif">
-                <img
-                  src={message.media.dataUrl}
-                  alt={message.media.name || 'GIF'}
-                  className="bubble-gif-img"
-                  onClick={() => window.open(message.media.dataUrl, '_blank')}
+                <GifMessage
+                  url={message.media.url || message.media.dataUrl}
+                  preview={message.media.preview}
+                  title={message.media.name || 'GIF'}
                 />
               </div>
             )}

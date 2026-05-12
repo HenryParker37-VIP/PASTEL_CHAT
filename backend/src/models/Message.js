@@ -28,10 +28,33 @@ const messageSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now
+  },
+  media: {
+    type: {
+      type: String,
+      enum: ['gif', 'image', 'file'],
+      default: null
+    },
+    url: String,
+    preview: String,
+    name: String,
+    size: Number,
+    duration: Number,
+    dataUrl: String
+  },
+  reactions: {
+    type: Map,
+    of: [mongoose.Schema.Types.ObjectId],
+    default: new Map()
+  },
+  isPinned: {
+    type: Boolean,
+    default: false
   }
 });
 
 messageSchema.index({ timestamp: -1 });
 messageSchema.index({ senderId: 1 });
+messageSchema.index({ 'media.type': 1 });
 
 module.exports = mongoose.model('Message', messageSchema);
