@@ -96,6 +96,10 @@ function findUserById(id) {
   if (!id) return null;
   return store.users.find((u) => String(u._id) === String(id));
 }
+function findUserByVerificationCode(code) {
+  if (!code) return null;
+  return store.users.find((u) => u.telegramVerificationCode === code.toUpperCase());
+}
 function findUserByName(name) {
   if (!name) return null;
   const lower = name.trim().toLowerCase();
@@ -581,7 +585,7 @@ load();
 
 module.exports = {
   store, persist, genId, generateLoginCode,
-  findUser, findUserById, findUserByName, isNameTaken,
+  findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
   createUser, updateUser, searchUsers, getOnlineUsers, userPublic,
   getFriends, findFriendship, addFriend, updateFriend, removeFriend,
   createRequest, findRequest, findRequestById, removeRequest, getRequests,
