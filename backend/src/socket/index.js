@@ -13,6 +13,7 @@ const {
   getPushSubscriptions,
   removePushSubscription
 } = require('../db/store');
+const { notifyIncomingCall } = require('../integrations/notificationManager');
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
@@ -141,7 +142,7 @@ const setupSocket = (io) => {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         callType: type
       });
-      // Send push if the callee is offline / backgrounded
+      // Send push notification
       sendPush(to, {
         type:        'incoming_call',
         callType:    type,
@@ -149,6 +150,8 @@ const setupSocket = (io) => {
         callerName:  user.name,
         callerAvatar: user.avatar,
       });
+      // Send Telegram notification (async, non-blocking)
+      notifyIncomingCall(to, { name: user.name, avatar: user.avatar }, type).catch(() => {});
     });
 
     socket.on('call:accept', ({ to }) => {
