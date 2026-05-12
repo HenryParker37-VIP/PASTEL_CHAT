@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const { notifyNewMessage, notifySticker, notifyGif } = require('../integrations/notificationManager');
 const {
   createMessage,
   updateMessage,
@@ -116,6 +117,21 @@ router.post('/', authMiddleware, (req, res) => {
       preview: populated.content.slice(0, 80),
       messageId: populated._id
     });
+
+    // Send Telegram notification if applicable
+    if (validMedia?.type === 'sticker') {
+      notifySticker(receiverId, req.user, validMedia.name).catch(e =>
+        console.error('[Telegram] Failed to send sticker notification:', e.message)
+      );
+    } else if (validMedia?.type === 'gif') {
+      notifyGif(receiverId, req.user, validMedia.name).catch(e =>
+        console.error('[Telegram] Failed to send GIF notification:', e.message)
+      );
+    } else if (content && content.trim()) {
+      notifyNewMessage(receiverId, req.user, content).catch(e =>
+        console.error('[Telegram] Failed to send message notification:', e.message)
+      );
+    }
 
     res.status(201).json(populated);
   } catch (e) {
