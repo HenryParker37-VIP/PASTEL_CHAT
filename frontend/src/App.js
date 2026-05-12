@@ -92,6 +92,53 @@ const CallOverlays = () => {
   );
 };
 
+// Restore a pending call encoded in URL params (from Telegram notification deep link)
+const PendingCallRestorer = () => {
+  const { user, loading } = useAuth();
+  const { setIncomingCall, incomingCall, activeCall } = useCall();
+
+  useEffect(() => {
+    // Save call params to localStorage before auth redirects away
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'incoming-call') {
+      localStorage.setItem('pendingCallParams', window.location.search);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loading || !user) return;
+
+    // Check URL first, then fall back to localStorage
+    let search = window.location.search;
+    const stored = localStorage.getItem('pendingCallParams');
+    if (new URLSearchParams(search).get('action') !== 'incoming-call' && stored) {
+      search = stored;
+    }
+    localStorage.removeItem('pendingCallParams');
+
+    const params = new URLSearchParams(search);
+    if (params.get('action') !== 'incoming-call') return;
+    if (incomingCall || activeCall) return;
+
+    const callerId   = params.get('callerId');
+    const callerName = params.get('callerName') || 'Friend';
+    const callerAvatar = params.get('callerAvatar') || '';
+    const callType   = params.get('callType') === 'video' ? 'video' : 'voice';
+
+    setIncomingCall({
+      from: { _id: callerId || 'unknown', name: callerName, avatar: callerAvatar },
+      callType
+    });
+
+    // Clean up URL params without reloading
+    const url = new URL(window.location.href);
+    ['action', 'callerId', 'callerName', 'callerAvatar', 'callType'].forEach(k => url.searchParams.delete(k));
+    window.history.replaceState({}, '', url.toString());
+  }, [loading, user, setIncomingCall, incomingCall, activeCall]);
+
+  return null;
+};
+
 const AppRoutes = () => {
   const { user } = useAuth();
   const [birthdayOverlay, setBirthdayOverlay] = useState(null);
@@ -106,6 +153,7 @@ const AppRoutes = () => {
 
   return (
     <>
+      <PendingCallRestorer />
       {user && <GlobalSocketListener onHappyBirthday={handleHappyBirthday} />}
       {user && <CallOverlays />}
       {user && <GlobalChecker onBirthdayToday={handleBirthdayToday} />}

@@ -434,6 +434,7 @@ export const CallProvider = ({ children }) => {
   return (
     <CallContext.Provider value={{
       incomingCall, activeCall, isPiP,
+      setIncomingCall,
       localVideoRef, remoteVideoRef, remoteAudioRef,
       startCall, answerCall, rejectCall, endCall,
       toggleMute, toggleSpeaker, toggleCamera,

@@ -56,7 +56,19 @@ function formatCallNotification(caller, options = {}) {
 }
 
 // Build inline keyboard for opening the app
-function buildOpenAppButton(url = process.env.CLIENT_URL || 'https://pastel-chat.vercel.app') {
+function buildOpenAppButton(baseUrl, callParams = null) {
+  const base = baseUrl || process.env.CLIENT_URL || 'https://pastel-chat.vercel.app';
+  let url = base;
+  if (callParams) {
+    const params = new URLSearchParams({
+      action: 'incoming-call',
+      callType: callParams.callType || 'voice',
+      callerName: callParams.callerName || 'Friend',
+      ...(callParams.callerId && { callerId: callParams.callerId }),
+      ...(callParams.callerAvatar && { callerAvatar: callParams.callerAvatar })
+    });
+    url = `${base}?${params.toString()}`;
+  }
   return {
     inline_keyboard: [[
       { text: '📲 Open Pastel Chat', url }
