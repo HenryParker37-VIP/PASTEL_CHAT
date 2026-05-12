@@ -129,7 +129,15 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
   };
 
   const sendGif = (item) => {
-    onSelect({ type: 'gif', url: gifUrl(item), preview: gifPreview(item), title: item.title || 'GIF' });
+    const url = gifUrl(item);
+    const preview = gifPreview(item);
+    onSelect({
+      type: 'gif',
+      url,
+      preview,
+      name: item.title || 'GIF',
+      duration: item.content_description ? null : item.duration || null
+    });
     onClose();
   };
 
