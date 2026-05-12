@@ -2,21 +2,19 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { stickerApi } from '../services/api';
 import StickerStore from './StickerStore';
 
-// Tenor v2 API — use proper public key or fallback
-const TENOR_KEY = process.env.REACT_APP_TENOR_API_KEY || 'AIzaSyDYH8XWx_2AGH-D2wB9tXU67DZ7PaIL9ak';
-const TENOR_BASE = 'https://tenor.googleapis.com/v2';
+// Giphy API
+const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || 'UdbjLjW3ybC1o4BljzlKM3zijH4VA9vj';
+const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
 const LIMIT = 20;
 
-async function fetchTenor(endpoint, params = {}) {
-  const url = new URL(`${TENOR_BASE}${endpoint}`);
-  url.searchParams.set('key', TENOR_KEY);
+async function fetchGiphy(endpoint, params = {}) {
+  const url = new URL(`${GIPHY_BASE}${endpoint}`);
+  url.searchParams.set('api_key', GIPHY_KEY);
   url.searchParams.set('limit', LIMIT);
-  url.searchParams.set('media_filter', 'gif,tinygif,nanogif');
-  url.searchParams.set('contentfilter', 'medium');
-  url.searchParams.set('country', 'US');
+  url.searchParams.set('rating', 'pg');
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
-  console.log('[Tenor] Fetching:', endpoint, 'with params:', params);
+  console.log('[Giphy] Fetching:', endpoint, 'with params:', params);
 
   try {
     const res = await fetch(url.toString(), {
@@ -29,29 +27,29 @@ async function fetchTenor(endpoint, params = {}) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error('[Tenor] Response error:', res.status, errText);
-      throw new Error(`Tenor ${res.status}: ${errText}`);
+      console.error('[Giphy] Response error:', res.status, errText);
+      throw new Error(`Giphy ${res.status}: ${errText}`);
     }
 
     const data = await res.json();
-    console.log('[Tenor] Got', data.results?.length || 0, 'results');
+    console.log('[Giphy] Got', data.data?.length || 0, 'results');
 
-    if (!data.results) {
-      console.warn('[Tenor] No results field in response:', data);
+    if (!data.data) {
+      console.warn('[Giphy] No data field in response:', data);
       return [];
     }
 
-    return data.results;
+    return data.data;
   } catch (err) {
-    console.error('[Tenor] Fetch error:', err.message);
+    console.error('[Giphy] Fetch error:', err.message);
     throw err;
   }
 }
 
 const gifUrl = (item) =>
-  item?.media_formats?.gif?.url || item?.media_formats?.tinygif?.url || '';
+  item?.images?.original?.url || '';
 const gifPreview = (item) =>
-  item?.media_formats?.tinygif?.url || item?.media_formats?.nanogif?.url || item?.media_formats?.gif?.url || '';
+  item?.images?.fixed_height?.url || item?.images?.original?.url || '';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -95,10 +93,10 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
     setGifsLoading(true);
     setGifError(null);
     try {
-      const endpoint = query ? '/search' : '/featured';
+      const endpoint = query ? '/search' : '/trending';
       const params = query ? { q: query } : {};
       console.log('[Picker] Loading GIFs:', { endpoint, params });
-      const data = await fetchTenor(endpoint, params);
+      const data = await fetchGiphy(endpoint, params);
       console.log('[Picker] Got', data.length, 'GIFs');
       setGifs(data);
       if (data.length === 0) {
