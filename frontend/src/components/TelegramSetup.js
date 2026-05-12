@@ -50,30 +50,38 @@ const TelegramSetup = ({ onClose, onConnected }) => {
     }
   };
 
-  const handleConnect = async () => {
-    if (!telegramUsername.trim()) {
-      setError('Please enter your Telegram username');
-      return;
-    }
+  // Detect platform for install links
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const telegramInstallUrl = isIOS
+    ? 'https://apps.apple.com/app/telegram-messenger/id686449807'
+    : isAndroid
+      ? 'https://play.google.com/store/apps/details?id=org.telegram.messenger'
+      : 'https://telegram.org/';
 
+  const handleConnect = async () => {
     setLoading(true);
     setError('');
     try {
       const response = await api.post('/api/telegram/connect', {
-        telegramUsername: telegramUsername.trim()
+        telegramUsername: telegramUsername.trim() || 'unknown'
       });
 
       if (!response.data?.verificationCode) {
-        throw new Error('Backend did not return verification code');
+        throw new Error('Could not get verification code');
       }
 
-      setVerificationCode(response.data.verificationCode);
-      setInstructions(response.data.instructions || 'Open your Telegram app and search for @PastelChat_Notification_bot');
-      setStep('connect');
-      // Start polling immediately — verification completes automatically when bot receives /verify
+      const code = response.data.verificationCode;
+      setVerificationCode(code);
+
+      // Open Telegram deep link — bot receives /start CODE automatically
+      const deepLink = `https://t.me/PastelChat_Notification_bot?start=${code}`;
+      window.open(deepLink, '_blank');
+
+      // Start polling — auto-completes when bot processes the deep link
       setTimeout(() => startPollingVerification(), 500);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to initiate Telegram connection. Please try again.';
+      const errorMsg = err.response?.data?.message || 'Could not connect to server. Is the backend running?';
       console.error('Connect error:', errorMsg, err);
       setError(errorMsg);
     } finally {
@@ -179,92 +187,64 @@ const TelegramSetup = ({ onClose, onConnected }) => {
               📱 Telegram Notifications
             </h2>
             <p style={{ fontSize: 14, color: colors.secondaryText, marginBottom: 16, lineHeight: 1.5 }}>
-              Get reliable notifications for incoming calls and messages, even when the app is closed. Telegram works great on iOS!
+              Get reliable notifications for calls and messages, even when Pastel Chat is closed. Works great on iPhone!
             </p>
 
             <div style={{
-              background: colors.listBg,
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 16,
-              fontSize: 13,
-              lineHeight: 1.6,
-              color: colors.listText
+              background: colors.listBg, borderRadius: 12, padding: 12,
+              marginBottom: 20, fontSize: 13, lineHeight: 1.7, color: colors.listText
             }}>
-              <strong style={{ color: colors.text }}>What you get:</strong>
-              <ul style={{ marginLeft: 16, marginTop: 8, color: colors.secondaryText }}>
-                <li>✅ Reliable notifications on iOS</li>
-                <li>✅ Incoming call alerts</li>
-                <li>✅ Message previews</li>
-                <li>✅ Friend requests</li>
-              </ul>
+              <div>📞 Incoming call alerts</div>
+              <div>💬 Message previews</div>
+              <div>👥 Friend requests</div>
+              <div>✅ Works even when app is closed</div>
             </div>
-
-            <input
-              type="text"
-              placeholder="@your_telegram_username"
-              value={telegramUsername}
-              onChange={(e) => {
-                setTelegramUsername(e.target.value);
-                setError('');
-              }}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: `1px solid ${colors.inputBorder}`,
-                borderRadius: 8,
-                fontSize: 14,
-                marginBottom: 16,
-                boxSizing: 'border-box',
-                background: colors.inputBg,
-                color: colors.inputText
-              }}
-            />
 
             {error && (
-              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 16 }}>
-                {error}
-              </div>
+              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 12 }}>{error}</div>
             )}
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => onClose?.()}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  border: `1px solid ${colors.inputBorder}`,
-                  borderRadius: 8,
-                  background: colors.inputBg,
-                  color: colors.text,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Not now
-              </button>
-              <button
-                onClick={handleConnect}
-                disabled={loading || !telegramUsername.trim()}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  border: 'none',
-                  borderRadius: 8,
-                  background: '#6366f1',
-                  color: 'white',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: loading || !telegramUsername.trim() ? 'not-allowed' : 'pointer',
-                  opacity: loading || !telegramUsername.trim() ? 0.6 : 1,
-                  transition: 'all 0.2s'
-                }}
-              >
-                {loading ? '...' : 'Continue'}
-              </button>
-            </div>
+            {/* Primary: one-tap connect */}
+            <button
+              onClick={handleConnect}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '13px 16px', border: 'none', borderRadius: 10,
+                background: 'linear-gradient(135deg, #0088cc, #0055aa)',
+                color: 'white', fontSize: 15, fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1, marginBottom: 10
+              }}
+            >
+              {loading ? '⏳ Opening Telegram...' : '✈️ Connect with Telegram'}
+            </button>
+
+            {/* Secondary: get Telegram if not installed */}
+            <a
+              href={telegramInstallUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block', width: '100%', padding: '10px 16px',
+                border: `1px solid ${colors.inputBorder}`, borderRadius: 10,
+                background: 'transparent', color: colors.secondaryText,
+                fontSize: 13, fontWeight: 500, textAlign: 'center',
+                textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box'
+              }}
+            >
+              {isIOS ? '🍎 Download Telegram on App Store' : isAndroid ? '🤖 Get Telegram on Google Play' : '📥 Download Telegram'}
+            </a>
+
+            <button
+              onClick={() => onClose?.()}
+              style={{
+                width: '100%', padding: '8px 16px', border: 'none',
+                borderRadius: 8, background: 'transparent',
+                color: colors.secondaryText, fontSize: 13, cursor: 'pointer'
+              }}
+            >
+              Not now
+            </button>
           </>
         )}
 

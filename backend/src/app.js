@@ -66,15 +66,17 @@ const startTelegramPolling = () => {
     return;
   }
 
+  const BOT_USERNAME = (process.env.TELEGRAM_BOT_USERNAME || 'PastelChat_Notification_bot').replace('@', '');
   const API = `https://api.telegram.org/bot${TOKEN}`;
   let offset = 0;
   let running = true;
+  const processedIds = new Set(); // Deduplicate update IDs within this process
 
-  const sendMessage = async (chatId, text) => {
+  const sendMessage = async (chatId, text, extra = {}) => {
     const r = await fetch(`${API}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text })
+      body: JSON.stringify({ chat_id: chatId, text, ...extra })
     });
     const body = await r.json();
     if (!body.ok) {
@@ -83,6 +85,32 @@ const startTelegramPolling = () => {
       console.log(`[Telegram] ✉️  Replied to chatId ${chatId}`);
     }
     return body;
+  };
+
+  const handleVerifyCode = async (code, chatId) => {
+    const user = findUserByVerificationCode(code);
+    if (!user) {
+      await sendMessage(chatId, '❌ Invalid or expired code. Please restart setup in Pastel Chat.');
+      return;
+    }
+    const expired = user.telegramVerificationExpires && new Date() > new Date(user.telegramVerificationExpires);
+    if (expired) {
+      await sendMessage(chatId, '⏰ Code expired. Please restart setup in Pastel Chat.');
+      return;
+    }
+    updateUser(user._id, {
+      telegramChatId: String(chatId),
+      telegramConnected: true,
+      telegramVerified: true,
+      telegramVerificationCode: null,
+      telegramVerificationExpires: null
+    });
+    console.log(`[Telegram] ✅ Verified user ${user.name} (chatId: ${chatId})`);
+    await sendMessage(chatId,
+      '🎉 Connected to Pastel Chat!\n\nYou\'ll now receive notifications for incoming calls, messages, and friend requests.',
+      { parse_mode: 'Markdown' }
+    );
+    io.emit('telegram:verified', { userId: String(user._id), chatId });
   };
 
   const poll = async () => {
@@ -109,6 +137,15 @@ const startTelegramPolling = () => {
 
       for (const update of updates) {
         offset = update.update_id + 1;
+        // Deduplicate: skip if already processed in this session
+        if (processedIds.has(update.update_id)) continue;
+        processedIds.add(update.update_id);
+        // Keep set small
+        if (processedIds.size > 500) {
+          const oldest = [...processedIds].slice(0, 250);
+          oldest.forEach(id => processedIds.delete(id));
+        }
+
         const msg = update.message;
         if (!msg) continue;
 
@@ -116,45 +153,28 @@ const startTelegramPolling = () => {
         const chatId = chat.id;
         console.log(`[Telegram] 📩 Message from @${from.username || from.first_name}: "${text}"`);
 
+        // Deep link: /start CODE  (from t.me/bot?start=CODE)
+        if (text && text.startsWith('/start ')) {
+          const payload = text.slice(7).trim().toUpperCase();
+          if (payload) {
+            console.log(`[Telegram] Deep link /start with code: ${payload}`);
+            await handleVerifyCode(payload, chatId);
+            continue;
+          }
+        }
+
         if (text === '/start') {
           console.log('[Telegram] /start received — sending welcome');
           await sendMessage(chatId,
             '🌸 Welcome to Pastel Chat Notifications!\n\n' +
-            "I'll send you notifications for:\n" +
-            '✅ Incoming calls\n✅ Messages & stickers\n✅ Friend requests\n\n' +
-            'To connect your account:\n' +
-            '1. Open Pastel Chat\n' +
-            '2. Tap the Telegram button\n' +
-            '3. Enter your Telegram username\n' +
-            '4. Send me: /verify CODE\n\n' +
-            "That's it! 🎉"
+            "I'll notify you about:\n" +
+            '📞 Incoming calls\n💬 Messages & stickers\n👥 Friend requests\n\n' +
+            'To connect, open Pastel Chat and tap the Telegram button — it\'s automatic! 🎉'
           );
         } else if (text && text.startsWith('/verify ')) {
           const code = text.slice(8).trim().toUpperCase();
           console.log(`[Telegram] /verify received — code: ${code}, chatId: ${chatId}`);
-
-          // Find user with this verification code and complete verification
-          const user = findUserByVerificationCode(code);
-          if (user) {
-            const expired = user.telegramVerificationExpires && new Date() > new Date(user.telegramVerificationExpires);
-            if (expired) {
-              await sendMessage(chatId, '⏰ Verification code expired. Please restart the setup in Pastel Chat.');
-            } else {
-              updateUser(user._id, {
-                telegramChatId: String(chatId),
-                telegramConnected: true,
-                telegramVerified: true,
-                telegramVerificationCode: null,
-                telegramVerificationExpires: null
-              });
-              console.log(`[Telegram] ✅ Verified user ${user.name} (chatId: ${chatId})`);
-              await sendMessage(chatId, '🎉 Connected to Pastel Chat! You\'ll now receive notifications here.');
-              // Notify the frontend via Socket.IO so it auto-completes
-              io.emit('telegram:verified', { userId: String(user._id), chatId });
-            }
-          } else {
-            await sendMessage(chatId, '❌ Invalid or expired code. Please restart the setup in Pastel Chat.');
-          }
+          await handleVerifyCode(code, chatId);
         }
       }
     } catch (e) {
