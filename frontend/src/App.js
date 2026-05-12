@@ -92,48 +92,57 @@ const CallOverlays = () => {
   );
 };
 
-// Restore a pending call encoded in URL params (from Telegram notification deep link)
+// Restore a pending incoming call when app opens from a Telegram notification.
+// Strategy: check the server for a pending call (reliable, works in Safari + PWA).
+// URL params are kept as a fast-path hint to skip the API round-trip.
 const PendingCallRestorer = () => {
   const { user, loading } = useAuth();
   const { setIncomingCall, incomingCall, activeCall } = useCall();
 
   useEffect(() => {
-    // Save call params to localStorage before auth redirects away
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('action') === 'incoming-call') {
-      localStorage.setItem('pendingCallParams', window.location.search);
+    if (loading || !user || incomingCall || activeCall) return;
+
+    const fromUrl = (() => {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') !== 'incoming-call') return null;
+      // Clean URL immediately
+      const url = new URL(window.location.href);
+      ['action', 'callerId', 'callerName', 'callerAvatar', 'callType'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+      return {
+        callerId: p.get('callerId') || 'unknown',
+        callerName: p.get('callerName') || 'Friend',
+        callerAvatar: p.get('callerAvatar') || '',
+        callType: p.get('callType') === 'video' ? 'video' : 'voice'
+      };
+    })();
+
+    // If URL params present, show call immediately while also confirming with server
+    if (fromUrl) {
+      setIncomingCall({
+        from: { _id: fromUrl.callerId, name: fromUrl.callerName, avatar: fromUrl.callerAvatar },
+        callType: fromUrl.callType
+      });
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (loading || !user) return;
+    // Otherwise ask the server — handles the case where app opened via plain link or refreshed
+    const BACKEND = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-    // Check URL first, then fall back to localStorage
-    let search = window.location.search;
-    const stored = localStorage.getItem('pendingCallParams');
-    if (new URLSearchParams(search).get('action') !== 'incoming-call' && stored) {
-      search = stored;
-    }
-    localStorage.removeItem('pendingCallParams');
-
-    const params = new URLSearchParams(search);
-    if (params.get('action') !== 'incoming-call') return;
-    if (incomingCall || activeCall) return;
-
-    const callerId   = params.get('callerId');
-    const callerName = params.get('callerName') || 'Friend';
-    const callerAvatar = params.get('callerAvatar') || '';
-    const callType   = params.get('callType') === 'video' ? 'video' : 'voice';
-
-    setIncomingCall({
-      from: { _id: callerId || 'unknown', name: callerName, avatar: callerAvatar },
-      callType
-    });
-
-    // Clean up URL params without reloading
-    const url = new URL(window.location.href);
-    ['action', 'callerId', 'callerName', 'callerAvatar', 'callType'].forEach(k => url.searchParams.delete(k));
-    window.history.replaceState({}, '', url.toString());
+    fetch(`${BACKEND}/api/calls/pending`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.pending) return;
+        setIncomingCall({
+          from: { _id: data.callerId || 'unknown', name: data.callerName || 'Friend', avatar: data.callerAvatar || '' },
+          callType: data.callType || 'voice'
+        });
+      })
+      .catch(() => {});
   }, [loading, user, setIncomingCall, incomingCall, activeCall]);
 
   return null;
