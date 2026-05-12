@@ -2,6 +2,7 @@ const { findUserById } = require('../db/store');
 const {
   sendTelegramNotification,
   formatCallNotification,
+  buildOpenAppButton,
   formatMessageNotification,
   formatStickerNotification,
   formatGifNotification,
@@ -30,13 +31,13 @@ async function notifyUser(userId, notificationType, notificationData = {}) {
     case 'incoming_call':
       if (!userPrefs.enableTelegramNotifications || !userPrefs.enableTelegramCalls) return;
       shouldNotify = true;
-      text = formatCallNotification(sender);
+      text = formatCallNotification(sender, { callType: notificationData.callType });
       break;
 
     case 'missed_call':
       if (!userPrefs.enableTelegramNotifications || !userPrefs.enableTelegramCalls) return;
       shouldNotify = true;
-      text = formatCallNotification(sender, { missed: true });
+      text = formatCallNotification(sender, { missed: true, callType: notificationData.callType });
       break;
 
     case 'new_message':
@@ -69,7 +70,9 @@ async function notifyUser(userId, notificationType, notificationData = {}) {
 
   if (shouldNotify && text) {
     try {
-      await sendTelegramNotification(user.telegramChatId, text);
+      const isCall = notificationType === 'incoming_call' || notificationType === 'missed_call';
+      const options = isCall ? { replyMarkup: buildOpenAppButton() } : {};
+      await sendTelegramNotification(user.telegramChatId, text, options);
     } catch (e) {
       console.error(`[NotificationManager] Failed to send ${notificationType} to Telegram:`, e.message);
     }
@@ -77,8 +80,8 @@ async function notifyUser(userId, notificationType, notificationData = {}) {
 }
 
 // Send notification for incoming call
-async function notifyIncomingCall(userId, caller) {
-  return notifyUser(userId, 'incoming_call', { sender: caller });
+async function notifyIncomingCall(userId, caller, callType = 'voice') {
+  return notifyUser(userId, 'incoming_call', { sender: caller, callType });
 }
 
 // Send notification for missed call
