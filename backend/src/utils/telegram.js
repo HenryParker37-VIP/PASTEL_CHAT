@@ -47,11 +47,21 @@ async function sendTelegramNotification(chatId, text, options = {}) {
 
 // Format notification for incoming call
 function formatCallNotification(caller, options = {}) {
-  const fallbackName = caller.name || 'Friend';
+  const name = caller.name || 'Friend';
+  const callType = options.callType === 'video' ? '🎥 Video' : '📞 Voice';
   const text = options.missed
-    ? `📵 Missed call from *${fallbackName}*\n\nTap to call back`
-    : `📱 Incoming call from *${fallbackName}*\n\nTap to answer in Pastel Chat`;
+    ? `📵 *Missed ${callType.toLowerCase()} call* from *${name}*`
+    : `${callType} *call* from *${name}*\n\n_Open Pastel Chat to answer_`;
   return text;
+}
+
+// Build inline keyboard for opening the app
+function buildOpenAppButton(url = process.env.CLIENT_URL || 'https://pastel-chat.vercel.app') {
+  return {
+    inline_keyboard: [[
+      { text: '📲 Open Pastel Chat', url }
+    ]]
+  };
 }
 
 // Format notification for friend request
@@ -85,6 +95,7 @@ function formatGifNotification(sender) {
 module.exports = {
   sendTelegramNotification,
   formatCallNotification,
+  buildOpenAppButton,
   formatFriendRequestNotification,
   formatMessageNotification,
   formatStickerNotification,
