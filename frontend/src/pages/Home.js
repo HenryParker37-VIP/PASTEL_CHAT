@@ -118,20 +118,6 @@ const Home = () => {
               <span className="home-mobile-label">{t(tile.labelKey)}</span>
             </button>
           ))}
-          {/* Telegram Notifications */}
-          <button
-            className="home-mobile-tile pop-in"
-            style={{
-              animationDelay: `${TILES.length * 0.06}s`,
-              background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)'
-            }}
-            onClick={() => setShowTelegramSetup(true)}
-          >
-            <span className="home-mobile-emoji float" style={{ animationDelay: `${TILES.length * 0.15}s` }}>
-              📱
-            </span>
-            <span className="home-mobile-label">Telegram</span>
-          </button>
         </div>
 
         {/* Login code */}
@@ -139,18 +125,35 @@ const Home = () => {
           <div className="home-mobile-code-wrap">
             <p className="home-mobile-code-hint">{t('homeLoginCode')}</p>
             <div className="code-display">{user.loginCode}</div>
-            <div
-              onClick={() => navigate('/install')}
-              style={{
-                marginTop: 12,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 16px', borderRadius: 20,
-                background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
-                cursor: 'pointer'
-              }}
-            >
-              <span style={{ fontSize: 15 }}>📲</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setShowTelegramSetup(true)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 16px', borderRadius: 20,
+                  background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
+                  cursor: 'pointer',
+                  border: 'none',
+                  fontWeight: 600,
+                  color: 'white',
+                  fontSize: 12
+                }}
+              >
+                <span style={{ fontSize: 15 }}>📱</span>
+                <span>Telegram</span>
+              </button>
+              <div
+                onClick={() => navigate('/install')}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 16px', borderRadius: 20,
+                  background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                  cursor: 'pointer'
+                }}
+              >
+                <span style={{ fontSize: 15 }}>📲</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+              </div>
             </div>
           </div>
         )}
@@ -211,20 +214,6 @@ const Home = () => {
             <p>{t(tile.descKey)}</p>
           </div>
         ))}
-        {/* Telegram Notifications */}
-        <div
-          className="home-tile pop-in"
-          style={{
-            animationDelay: `${0.05 + TILES.length * 0.05}s`,
-            background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-            cursor: 'pointer'
-          }}
-          onClick={() => setShowTelegramSetup(true)}
-        >
-          <span className="emoji float" style={{ animationDelay: `${TILES.length * 0.15}s` }}>📱</span>
-          <h3 style={{ color: 'white' }}>Telegram</h3>
-          <p style={{ color: 'rgba(255,255,255,0.9)' }}>Get notifications via Telegram, even when the app is closed</p>
-        </div>
       </div>
 
       {user?.loginCode && (
@@ -232,18 +221,35 @@ const Home = () => {
           <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>{t('homeLoginCode')}</p>
           <div className="code-display">{user.loginCode}</div>
           <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
-          <div
-            onClick={() => navigate('/install')}
-            style={{
-              marginTop: 14,
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '7px 16px', borderRadius: 20,
-              background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
-              cursor: 'pointer', border: 'none'
-            }}
-          >
-            <span style={{ fontSize: 15 }}>📲</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowTelegramSetup(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
+                cursor: 'pointer',
+                border: 'none',
+                fontWeight: 600,
+                color: 'white',
+                fontSize: 12
+              }}
+            >
+              <span style={{ fontSize: 15 }}>📱</span>
+              <span>Telegram</span>
+            </button>
+            <div
+              onClick={() => navigate('/install')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                cursor: 'pointer', border: 'none'
+              }}
+            >
+              <span style={{ fontSize: 15 }}>📲</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+            </div>
           </div>
         </div>
       )}

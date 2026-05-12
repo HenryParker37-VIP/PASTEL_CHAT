@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
 const TelegramSetup = ({ onClose, onConnected }) => {
-  const [step, setStep] = useState('intro'); // intro, connect, verifying, connected
+  const [step, setStep] = useState('intro');
   const [telegramUsername, setTelegramUsername] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [instructions, setInstructions] = useState('');
@@ -14,6 +14,22 @@ const TelegramSetup = ({ onClose, onConnected }) => {
     enableTelegramMessages: true
   });
 
+  // Dark mode detection
+  const isDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+
+  const colors = {
+    bg: isDark ? '#1a1a2e' : '#ffffff',
+    text: isDark ? '#e0e0e0' : '#333333',
+    secondaryText: isDark ? '#b0b0b0' : '#666666',
+    inputBg: isDark ? '#2d2d44' : '#ffffff',
+    inputBorder: isDark ? '#444466' : '#dddddd',
+    inputText: isDark ? '#e0e0e0' : '#333333',
+    codeBg: isDark ? '#0f1622' : '#f0f4ff',
+    codeText: isDark ? '#6bdbff' : '#6366f1',
+    listBg: isDark ? '#2d2d44' : '#f5f5f5',
+    listText: isDark ? '#b0b0b0' : '#333333'
+  };
+
   useEffect(() => {
     checkTelegramStatus();
   }, []);
@@ -23,9 +39,10 @@ const TelegramSetup = ({ onClose, onConnected }) => {
       const { data } = await api.get('/api/telegram/status');
       if (data.connected && data.verified) {
         setStep('connected');
+        setPreferences(data.preferences || preferences);
       }
     } catch (e) {
-      console.error('Failed to check Telegram status:', e);
+      console.error('Failed to check Telegram status:', e.message);
     }
   };
 
@@ -38,44 +55,49 @@ const TelegramSetup = ({ onClose, onConnected }) => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/api/telegram/connect', {
+      const response = await api.post('/api/telegram/connect', {
         telegramUsername: telegramUsername.trim()
       });
 
-      setVerificationCode(data.verificationCode);
-      setInstructions(data.instructions);
+      if (!response.data?.verificationCode) {
+        throw new Error('Backend did not return verification code');
+      }
+
+      setVerificationCode(response.data.verificationCode);
+      setInstructions(response.data.instructions || 'Open your Telegram app and search for @PastelChatBot');
       setStep('connect');
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to start Telegram connection');
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to initiate Telegram connection. Please try again.';
+      console.error('Connect error:', errorMsg, err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerify = async () => {
-    if (!telegramUsername.trim()) {
-      setError('Please enter a chat ID');
-      return;
-    }
-
     setLoading(true);
     setError('');
     try {
-      // Chat ID can be obtained from the Telegram bot or extracted from username
-      // For now, we'll extract it when user scans QR or completes verification
-      const { data } = await api.post('/api/telegram/verify', {
-        code: verificationCode,
-        chatId: telegramUsername // This will be updated by webhook
+      const response = await api.post('/api/telegram/verify', {
+        code: verificationCode
       });
 
-      setStep('verifying');
-      // Wait a moment then transition to connected
-      setTimeout(() => {
-        setStep('connected');
-        onConnected?.();
-      }, 2000);
-    } catch (e) {
-      setError(e.response?.data?.message || 'Verification failed');
+      if (response.data?.verified) {
+        setStep('verifying');
+        setTimeout(() => {
+          setStep('connected');
+          if (response.data?.preferences) {
+            setPreferences(response.data.preferences);
+          }
+        }, 1500);
+      } else {
+        setError('Verification not confirmed. Please try again.');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Verification failed. Please check the code.';
+      console.error('Verify error:', errorMsg, err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -83,12 +105,15 @@ const TelegramSetup = ({ onClose, onConnected }) => {
 
   const handleSavePreferences = async () => {
     setLoading(true);
+    setError('');
     try {
       await api.put('/api/telegram/preferences', preferences);
-      setError('');
       onConnected?.();
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to save preferences');
+      onClose?.();
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'Failed to save preferences';
+      console.error('Preferences error:', errorMsg, err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -104,8 +129,11 @@ const TelegramSetup = ({ onClose, onConnected }) => {
       setTelegramUsername('');
       setVerificationCode('');
       setError('');
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to disconnect');
+      onClose?.();
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'Failed to disconnect';
+      console.error('Disconnect error:', errorMsg, err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -122,33 +150,34 @@ const TelegramSetup = ({ onClose, onConnected }) => {
       zIndex: 1000
     }}>
       <div style={{
-        background: 'white',
+        background: colors.bg,
+        color: colors.text,
         borderRadius: 16,
         padding: 24,
         maxWidth: 400,
         width: '90%',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
       }}>
-        {/* Intro Step */}
         {step === 'intro' && (
           <>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: colors.text }}>
               📱 Telegram Notifications
             </h2>
-            <p style={{ fontSize: 14, color: '#666', marginBottom: 16, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 14, color: colors.secondaryText, marginBottom: 16, lineHeight: 1.5 }}>
               Get reliable notifications for incoming calls and messages, even when the app is closed. Telegram works great on iOS!
             </p>
 
             <div style={{
-              background: '#f5f5f5',
+              background: colors.listBg,
               borderRadius: 12,
               padding: 12,
               marginBottom: 16,
               fontSize: 13,
-              lineHeight: 1.6
+              lineHeight: 1.6,
+              color: colors.listText
             }}>
-              <strong>What you get:</strong>
-              <ul style={{ marginLeft: 16, marginTop: 8 }}>
+              <strong style={{ color: colors.text }}>What you get:</strong>
+              <ul style={{ marginLeft: 16, marginTop: 8, color: colors.secondaryText }}>
                 <li>✅ Reliable notifications on iOS</li>
                 <li>✅ Incoming call alerts</li>
                 <li>✅ Message previews</li>
@@ -167,16 +196,18 @@ const TelegramSetup = ({ onClose, onConnected }) => {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #ddd',
+                border: `1px solid ${colors.inputBorder}`,
                 borderRadius: 8,
                 fontSize: 14,
                 marginBottom: 16,
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                background: colors.inputBg,
+                color: colors.inputText
               }}
             />
 
             {error && (
-              <div style={{ color: '#d32f2f', fontSize: 12, marginBottom: 16 }}>
+              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 16 }}>
                 {error}
               </div>
             )}
@@ -187,9 +218,10 @@ const TelegramSetup = ({ onClose, onConnected }) => {
                 style={{
                   flex: 1,
                   padding: '10px 16px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.inputBorder}`,
                   borderRadius: 8,
-                  background: 'white',
+                  background: colors.inputBg,
+                  color: colors.text,
                   fontSize: 14,
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -221,27 +253,26 @@ const TelegramSetup = ({ onClose, onConnected }) => {
           </>
         )}
 
-        {/* Connect Step */}
         {step === 'connect' && (
           <>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: colors.text }}>
               ✓ Code ready
             </h2>
 
             <div style={{
-              background: '#f0f4ff',
+              background: colors.codeBg,
               borderRadius: 12,
               padding: 16,
               marginBottom: 16
             }}>
-              <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: colors.secondaryText, marginBottom: 8 }}>
                 Verification code:
               </div>
               <div style={{
                 fontSize: 28,
                 fontWeight: 700,
                 fontFamily: 'monospace',
-                color: '#6366f1',
+                color: colors.codeText,
                 letterSpacing: 4,
                 marginBottom: 12
               }}>
@@ -249,16 +280,22 @@ const TelegramSetup = ({ onClose, onConnected }) => {
               </div>
               <div style={{
                 fontSize: 12,
-                color: '#666',
+                color: colors.secondaryText,
                 lineHeight: 1.5
               }}>
-                {instructions || 'Open Telegram and send the code above to complete verification'}
+                {instructions}
               </div>
             </div>
 
-            <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-              Send the code to your Telegram bot, then tap the button below once you see the confirmation.
+            <p style={{ fontSize: 13, color: colors.secondaryText, marginBottom: 16 }}>
+              Send the code to your Telegram bot, then tap the button below.
             </p>
+
+            {error && (
+              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 16 }}>
+                {error}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -266,13 +303,15 @@ const TelegramSetup = ({ onClose, onConnected }) => {
                   setStep('intro');
                   setTelegramUsername('');
                   setVerificationCode('');
+                  setError('');
                 }}
                 style={{
                   flex: 1,
                   padding: '10px 16px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${colors.inputBorder}`,
                   borderRadius: 8,
-                  background: 'white',
+                  background: colors.inputBg,
+                  color: colors.text,
                   fontSize: 14,
                   fontWeight: 500,
                   cursor: 'pointer'
@@ -302,88 +341,59 @@ const TelegramSetup = ({ onClose, onConnected }) => {
           </>
         )}
 
-        {/* Verifying Step */}
         {step === 'verifying' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-            <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
+            <p style={{ fontSize: 14, color: colors.secondaryText, marginBottom: 16 }}>
               Verifying your Telegram connection...
             </p>
           </div>
         )}
 
-        {/* Connected Step */}
         {step === 'connected' && (
           <>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: colors.text }}>
               <span>✅</span> Connected!
             </h2>
 
-            <p style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 1.5 }}>
-              You'll now receive notifications in Telegram for important events. Choose what notifications you want to receive:
+            <p style={{ fontSize: 13, color: colors.secondaryText, marginBottom: 16, lineHeight: 1.5 }}>
+              You'll now receive notifications in Telegram. Choose what to receive:
             </p>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 0',
-                cursor: 'pointer',
-                fontSize: 13
-              }}>
-                <input
-                  type="checkbox"
-                  checked={preferences.enableTelegramNotifications}
-                  onChange={(e) => setPreferences({
-                    ...preferences,
-                    enableTelegramNotifications: e.target.checked
-                  })}
-                  style={{ cursor: 'pointer' }}
-                />
-                All notifications
-              </label>
-
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 0',
-                cursor: 'pointer',
-                fontSize: 13
-              }}>
-                <input
-                  type="checkbox"
-                  checked={preferences.enableTelegramCalls}
-                  onChange={(e) => setPreferences({
-                    ...preferences,
-                    enableTelegramCalls: e.target.checked
-                  })}
-                  style={{ cursor: 'pointer' }}
-                />
-                Incoming calls
-              </label>
-
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 0',
-                cursor: 'pointer',
-                fontSize: 13
-              }}>
-                <input
-                  type="checkbox"
-                  checked={preferences.enableTelegramMessages}
-                  onChange={(e) => setPreferences({
-                    ...preferences,
-                    enableTelegramMessages: e.target.checked
-                  })}
-                  style={{ cursor: 'pointer' }}
-                />
-                Messages & stickers
-              </label>
+              {[
+                { key: 'enableTelegramNotifications', label: 'All notifications' },
+                { key: 'enableTelegramCalls', label: 'Incoming calls' },
+                { key: 'enableTelegramMessages', label: 'Messages & stickers' }
+              ].map(pref => (
+                <label key={pref.key} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 0',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  color: colors.text
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={preferences[pref.key]}
+                    onChange={(e) => setPreferences({
+                      ...preferences,
+                      [pref.key]: e.target.checked
+                    })}
+                    style={{ cursor: 'pointer', width: 16, height: 16 }}
+                  />
+                  {pref.label}
+                </label>
+              ))}
             </div>
+
+            {error && (
+              <div style={{ color: '#ff6b6b', fontSize: 12, marginBottom: 16 }}>
+                {error}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <button
@@ -402,24 +412,22 @@ const TelegramSetup = ({ onClose, onConnected }) => {
                   opacity: loading ? 0.6 : 1
                 }}
               >
-                {loading ? '...' : 'Save & close'}
+                {loading ? 'Saving...' : 'Done'}
               </button>
             </div>
 
             <button
               onClick={handleDisconnect}
-              disabled={loading}
               style={{
                 width: '100%',
-                padding: '10px 16px',
-                border: '1px solid #f44336',
+                padding: '8px 16px',
+                border: 'none',
                 borderRadius: 8,
-                background: 'white',
-                color: '#f44336',
+                background: 'transparent',
+                color: '#ff6b6b',
                 fontSize: 13,
                 fontWeight: 500,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1
+                cursor: 'pointer'
               }}
             >
               Disconnect Telegram
