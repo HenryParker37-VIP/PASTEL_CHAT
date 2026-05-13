@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { useAuth } from '../contexts/AuthContext';
+import AvatarImg from './AvatarImg';
 
 const initials = (name) =>
   name ? name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
@@ -63,7 +64,7 @@ const OnlineUsers = () => {
             >
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 {u.avatar ? (
-                  <img
+                  <AvatarImg
                     src={u.avatar}
                     alt={u.name}
                     style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover' }}

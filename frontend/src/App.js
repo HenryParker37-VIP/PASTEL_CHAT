@@ -92,6 +92,62 @@ const CallOverlays = () => {
   );
 };
 
+// Restore a pending incoming call when app opens from a Telegram notification.
+// Strategy: check the server for a pending call (reliable, works in Safari + PWA).
+// URL params are kept as a fast-path hint to skip the API round-trip.
+const PendingCallRestorer = () => {
+  const { user, loading } = useAuth();
+  const { setIncomingCall, incomingCall, activeCall } = useCall();
+
+  useEffect(() => {
+    if (loading || !user || incomingCall || activeCall) return;
+
+    const fromUrl = (() => {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') !== 'incoming-call') return null;
+      // Clean URL immediately
+      const url = new URL(window.location.href);
+      ['action', 'callerId', 'callerName', 'callerAvatar', 'callType'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+      return {
+        callerId: p.get('callerId') || 'unknown',
+        callerName: p.get('callerName') || 'Friend',
+        callerAvatar: p.get('callerAvatar') || '',
+        callType: p.get('callType') === 'video' ? 'video' : 'voice'
+      };
+    })();
+
+    // If URL params present, show call immediately while also confirming with server
+    if (fromUrl) {
+      setIncomingCall({
+        from: { _id: fromUrl.callerId, name: fromUrl.callerName, avatar: fromUrl.callerAvatar },
+        callType: fromUrl.callType
+      });
+      return;
+    }
+
+    // Otherwise ask the server — handles the case where app opened via plain link or refreshed
+    const BACKEND = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch(`${BACKEND}/api/calls/pending`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.pending) return;
+        setIncomingCall({
+          from: { _id: data.callerId || 'unknown', name: data.callerName || 'Friend', avatar: data.callerAvatar || '' },
+          callType: data.callType || 'voice'
+        });
+      })
+      .catch(() => {});
+  }, [loading, user, setIncomingCall, incomingCall, activeCall]);
+
+  return null;
+};
+
 const AppRoutes = () => {
   const { user } = useAuth();
   const [birthdayOverlay, setBirthdayOverlay] = useState(null);
@@ -106,6 +162,7 @@ const AppRoutes = () => {
 
   return (
     <>
+      <PendingCallRestorer />
       {user && <GlobalSocketListener onHappyBirthday={handleHappyBirthday} />}
       {user && <CallOverlays />}
       {user && <GlobalChecker onBirthdayToday={handleBirthdayToday} />}

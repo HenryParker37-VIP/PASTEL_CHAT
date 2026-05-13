@@ -583,6 +583,31 @@ function createFeedback(userId, type, message) {
 
 load();
 
+// ── Pending calls (in-memory, 60s TTL) ──────────────────────────────────────
+// Stored separately from db.json so they never get persisted or cause restarts.
+const pendingCalls = new Map(); // userId -> { callerId, callerName, callerAvatar, callType, expiresAt }
+
+function setPendingCall(userId, data) {
+  pendingCalls.set(String(userId), {
+    ...data,
+    expiresAt: Date.now() + 60_000
+  });
+}
+
+function getPendingCall(userId) {
+  const call = pendingCalls.get(String(userId));
+  if (!call) return null;
+  if (Date.now() > call.expiresAt) {
+    pendingCalls.delete(String(userId));
+    return null;
+  }
+  return call;
+}
+
+function clearPendingCall(userId) {
+  pendingCalls.delete(String(userId));
+}
+
 module.exports = {
   store, persist, genId, generateLoginCode,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
@@ -598,5 +623,6 @@ module.exports = {
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
   addSharedPhoto, getSharedPhotos,
   storePushSubscription, removePushSubscription, getPushSubscriptions,
-  createFeedback
+  createFeedback,
+  setPendingCall, getPendingCall, clearPendingCall
 };
