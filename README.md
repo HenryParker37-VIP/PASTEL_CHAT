@@ -13,7 +13,7 @@ A vibe chatting app with your friends. Supports web, desktop, and mobile.
 | PastelChat 1.0.0.exe | 105 MB | Portable — no install needed |
 
 ### 🌐 Use Web App
-**[pastel-chat.vercel.app](https://pastel-chat.onrender.com/home)**
+**[https://pastel-chat.onrender.com/home](https://pastel-chat.onrender.com/home)**
 
 ---
 
