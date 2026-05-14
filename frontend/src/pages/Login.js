@@ -381,7 +381,7 @@ const Login = () => {
 
       <div className="center">
         <div className="login-card pop-in">
-          <div style={{ textAlign: 'center', marginBottom: 18 }}>
+          <div style={{ textAlign: 'center', marginBottom: 14 }}>
             <div style={{ fontSize: 50 }} className="sticker-bounce">🌸</div>
             <h1 style={{ margin: '6px 0 4px', fontSize: 30 }}>
               <span style={{
@@ -394,6 +394,39 @@ const Login = () => {
             </p>
           </div>
 
+          {/* Tier comparison strip */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #E8F4FD, #EDE7FF)',
+              border: '1.5px solid #C2D8F5', borderRadius: 12, padding: '10px 10px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 18, marginBottom: 3 }}>🔐</div>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#4285F4', marginBottom: 4 }}>Google Premium</div>
+              <div style={{ fontSize: 10, color: '#666', lineHeight: 1.5 }}>
+                ✅ Persistent profile<br />
+                ✅ Photo encryption<br />
+                ✅ No code to save<br />
+                ✅ Google avatar
+              </div>
+            </div>
+            <div style={{
+              background: '#FAFAFA', border: '1.5px solid #E8E8E8',
+              borderRadius: 12, padding: '10px 10px', textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 18, marginBottom: 3 }}>👤</div>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#888', marginBottom: 4 }}>Standard</div>
+              <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.5 }}>
+                ✓ Anonymous chat<br />
+                ✓ Custom avatar<br />
+                ✓ All chat features<br />
+                ⚠️ Must save login code
+              </div>
+            </div>
+          </div>
+
           <div className="login-tabs">
             <button className={tab === 'register' ? 'active' : ''} onClick={() => { setTab('register'); setError(''); setShowRecovery(false); }}>
               New here
@@ -404,64 +437,106 @@ const Login = () => {
           </div>
 
           {tab === 'register' ? (
-            <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label>
-                <span style={{ fontSize: 13, color: '#888' }}>Pick a name</span>
-                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                  <input
-                    className="input"
-                    value={name}
-                    onChange={(e) => { setName(e.target.value); setError(''); }}
-                    onBlur={handleCheckName}
-                    placeholder="CuddlyBun42"
-                    maxLength={20}
-                  />
-                  <button type="button" className="btn btn-lavender" onClick={() => setName(randomCuteName())} title="Generate cute name">🎲</button>
-                </div>
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-              {/* Avatar picker */}
-              <div>
-                <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 10 }}>Pick your avatar ✿</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <img
-                    src={avatarUrl}
-                    alt="Your avatar"
-                    style={{ width: 64, height: 64, borderRadius: '50%', border: '3px solid #F0E4F8', objectFit: 'cover', flexShrink: 0 }}
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button
-                      type="button"
-                      className="avatar-type-btn"
-                      onClick={() => setAvatarModal('sticker')}
-                    >
-                      🩷 Sticker Avatar
-                    </button>
-                    <button
-                      type="button"
-                      className="avatar-type-btn"
-                      onClick={() => setAvatarModal('character')}
-                    >
-                      🎨 Character Avatar
-                    </button>
+              {/* ── Google Premium (recommended) ── */}
+              <div style={{
+                background: 'linear-gradient(135deg, #E8F4FD 0%, #EDE7FF 100%)',
+                border: '2px solid #C2D8F5', borderRadius: 16, padding: '14px 16px',
+                position: 'relative', overflow: 'hidden'
+              }}>
+                <div style={{
+                  position: 'absolute', top: 8, right: 10,
+                  background: 'linear-gradient(135deg, #4285F4, #34A853)',
+                  color: 'white', fontSize: 9, fontWeight: 800,
+                  padding: '2px 8px', borderRadius: 10
+                }}>⭐ RECOMMENDED</div>
+                <div style={{ fontWeight: 800, fontSize: 13, color: '#3A5DB0', marginBottom: 2 }}>
+                  🔐 Sign in with Google
+                </div>
+                <div style={{ fontSize: 11, color: '#7090C0', marginBottom: 12, lineHeight: 1.4 }}>
+                  Persistent profile · Photo encryption · No code needed
+                </div>
+                <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
+                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signup_with" />
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="google-divider"><span>or create with code (Standard)</span></div>
+
+              {/* ── Standard / Code signup ── */}
+              <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{
+                  background: '#FFF8F0', border: '1px solid #FFE0B0',
+                  borderRadius: 10, padding: '8px 12px', fontSize: 11, color: '#B08000'
+                }}>
+                  ⚠️ You'll get a login code — save it, there's no email recovery.
+                </div>
+
+                <label>
+                  <span style={{ fontSize: 13, color: '#888' }}>Pick a name</span>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    <input
+                      className="input"
+                      value={name}
+                      onChange={(e) => { setName(e.target.value); setError(''); }}
+                      onBlur={handleCheckName}
+                      placeholder="CuddlyBun42"
+                      maxLength={20}
+                    />
+                    <button type="button" className="btn btn-lavender" onClick={() => setName(randomCuteName())} title="Generate cute name">🎲</button>
+                  </div>
+                </label>
+
+                {/* Avatar picker */}
+                <div>
+                  <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 10 }}>Pick your avatar ✿</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <img
+                      src={avatarUrl}
+                      alt="Your avatar"
+                      style={{ width: 64, height: 64, borderRadius: '50%', border: '3px solid #F0E4F8', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button type="button" className="avatar-type-btn" onClick={() => setAvatarModal('sticker')}>
+                        🩷 Sticker Avatar
+                      </button>
+                      <button type="button" className="avatar-type-btn" onClick={() => setAvatarModal('character')}>
+                        🎨 Character Avatar
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {error && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
+                {error && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
 
-              <button className="btn" disabled={busy} type="submit">
-                {busy ? 'Creating...' : '✿ Create my account'}
-              </button>
-
-              <div className="google-divider"><span>or continue with</span></div>
-              <div className="google-btn-wrap">
-                <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signup_with" />
-              </div>
-              <p className="google-security-note">🔒 Google sign-in is handled securely. We never see your password.</p>
-            </form>
+                <button className="btn" disabled={busy} type="submit">
+                  {busy ? 'Creating...' : '✿ Create standard account'}
+                </button>
+              </form>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+              {/* ── Google sign-in (top of login tab too) ── */}
+              <div style={{
+                background: 'linear-gradient(135deg, #E8F4FD 0%, #EDE7FF 100%)',
+                border: '2px solid #C2D8F5', borderRadius: 16, padding: '14px 16px',
+              }}>
+                <div style={{ fontWeight: 800, fontSize: 13, color: '#3A5DB0', marginBottom: 2 }}>
+                  🔐 Google Premium Login
+                </div>
+                <div style={{ fontSize: 11, color: '#7090C0', marginBottom: 12 }}>
+                  No code needed — just your Google account
+                </div>
+                <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
+                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signin_with" />
+                </div>
+              </div>
+
+              <div className="google-divider"><span>or log in with code (Standard)</span></div>
+
               {/* Device recovery banner */}
               {storedAccount && !showRecovery && (
                 <div
@@ -530,12 +605,6 @@ const Login = () => {
                 <button className="btn btn-blue" disabled={busy} type="submit">
                   {busy ? 'Checking...' : '🔑 Log back in'}
                 </button>
-
-                <div className="google-divider"><span>or continue with</span></div>
-                <div className="google-btn-wrap">
-                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signin_with" />
-                </div>
-                <p className="google-security-note">🔒 Google sign-in is handled securely. We never see your password.</p>
               </form>
             </div>
           )}
