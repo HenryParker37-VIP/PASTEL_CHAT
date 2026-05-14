@@ -157,7 +157,7 @@ const GroupChat = () => {
   const isCreator = group.creatorId === user?._id;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--cream)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--visual-height, 100dvh)', overflow: 'hidden', background: 'var(--cream)' }}>
       <Header />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
