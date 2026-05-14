@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useMobileViewport } from './hooks/useMobileViewport';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -139,6 +140,8 @@ const AppRoutes = () => {
 };
 
 const App = () => {
+  useMobileViewport(); // tracks keyboard height → --keyboard-height CSS var
+
   React.useEffect(() => {
     console.log('[App] Initialized');
     console.log('[App] Backend URL:', process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com');
