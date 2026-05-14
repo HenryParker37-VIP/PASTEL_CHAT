@@ -7,7 +7,7 @@ node_modules/
 coverage/
 
 # Production builds
-frontend/build/
+# frontend/build/  — committed to git for Render deployment
 
 # Misc
 .DS_Store

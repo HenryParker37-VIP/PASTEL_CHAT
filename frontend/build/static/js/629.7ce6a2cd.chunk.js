@@ -1,0 +1,2 @@
+"use strict";(globalThis.webpackChunkpastel_chat_frontend=globalThis.webpackChunkpastel_chat_frontend||[]).push([[629],{629(t,s,a){a.d(s,{PushNotifications:()=>h});const h=(0,a(403).F3)("PushNotifications",{})}}]);
+//# sourceMappingURL=629.7ce6a2cd.chunk.js.map
