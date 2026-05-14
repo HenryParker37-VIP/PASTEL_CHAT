@@ -1,0 +1,2 @@
+"use strict";(globalThis.webpackChunkpastel_chat_frontend=globalThis.webpackChunkpastel_chat_frontend||[]).push([[205],{205(e,n,p){p.d(n,{App:()=>t});const t=(0,p(403).F3)("App",{web:()=>p.e(551).then(p.bind(p,551)).then(e=>new e.AppWeb)})}}]);
+//# sourceMappingURL=205.af5686af.chunk.js.map
