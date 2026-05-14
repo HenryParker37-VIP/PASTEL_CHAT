@@ -43,7 +43,8 @@ app.set('io', io);
 
 // Serve frontend static files
 const path = require('path');
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
+const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+app.use(express.static(frontendBuildPath));
 
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
@@ -62,7 +63,14 @@ app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() })
 
 // Fallback to index.html for client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
+  const indexPath = path.join(__dirname, '../../frontend/build/index.html');
+  console.log('[Server] Fallback route: serving index.html from', indexPath);
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('[Server] Error serving index.html:', err.message);
+      res.status(404).json({ error: 'Frontend build not found. Build directory may be missing.' });
+    }
+  });
 });
 
 setupSocket(io);
