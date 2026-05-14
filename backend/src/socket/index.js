@@ -229,8 +229,9 @@ const setupSocket = (io) => {
         _id: genId(),
         dataUrl,
         caption: caption ? String(caption).slice(0, 200) : '',
-        uploadedBy: { _id: user._id, name: user.name, avatar: user.avatar },
-        createdAt: new Date().toISOString()
+        uploadedBy: { _id: user._id, name: user.name, avatar: user.avatar, loginMethod: user.loginMethod || 'code' },
+        createdAt: new Date().toISOString(),
+        isHidden: false
       };
       addSharedPhoto(payload);
       // Deliver to every friend (online or offline — they'll see it on load)

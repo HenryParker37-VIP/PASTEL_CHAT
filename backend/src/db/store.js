@@ -119,6 +119,8 @@ function createUser(doc) {
     chatBackground: 'default',
     bio: '',
     status: '',
+    loginMethod: 'code',
+    isGoogleVerified: false,
     ...doc
   };
   store.users.push(user);
@@ -146,7 +148,9 @@ function userPublic(u) {
   return {
     _id: u._id, name: u.name, avatar: u.avatar,
     chatBackground: u.chatBackground, isOnline: !!u.isOnline,
-    bio: u.bio || '', status: u.status || ''
+    bio: u.bio || '', status: u.status || '',
+    loginMethod: u.loginMethod || 'code',
+    isGoogleVerified: !!u.isGoogleVerified
   };
 }
 
@@ -532,8 +536,8 @@ function deleteBirthday(birthdayId) {
 }
 
 // ===== Shared Photos =====
-function addSharedPhoto({ _id, dataUrl, caption, uploadedBy, createdAt }) {
-  const photo = { _id, dataUrl, caption, uploadedBy, createdAt };
+function addSharedPhoto({ _id, dataUrl, caption, uploadedBy, createdAt, isHidden = false }) {
+  const photo = { _id, dataUrl, caption, uploadedBy, createdAt, isHidden: !!isHidden };
   store.sharedPhotos.unshift(photo);
   if (store.sharedPhotos.length > 200) store.sharedPhotos = store.sharedPhotos.slice(0, 200);
   persist();
@@ -541,6 +545,14 @@ function addSharedPhoto({ _id, dataUrl, caption, uploadedBy, createdAt }) {
 }
 function getSharedPhotos() {
   return store.sharedPhotos.slice(0, 50);
+}
+function togglePhotoEncryption(photoId, userId, isHidden) {
+  const photo = store.sharedPhotos.find(p => p._id === photoId);
+  if (!photo) return null;
+  if (photo.uploadedBy._id !== userId) return null;
+  photo.isHidden = !!isHidden;
+  persist();
+  return photo;
 }
 
 // ===== Push Subscriptions =====
@@ -596,7 +608,7 @@ module.exports = {
   createNote, findNote, getUserNotes, deleteNote, updateNote,
   createReminder, getUserReminders, findReminder, deleteReminder,
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
-  addSharedPhoto, getSharedPhotos,
+  addSharedPhoto, getSharedPhotos, togglePhotoEncryption,
   storePushSubscription, removePushSubscription, getPushSubscriptions,
   createFeedback
 };

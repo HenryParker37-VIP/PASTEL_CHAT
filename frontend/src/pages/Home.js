@@ -120,9 +120,52 @@ const Home = () => {
           ))}
         </div>
 
-        {/* Login code */}
-        {user?.loginCode && (
+        {/* User tier / login code section */}
+        {user?.loginMethod === 'google' || user?.isGoogleVerified ? (
+          <div className="home-mobile-code-wrap" style={{ background: 'linear-gradient(135deg,#E8F4FD,#EDE7FF)', borderRadius: 16, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              {user.avatar && <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #4285F4' }} />}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#4A4A4A' }}>{user.name}</div>
+                <div style={{ fontSize: 11, color: '#4285F4', fontWeight: 600 }}>✅ Google Verified</div>
+              </div>
+            </div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '3px 10px', borderRadius: 16,
+              background: 'linear-gradient(135deg, #4285F4, #34A853)',
+              color: 'white', fontSize: 11, fontWeight: 700, marginBottom: 10
+            }}>
+              🔐 Enhanced Security · Google OAuth
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setShowTelegramSetup(true)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 16px', borderRadius: 20,
+                  background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
+                  cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
+                }}
+              >
+                <span style={{ fontSize: 15 }}>📱</span><span>Telegram</span>
+              </button>
+              <div onClick={() => navigate('/install')} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                cursor: 'pointer'
+              }}>
+                <span style={{ fontSize: 15 }}>📲</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+              </div>
+            </div>
+          </div>
+        ) : user?.loginCode ? (
           <div className="home-mobile-code-wrap">
+            <div style={{ fontSize: 11, color: '#999', marginBottom: 4, textAlign: 'center' }}>
+              👤 Standard Account · Code Login
+            </div>
             <p className="home-mobile-code-hint">{t('homeLoginCode')}</p>
             <div className="code-display">{user.loginCode}</div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -132,31 +175,23 @@ const Home = () => {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '7px 16px', borderRadius: 20,
                   background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-                  cursor: 'pointer',
-                  border: 'none',
-                  fontWeight: 600,
-                  color: 'white',
-                  fontSize: 12
+                  cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
                 }}
               >
-                <span style={{ fontSize: 15 }}>📱</span>
-                <span>Telegram</span>
+                <span style={{ fontSize: 15 }}>📱</span><span>Telegram</span>
               </button>
-              <div
-                onClick={() => navigate('/install')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 16px', borderRadius: 20,
-                  background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
-                  cursor: 'pointer'
-                }}
-              >
+              <div onClick={() => navigate('/install')} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                cursor: 'pointer'
+              }}>
                 <span style={{ fontSize: 15 }}>📲</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Time */}
         <p className="home-mobile-time">{time.toLocaleTimeString()}</p>
@@ -216,23 +251,36 @@ const Home = () => {
         ))}
       </div>
 
-      {user?.loginCode && (
-        <div className="card pop-in" style={{ marginTop: 30, textAlign: 'center' }}>
-          <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>{t('homeLoginCode')}</p>
-          <div className="code-display">{user.loginCode}</div>
-          <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
-          <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* User tier indicator */}
+      {user?.loginMethod === 'google' || user?.isGoogleVerified ? (
+        <div className="card pop-in" style={{
+          marginTop: 30, textAlign: 'center',
+          background: 'linear-gradient(135deg, #E8F4FD 0%, #EDE7FF 100%)',
+          border: '1.5px solid #C2D8F5'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
+            {user.avatar && <img src={user.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #4285F4' }} />}
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#4A4A4A' }}>{user.name}</div>
+              <div style={{ fontSize: 11, color: '#4285F4', fontWeight: 600 }}>✅ Google Verified</div>
+            </div>
+          </div>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 12px', borderRadius: 20,
+            background: 'linear-gradient(135deg, #4285F4, #34A853)',
+            color: 'white', fontSize: 11, fontWeight: 700, marginBottom: 10
+          }}>
+            🔐 Enhanced Security · Google OAuth
+          </div>
+          <div style={{ marginTop: 4, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowTelegramSetup(true)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
                 background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-                cursor: 'pointer',
-                border: 'none',
-                fontWeight: 600,
-                color: 'white',
-                fontSize: 12
+                cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
               }}
             >
               <span style={{ fontSize: 15 }}>📱</span>
@@ -252,7 +300,46 @@ const Home = () => {
             </div>
           </div>
         </div>
-      )}
+      ) : user?.loginCode ? (
+        <div className="card pop-in" style={{ marginTop: 30, textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 20 }}>👤</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#4A4A4A' }}>{user.name}</div>
+              <div style={{ fontSize: 11, color: '#999' }}>Standard Security · Code Login</div>
+            </div>
+          </div>
+          <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>{t('homeLoginCode')}</p>
+          <div className="code-display">{user.loginCode}</div>
+          <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowTelegramSetup(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
+                cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
+              }}
+            >
+              <span style={{ fontSize: 15 }}>📱</span>
+              <span>Telegram</span>
+            </button>
+            <div
+              onClick={() => navigate('/install')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 20,
+                background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
+                cursor: 'pointer', border: 'none'
+              }}
+            >
+              <span style={{ fontSize: 15 }}>📲</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showTelegramSetup && (
         <TelegramSetup

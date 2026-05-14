@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import api from '../services/api';
+import PhotoUpload from '../components/PhotoUpload';
 
 const TIMER_OPTIONS = [0, 3, 5, 10];
 
@@ -40,6 +41,27 @@ const SharedPhotos = () => {
   // Countdown timer
   const [timerMode, setTimerMode] = useState(0); // seconds; 0 = off
   const [countdown, setCountdown] = useState(null); // null = idle, number = counting
+  const [togglingPhotoId, setTogglingPhotoId] = useState(null);
+
+  const isGoogleUser = user?.loginMethod === 'google' || user?.isGoogleVerified;
+
+  const handleToggleVisibility = useCallback(async (photo, e) => {
+    e.stopPropagation();
+    if (togglingPhotoId) return;
+    setTogglingPhotoId(photo._id);
+    try {
+      const newHidden = !photo.isHidden;
+      await api.post(`/private-space/shared-photos/${photo._id}/toggle-visibility`, { isHidden: newHidden });
+      setPhotos(prev => prev.map(p => p._id === photo._id ? { ...p, isHidden: newHidden } : p));
+      if (selectedPhoto?._id === photo._id) {
+        setSelectedPhoto(prev => ({ ...prev, isHidden: newHidden }));
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setTogglingPhotoId(null);
+    }
+  }, [togglingPhotoId, selectedPhoto]);
 
   const startCamera = useCallback(async (mode) => {
     if (streamRef.current) {
@@ -179,7 +201,12 @@ const SharedPhotos = () => {
               color: 'white', fontSize: 13, fontWeight: 600, padding: '6px 14px', cursor: 'pointer'
             }}
           >← Back</button>
-          <span style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>📸 Shared Photos</span>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>📸 Shared Photos</span>
+            {isGoogleUser && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 1 }}>🔐 Premium · Photo encryption enabled</div>
+            )}
+          </div>
           <button
             onClick={flipCamera}
             style={{
@@ -301,15 +328,20 @@ const SharedPhotos = () => {
           )}
         </div>
 
-        {/* Hint */}
-        <p style={{
-          color: '#888', fontSize: 12, textAlign: 'center',
-          margin: '8px 0 6px', flexShrink: 0
-        }}>
-          {timerMode > 0
-            ? `${timerMode}s timer active — tap shutter to start`
-            : 'Tap the button to snap & share with all your friends'}
-        </p>
+        {/* Hint + file upload */}
+        <div style={{ padding: '6px 16px 4px', flexShrink: 0 }}>
+          <p style={{ color: '#888', fontSize: 12, textAlign: 'center', margin: '0 0 8px' }}>
+            {timerMode > 0
+              ? `${timerMode}s timer active — tap shutter to start`
+              : 'Snap with camera or upload from your gallery'}
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <PhotoUpload
+              isGoogleUser={isGoogleUser}
+              onPhotoShared={() => {}}
+            />
+          </div>
+        </div>
 
         {/* Friend photo grid */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 24px' }}>
@@ -346,39 +378,76 @@ const SharedPhotos = () => {
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: 3
             }}>
-              {photos.map(photo => (
-                <div
-                  key={photo._id}
-                  onClick={() => setSelectedPhoto(photo)}
-                  style={{
-                    position: 'relative', aspectRatio: '1/1',
-                    overflow: 'hidden', cursor: 'pointer', borderRadius: 4,
-                    background: '#222'
-                  }}
-                >
-                  <img
-                    src={photo.dataUrl}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    padding: '16px 4px 3px',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.55))'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {photos.map(photo => {
+                const isOwner = photo.uploadedBy._id === user?._id;
+                const isHidden = photo.isHidden;
+                const canToggle = isOwner && isGoogleUser;
+                return (
+                  <div
+                    key={photo._id}
+                    onClick={() => !isHidden || isOwner ? setSelectedPhoto(photo) : null}
+                    style={{
+                      position: 'relative', aspectRatio: '1/1',
+                      overflow: 'hidden', cursor: (!isHidden || isOwner) ? 'pointer' : 'default',
+                      borderRadius: 4, background: '#222'
+                    }}
+                  >
+                    {isHidden && !isOwner ? (
+                      <div style={{
+                        width: '100%', height: '100%',
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        background: 'linear-gradient(135deg, #1a1a2e, #2d1b69)',
+                        gap: 4
+                      }}>
+                        <span style={{ fontSize: 20 }}>🔒</span>
+                        <span style={{ color: '#aaa', fontSize: 9, textAlign: 'center', padding: '0 4px' }}>
+                          Photo hidden by user
+                        </span>
+                      </div>
+                    ) : (
                       <img
-                        src={photo.uploadedBy.avatar}
+                        src={photo.dataUrl}
                         alt=""
-                        style={{ width: 16, height: 16, borderRadius: '50%', objectFit: 'cover' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isHidden ? 0.4 : 1 }}
                       />
-                      <span style={{ color: 'white', fontSize: 10, fontWeight: 600 }}>
-                        {photo.uploadedBy._id === user?._id ? 'You' : photo.uploadedBy.name.split(' ')[0]}
-                      </span>
+                    )}
+
+                    {/* Bottom overlay */}
+                    <div style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0,
+                      padding: '16px 4px 3px',
+                      background: 'linear-gradient(transparent, rgba(0,0,0,0.6))'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <img
+                            src={photo.uploadedBy.avatar}
+                            alt=""
+                            style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                          <span style={{ color: 'white', fontSize: 9, fontWeight: 600 }}>
+                            {isOwner ? 'You' : photo.uploadedBy.name.split(' ')[0]}
+                          </span>
+                        </div>
+                        {canToggle && (
+                          <button
+                            onClick={(e) => handleToggleVisibility(photo, e)}
+                            disabled={togglingPhotoId === photo._id}
+                            style={{
+                              background: isHidden ? 'rgba(66,133,244,0.85)' : 'rgba(0,0,0,0.5)',
+                              border: 'none', borderRadius: 8, padding: '2px 5px',
+                              color: 'white', fontSize: 9, cursor: 'pointer', fontWeight: 700
+                            }}
+                          >
+                            {isHidden ? '👁 Show' : '🔒'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -394,11 +463,21 @@ const SharedPhotos = () => {
               zIndex: 200, padding: 20
             }}
           >
-            <img
-              src={selectedPhoto.dataUrl}
-              alt=""
-              style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: 12, objectFit: 'contain' }}
-            />
+            {selectedPhoto.isHidden && selectedPhoto.uploadedBy._id !== user?._id ? (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 64 }}>🔒</div>
+                <p style={{ color: '#aaa', fontSize: 16, marginTop: 12 }}>Photo hidden by user</p>
+              </div>
+            ) : (
+              <img
+                src={selectedPhoto.dataUrl}
+                alt=""
+                style={{
+                  maxWidth: '100%', maxHeight: '70vh', borderRadius: 12, objectFit: 'contain',
+                  opacity: selectedPhoto.isHidden ? 0.5 : 1
+                }}
+              />
+            )}
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
               <img
                 src={selectedPhoto.uploadedBy.avatar}
@@ -413,8 +492,31 @@ const SharedPhotos = () => {
                   {new Date(selectedPhoto.createdAt).toLocaleTimeString()}
                 </p>
               </div>
+              {/* Hide/show toggle for Google-user owners */}
+              {isGoogleUser && selectedPhoto.uploadedBy._id === user?._id && (
+                <button
+                  onClick={(e) => handleToggleVisibility(selectedPhoto, e)}
+                  disabled={togglingPhotoId === selectedPhoto._id}
+                  style={{
+                    padding: '6px 14px', borderRadius: 16, border: 'none',
+                    background: selectedPhoto.isHidden
+                      ? 'linear-gradient(135deg, #4285F4, #34A853)'
+                      : 'rgba(255,255,255,0.15)',
+                    color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                  }}
+                >
+                  {selectedPhoto.isHidden ? '👁 Show Photo' : '🔒 Hide Photo'}
+                </button>
+              )}
             </div>
-            <p style={{ color: '#666', fontSize: 12, marginTop: 16 }}>Tap anywhere to close</p>
+            {isGoogleUser && selectedPhoto.uploadedBy._id === user?._id && (
+              <p style={{ color: '#555', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
+                {selectedPhoto.isHidden
+                  ? 'Other users see "Photo hidden by user"'
+                  : 'Click 🔒 Hide Photo to restrict visibility to yourself only'}
+              </p>
+            )}
+            <p style={{ color: '#666', fontSize: 12, marginTop: 10 }}>Tap anywhere to close</p>
           </div>
         )}
 

@@ -150,6 +150,25 @@ const Header = () => {
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #F0E8E8' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#4A4A4A' }}>{user?.name}</div>
               <div style={{ fontSize: '11px', color: '#AAAAAA', marginTop: '2px' }}>{user?.email}</div>
+              {user?.loginMethod === 'google' || user?.isGoogleVerified ? (
+                <div style={{
+                  marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 10,
+                  background: 'linear-gradient(135deg, #E8F4FD, #EDE7FF)',
+                  fontSize: 10, fontWeight: 700, color: '#4285F4'
+                }}>
+                  🔐 Google Verified · Premium
+                </div>
+              ) : (
+                <div style={{
+                  marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 10,
+                  background: '#F5F5F5',
+                  fontSize: 10, fontWeight: 600, color: '#999'
+                }}>
+                  👤 Standard Account
+                </div>
+              )}
             </div>
             <button
               onClick={() => { setShowMenu(false); setShowTelegramSetup(true); }}
