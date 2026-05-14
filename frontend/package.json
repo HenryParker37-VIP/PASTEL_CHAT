@@ -29,9 +29,9 @@
     "cap:sync:ios": "npm run build && npx cap sync ios",
     "cap:open:ios": "npx cap open ios",
     "electron": "electron .",
-    "electron-dev": "concurrently \"BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron-build": "npm run build && electron-builder --config electron-builder.json",
-    "electron-build:win": "npm run build && electron-builder --win --config electron-builder.json"
+    "electron-dev": "concurrently \"BROWSER=none REACT_APP_BACKEND_URL=https://pastel-chat.onrender.com REACT_APP_IS_ELECTRON=true npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-build": "cp .env.electron .env.local && npm run build && electron-builder --config electron-builder.json && rm -f .env.local",
+    "electron-build:win": "cp .env.electron .env.local && npm run build && electron-builder --win --config electron-builder.json && rm -f .env.local"
   },
   "browserslist": {
     "production": [

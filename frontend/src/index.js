@@ -52,13 +52,17 @@ root.render(
   </React.StrictMode>
 );
 
-registerSW({
-  onSuccess: () => console.log('Pastel Chat is ready to work offline.'),
-  onUpdate: (reg) => {
-    const worker = reg.waiting;
-    if (worker) {
-      worker.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
-    }
-  },
-});
+// Service workers don't work on file:// (Electron) — skip registration
+const isElectron = window.electron?.isElectron || process.env.REACT_APP_IS_ELECTRON === 'true';
+if (!isElectron) {
+  registerSW({
+    onSuccess: () => console.log('Pastel Chat is ready to work offline.'),
+    onUpdate: (reg) => {
+      const worker = reg.waiting;
+      if (worker) {
+        worker.postMessage({ type: 'SKIP_WAITING' });
+        window.location.reload();
+      }
+    },
+  });
+}
