@@ -49,11 +49,13 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
 
       {!loading && messages.length === 0 && (
         <div style={{
-          flex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
+          /* Fixed top offset instead of flex vertical centering — prevents
+             the empty state from jumping when the keyboard opens and the
+             chat-body shrinks. The content stays anchored near the top-center. */
+          paddingTop: '22vh',
           gap: '12px',
           color: '#CCCCCC'
         }}>
