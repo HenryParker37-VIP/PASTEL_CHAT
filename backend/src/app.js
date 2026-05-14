@@ -43,8 +43,27 @@ app.set('io', io);
 
 // Serve frontend static files
 const path = require('path');
-const frontendBuildPath = path.join(__dirname, '../../frontend/build');
-app.use(express.static(frontendBuildPath));
+const fs = require('fs');
+// Try multiple possible paths for frontend build directory
+const possiblePaths = [
+  path.join(__dirname, '../../frontend/build'),           // From backend/src: ../../frontend/build
+  path.join(process.cwd(), 'frontend/build'),             // From project root
+  path.resolve(__dirname, '../../frontend/build'),        // Absolute resolve from backend/src
+];
+let frontendBuildPath = null;
+for (const p of possiblePaths) {
+  if (fs.existsSync(p)) {
+    frontendBuildPath = p;
+    console.log('[Server] Found frontend build at:', p);
+    break;
+  }
+}
+if (frontendBuildPath) {
+  app.use(express.static(frontendBuildPath));
+  console.log('[Server] Serving static files from:', frontendBuildPath);
+} else {
+  console.warn('[Server] Frontend build directory not found. Checked:', possiblePaths);
+}
 
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
@@ -63,14 +82,18 @@ app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() })
 
 // Fallback to index.html for client-side routing
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, '../../frontend/build/index.html');
-  console.log('[Server] Fallback route: serving index.html from', indexPath);
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error('[Server] Error serving index.html:', err.message);
-      res.status(404).json({ error: 'Frontend build not found. Build directory may be missing.' });
-    }
-  });
+  if (frontendBuildPath) {
+    const indexPath = path.join(frontendBuildPath, 'index.html');
+    console.log('[Server] Fallback route: serving index.html from', indexPath);
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('[Server] Error serving index.html:', err.message);
+        res.status(404).json({ error: 'Frontend file not found.' });
+      }
+    });
+  } else {
+    res.status(503).json({ error: 'Frontend build not found. Build directory may be missing.' });
+  }
 });
 
 setupSocket(io);
