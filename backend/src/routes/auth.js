@@ -14,7 +14,8 @@ const {
 } = require('../db/store');
 const authMiddleware = require('../middleware/auth');
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.REACT_APP_GOOGLE_CLIENT_ID || '803433790062-2dmhg2du471q65q2biheuli604b31vgv.apps.googleusercontent.com';
+// Public client ID — not a secret, safe to hardcode. Must match frontend REACT_APP_GOOGLE_CLIENT_ID.
+const GOOGLE_CLIENT_ID = '803433790062-2dmhg2du471q65q2biheuli604b31vgv.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
