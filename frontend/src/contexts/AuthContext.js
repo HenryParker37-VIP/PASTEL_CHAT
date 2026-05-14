@@ -133,7 +133,10 @@ export const AuthProvider = ({ children }) => {
       if (!err.response) {
         return { success: false, error: 'Cannot reach the server. Check your connection.' };
       }
-      return { success: false, error: err.response?.data?.message || 'Google sign-in failed. Please try again.' };
+      const msg = err.response?.data?.message || 'Google sign-in failed. Please try again.';
+      const detail = err.response?.data?.detail;
+      console.error('[Auth] Google error:', msg, detail || '');
+      return { success: false, error: detail ? `${msg}: ${detail}` : msg };
     }
   };
 

@@ -460,6 +460,7 @@ const Login = () => {
                 <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signup_with" />
                 </div>
+                {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
               </div>
 
               {/* Divider */}
@@ -533,6 +534,7 @@ const Login = () => {
                 <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signin_with" />
                 </div>
+                {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
               </div>
 
               <div className="google-divider"><span>or log in with code (Standard)</span></div>

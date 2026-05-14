@@ -132,12 +132,15 @@ router.get('/me', authMiddleware, (req, res) => {
 router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
+    console.log('[OAuth] /auth/google called, token length:', token?.length ?? 'MISSING');
+    console.log('[OAuth] Using GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID?.slice(0, 20) + '...');
     if (!token) return res.status(400).json({ message: 'Google token required' });
 
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     });
+    console.log('[OAuth] Token verified OK');
     const payload = ticket.getPayload();
     const googleId = payload.sub;
     const googleEmail = payload.email;
@@ -180,8 +183,8 @@ router.post('/google', async (req, res) => {
       isNewUser: !user.googleId,
     });
   } catch (error) {
-    console.error('[Auth] Google login error:', error.message);
-    res.status(401).json({ message: 'Google authentication failed' });
+    console.error('[OAuth] Google login error:', error.message);
+    res.status(401).json({ message: 'Google authentication failed', detail: error.message });
   }
 });
 
