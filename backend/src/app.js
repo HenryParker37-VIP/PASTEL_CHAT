@@ -41,6 +41,10 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.set('io', io);
 
+// Serve frontend static files
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../../frontend/build')));
+
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/friends', friendRoutes);
@@ -55,6 +59,11 @@ app.use('/api/telegram', telegramRoutes);
 app.use('/telegram', telegramRoutes);
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
+
+// Fallback to index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
+});
 
 setupSocket(io);
 
