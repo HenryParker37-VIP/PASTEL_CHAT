@@ -289,7 +289,7 @@ const Login = () => {
     const r = await loginWithGoogle(credentialResponse);
     setBusy(false);
     if (!r.success) return setError(r.error);
-    navigate('/home');
+    window.location.replace('/home');
   };
 
   const handleGoogleError = () => {
