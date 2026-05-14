@@ -123,6 +123,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const loginWithGoogle = async (credentialResponse) => {
+    try {
+      const { data } = await api.post('/auth/google', { token: credentialResponse.credential });
+      persist(data.token, data.user);
+      trySubscribePush();
+      return { success: true, user: data.user, isNewUser: data.isNewUser };
+    } catch (err) {
+      if (!err.response) {
+        return { success: false, error: 'Cannot reach the server. Check your connection.' };
+      }
+      return { success: false, error: err.response?.data?.message || 'Google sign-in failed. Please try again.' };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -138,6 +152,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         register,
         loginWithCode,
+        loginWithGoogle,
         checkName,
         updateName,
         updateProfile,

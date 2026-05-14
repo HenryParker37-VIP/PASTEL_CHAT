@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import TypewriterText from '../components/TypewriterText';
 import AVATARS, {
@@ -241,7 +242,7 @@ const Login = () => {
   const [codeSaved, setCodeSaved] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [avatarModal, setAvatarModal] = useState(null); // 'sticker' | 'character' | null
-  const { register, loginWithCode, checkName } = useAuth();
+  const { register, loginWithCode, loginWithGoogle, checkName } = useAuth();
   const navigate = useNavigate();
 
   const storedAccount = getStoredAccount();
@@ -280,6 +281,19 @@ const Login = () => {
     } else {
       navigate('/home');
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setBusy(true);
+    const r = await loginWithGoogle(credentialResponse);
+    setBusy(false);
+    if (!r.success) return setError(r.error);
+    navigate('/home');
+  };
+
+  const handleGoogleError = () => {
+    setError('Google sign-in failed. Please try again or use a login code.');
   };
 
   const handleRecoverLogin = async () => {
@@ -439,6 +453,12 @@ const Login = () => {
               <button className="btn" disabled={busy} type="submit">
                 {busy ? 'Creating...' : '✿ Create my account'}
               </button>
+
+              <div className="google-divider"><span>or continue with</span></div>
+              <div className="google-btn-wrap">
+                <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signup_with" />
+              </div>
+              <p className="google-security-note">🔒 Google sign-in is handled securely. We never see your password.</p>
             </form>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -510,6 +530,12 @@ const Login = () => {
                 <button className="btn btn-blue" disabled={busy} type="submit">
                   {busy ? 'Checking...' : '🔑 Log back in'}
                 </button>
+
+                <div className="google-divider"><span>or continue with</span></div>
+                <div className="google-btn-wrap">
+                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signin_with" />
+                </div>
+                <p className="google-security-note">🔒 Google sign-in is handled securely. We never see your password.</p>
               </form>
             </div>
           )}

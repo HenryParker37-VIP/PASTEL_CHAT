@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
@@ -145,6 +146,7 @@ const App = () => {
   }, []);
 
   return (
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
     <ThemeProvider>
       <LangProvider>
         <AuthProvider>
@@ -160,6 +162,7 @@ const App = () => {
         </AuthProvider>
       </LangProvider>
     </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 };
 

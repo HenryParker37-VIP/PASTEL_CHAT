@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const {
   findUser,
   findUserById,
@@ -12,6 +13,8 @@ const {
   userPublic
 } = require('../db/store');
 const authMiddleware = require('../middleware/auth');
+
+const googleClient = new OAuth2Client(process.env.REACT_APP_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
 
@@ -122,6 +125,56 @@ router.post('/update-name', authMiddleware, (req, res) => {
 // GET /auth/me - Return current user (with login code for reminder)
 router.get('/me', authMiddleware, (req, res) => {
   res.json({ ...userPublic(req.user), loginCode: req.user.loginCode });
+});
+
+// POST /auth/google - Sign in or register via Google OAuth
+router.post('/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Google token required' });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.REACT_APP_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const googleId = payload.sub;
+    const googleEmail = payload.email;
+    const googleName = payload.name || payload.given_name || 'PastelUser';
+    const googleAvatar = payload.picture || defaultAvatar(googleName);
+
+    // Find existing user by googleId or email
+    let user = findUser({ googleId }) || findUser({ email: googleEmail });
+
+    if (!user) {
+      // New user — create account linked to Google
+      let baseName = googleName.replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 20) || 'PastelUser';
+      let finalName = baseName;
+      let suffix = 1;
+      while (isNameTaken(finalName)) {
+        finalName = `${baseName}${suffix++}`;
+      }
+      user = createUser({
+        name: finalName,
+        loginCode: generateLoginCode(),
+        avatar: googleAvatar,
+        googleId,
+        email: googleEmail,
+      });
+    } else if (!user.googleId) {
+      // Existing user — link Google to their account
+      user = updateUser(user._id, { googleId, email: googleEmail });
+    }
+
+    res.json({
+      token: issueToken(user),
+      user: { ...userPublic(user), loginCode: user.loginCode },
+      isNewUser: !user.googleId,
+    });
+  } catch (error) {
+    console.error('[Auth] Google login error:', error.message);
+    res.status(401).json({ message: 'Google authentication failed' });
+  }
 });
 
 module.exports = router;
