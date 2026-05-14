@@ -69,19 +69,21 @@ ipcMain.on('install-update', () => {
   autoUpdater.quitAndInstall();
 });
 
-// Content Security Policy
+// Content Security Policy — file:// needs 'self' to cover local bundle resources
 app.on('web-contents-created', (_, contents) => {
   contents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self' https://pastel-chat.onrender.com wss://pastel-chat.onrender.com; " +
-          "script-src 'self' 'unsafe-inline' https://accounts.google.com; " +
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-          "font-src 'self' https://fonts.gstatic.com; " +
-          "img-src 'self' data: https:; " +
-          "connect-src 'self' https://pastel-chat.onrender.com wss://pastel-chat.onrender.com https://accounts.google.com;"
+          "default-src 'self' file: https://pastel-chat.onrender.com wss://pastel-chat.onrender.com; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' file: https://accounts.google.com; " +
+          "style-src 'self' 'unsafe-inline' file: https://fonts.googleapis.com; " +
+          "font-src 'self' file: data: https://fonts.gstatic.com; " +
+          "img-src 'self' file: data: blob: https:; " +
+          "media-src 'self' file: blob:; " +
+          "connect-src 'self' file: https://pastel-chat.onrender.com wss://pastel-chat.onrender.com " +
+          "https://accounts.google.com https://api.giphy.com https://media.giphy.com;"
         ],
       },
     });
