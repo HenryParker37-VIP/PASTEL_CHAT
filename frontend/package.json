@@ -10,12 +10,15 @@
     "@capacitor/push-notifications": "^6.0.0",
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.6.2",
+    "electron-updater": "^6.8.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",
     "react-scripts": "5.0.1",
     "socket.io-client": "^4.7.4"
   },
+  "homepage": "./",
+  "main": "public/electron.js",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
@@ -24,7 +27,11 @@
     "cap:add:ios": "npx cap add ios",
     "cap:build:ios": "npm run build && npx cap copy && npx cap open ios",
     "cap:sync:ios": "npm run build && npx cap sync ios",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-build": "npm run build && electron-builder --config electron-builder.json",
+    "electron-build:win": "npm run build && electron-builder --win --config electron-builder.json"
   },
   "browserslist": {
     "production": [
@@ -41,6 +48,10 @@
   "proxy": "http://localhost:5002",
   "devDependencies": {
     "@capacitor/cli": "^6.0.0",
-    "sharp": "^0.34.5"
+    "concurrently": "^9.2.1",
+    "electron": "^42.0.1",
+    "electron-builder": "^26.8.1",
+    "sharp": "^0.34.5",
+    "wait-on": "^9.0.10"
   }
 }

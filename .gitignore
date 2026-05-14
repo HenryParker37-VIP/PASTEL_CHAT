@@ -29,3 +29,6 @@ yarn-error.log*
 
 # PASTEL_CHAT specific
 db.json
+
+# Electron build output (large .exe files — distribute via GitHub Releases)
+frontend/dist/
