@@ -14,22 +14,43 @@
   --border: #EEE0D8;
   --subtext: #888888;
   --search-bg: #F7F0FA;
+  /* Set by MobileViewportFix — keyboard height on iOS/Android */
+  --keyboard-height: 0px;
+  --sat: env(safe-area-inset-top,    0px);
+  --sar: env(safe-area-inset-right,  0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left,   0px);
 }
 
 * { box-sizing: border-box; }
 
-html, body, #root {
+html {
   height: 100%;
-  margin: 0;
-  padding: 0;
+  /* Prevent iOS bounce/scroll when keyboard opens */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
 
 body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   font-family: 'Quicksand', 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--cream);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  /* Allow body to scroll normally */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -48,10 +69,13 @@ input, textarea {
 }
 
 .page-frame {
+  height: 100%;
   min-height: 100dvh;
   width: 100%;
   position: relative;
-  padding-bottom: env(safe-area-inset-bottom);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--sab);
 }
 
 /* ---------- Animations ---------- */
@@ -273,7 +297,7 @@ input, textarea {
   align-items: flex-start;
   justify-content: center;
   min-height: 100dvh;
-  padding: calc(24px + env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom));
+  padding: calc(24px + var(--sat)) 16px calc(60px + var(--sab));
   overflow-y: auto;
 }
 
@@ -427,16 +451,31 @@ input, textarea {
 
 /* ---------- Chat ---------- */
 
-.chat-wrap { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; padding-top: env(safe-area-inset-top); }
+.chat-wrap {
+  display: flex;
+  flex-direction: column;
+  /* Shrinks when keyboard opens (Android Chrome + interactive-widget=resizes-content).
+     JS hook sets --keyboard-height for iOS Safari fallback. */
+  height: calc(100dvh - var(--keyboard-height));
+  max-height: calc(100dvh - var(--keyboard-height));
+  overflow: hidden;
+  /* safe-area-inset-top is handled per-section below, NOT here,
+     so sticky header doesn't slip behind the status bar */
+}
 .chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(8px);
+  /* ✅ Safe area top lives HERE, not on .chat-wrap */
+  padding: calc(12px + var(--sat)) 18px 12px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--soft-pink);
-  position: sticky; top: 0; z-index: 5;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
 }
 .chat-header .peer { display: flex; align-items: center; gap: 12px; }
 .chat-header .peer h3 { margin: 0; font-size: 16px; }
@@ -446,17 +485,24 @@ input, textarea {
 .chat-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
   position: relative;
+  /* Smooth momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent scroll chaining to the page */
+  overscroll-behavior: contain;
 }
 
 .chat-footer {
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  /* ✅ Safe area bottom lives HERE */
+  padding: 10px 14px calc(8px + var(--sab));
   border-top: 1px solid var(--soft-pink);
   background: white;
   display: flex;
   gap: 8px;
   align-items: flex-end;
+  flex-shrink: 0;
 }
 
 /* ── New message row / bubble system ───────────────────────────────────── */
@@ -597,9 +643,11 @@ input, textarea {
 
 .chat-input-area {
   position: relative;
-  padding: 10px 14px calc(42px + env(safe-area-inset-bottom));
+  /* ✅ Removed the hardcoded 42px — safe area bottom is enough */
+  padding: 10px 14px calc(8px + var(--sab));
   background: white;
   border-top: 1px solid #F0E6F0;
+  flex-shrink: 0;
 }
 
 .input-row {
@@ -780,7 +828,7 @@ input, textarea {
   background: var(--cream);
   box-shadow: -8px 0 30px rgba(0,0,0,0.1);
   z-index: 51;
-  padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  padding: calc(24px + var(--sat)) 20px calc(24px + var(--sab));
   overflow-y: auto;
 }
 .drawer h3 { margin: 20px 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; }
@@ -999,7 +1047,7 @@ input, textarea {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 0 0 calc(80px + env(safe-area-inset-bottom));
+  padding: 0 0 calc(80px + var(--sab));
   background: var(--cream);
 }
 
@@ -1007,8 +1055,9 @@ input, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(16px + env(safe-area-inset-top)) 18px 12px;
+  padding: calc(16px + var(--sat)) 18px 12px;
   background: linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 50%, #ADD8E6 100%);
+  flex-shrink: 0;
 }
 
 .home-mobile-user {
