@@ -163,6 +163,17 @@ const startTelegramPolling = () => {
         setTimeout(poll, 3000);
         return;
       }
+      // 409 = another instance is already polling (happens briefly during Render deploys)
+      if (r.status === 409) {
+        console.warn('[Telegram] 409 Conflict — another instance polling. Retrying in 15s...');
+        setTimeout(poll, 15000);
+        return;
+      }
+      if (!r.ok) {
+        console.error('[Telegram] getUpdates HTTP error:', r.status);
+        setTimeout(poll, 5000);
+        return;
+      }
       const data = await r.json();
       if (!data.ok) {
         console.error('[Telegram] getUpdates error:', JSON.stringify(data));
