@@ -12,7 +12,7 @@ export const LANGUAGES = [
 const LangContext = createContext(null);
 
 export const LangProvider = ({ children }) => {
-  const [lang, setLangState] = useState(localStorage.getItem('lang') || 'en');
+  const [lang, setLangState] = useState(localStorage.getItem('lang') || 'vi');
 
   const setLang = (code) => {
     setLangState(code);
