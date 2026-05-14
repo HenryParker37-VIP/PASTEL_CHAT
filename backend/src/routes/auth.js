@@ -160,10 +160,17 @@ router.post('/google', async (req, res) => {
         avatar: googleAvatar,
         googleId,
         email: googleEmail,
+        loginMethod: 'google',
+        isGoogleVerified: true,
       });
     } else if (!user.googleId) {
       // Existing user — link Google to their account
-      user = updateUser(user._id, { googleId, email: googleEmail });
+      user = updateUser(user._id, { googleId, email: googleEmail, loginMethod: 'google', isGoogleVerified: true });
+    } else {
+      // Already a Google user — ensure fields are set
+      if (!user.isGoogleVerified) {
+        user = updateUser(user._id, { loginMethod: 'google', isGoogleVerified: true });
+      }
     }
 
     res.json({

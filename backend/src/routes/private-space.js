@@ -4,7 +4,7 @@ const {
   createNote, getUserNotes, deleteNote, updateNote,
   createReminder, getUserReminders, deleteReminder,
   createBirthday, getUserBirthdays, deleteBirthday,
-  getSharedPhotos
+  getSharedPhotos, togglePhotoEncryption
 } = require('../db/store');
 
 const router = express.Router();
@@ -76,7 +76,32 @@ router.delete('/birthdays/:id', authMiddleware, (req, res) => {
 
 // ===== Shared Photos =====
 router.get('/shared-photos', authMiddleware, (req, res) => {
-  res.json(getSharedPhotos());
+  const userId = req.user._id;
+  const photos = getSharedPhotos().map(photo => {
+    if (photo.isHidden && photo.uploadedBy._id !== userId) {
+      return {
+        _id: photo._id,
+        dataUrl: null,
+        caption: '',
+        uploadedBy: photo.uploadedBy,
+        createdAt: photo.createdAt,
+        isHidden: true,
+      };
+    }
+    return photo;
+  });
+  res.json(photos);
+});
+
+// POST /private-space/shared-photos/:id/toggle-visibility — Google users only
+router.post('/shared-photos/:id/toggle-visibility', authMiddleware, (req, res) => {
+  if (!req.user.isGoogleVerified) {
+    return res.status(403).json({ error: 'Only Google-verified users can toggle photo visibility' });
+  }
+  const { isHidden } = req.body;
+  const photo = togglePhotoEncryption(req.params.id, req.user._id, !!isHidden);
+  if (!photo) return res.status(404).json({ error: 'Photo not found or not your photo' });
+  res.json({ success: true, isHidden: photo.isHidden });
 });
 
 module.exports = router;
