@@ -209,7 +209,7 @@ const Chat = () => {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100vh',
+      height: 'var(--visual-height, 100dvh)',
       overflow: 'hidden',
       background: 'var(--cream)'
     }}>
