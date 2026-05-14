@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
+import { useLang } from '../i18n';
 import TypewriterText from '../components/TypewriterText';
 import AVATARS, {
   getAvatarUrl,
@@ -243,6 +244,7 @@ const Login = () => {
   const [showRecovery, setShowRecovery] = useState(false);
   const [avatarModal, setAvatarModal] = useState(null); // 'sticker' | 'character' | null
   const { register, loginWithCode, loginWithGoogle, checkName } = useAuth();
+  const { t, lang, setLang } = useLang();
   const navigate = useNavigate();
 
   const storedAccount = getStoredAccount();
@@ -258,7 +260,7 @@ const Login = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
-    if (!name.trim()) return setError('Please pick a name');
+    if (!name.trim()) return setError(t('loginPickNameFirst'));
     setBusy(true);
     const r = await register(name.trim(), avatarUrl);
     setBusy(false);
@@ -271,7 +273,7 @@ const Login = () => {
     e.preventDefault();
     setError('');
     const code = loginCode.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
-    if (code.replace('-', '').length < 8) return setError('Enter your 8-character login code');
+    if (code.replace('-', '').length < 8) return setError(t('loginEnterCode'));
     setBusy(true);
     const r = await loginWithCode(code);
     setBusy(false);
@@ -293,7 +295,7 @@ const Login = () => {
   };
 
   const handleGoogleError = () => {
-    setError('Google sign-in failed. Please try again or use a login code.');
+    setError(t('loginGoogleFailed'));
   };
 
   const handleRecoverLogin = async () => {
@@ -303,7 +305,7 @@ const Login = () => {
     const r = await loginWithCode(storedAccount.loginCode);
     setBusy(false);
     if (!r.success) {
-      setError('Recovery failed — your account may no longer exist on this server.');
+      setError(t('loginRecoverFailed'));
       return;
     }
     navigate('/home');
@@ -315,17 +317,17 @@ const Login = () => {
       <div className="center">
         <div className="login-card pop-in" style={{ textAlign: 'center' }}>
           <div className="float" style={{ fontSize: 56, marginBottom: 8 }}>🎉</div>
-          <h2 style={{ margin: '0 0 6px' }}>Welcome, {newName}!</h2>
+          <h2 style={{ margin: '0 0 6px' }}>{t('loginWelcome', newName)}</h2>
 
           <div style={{
             background: '#FFF3CD', border: '2px solid #FFCA28',
             borderRadius: 14, padding: '12px 16px', margin: '16px 0', textAlign: 'left'
           }}>
             <p style={{ margin: 0, fontWeight: 700, color: '#856404', fontSize: 14 }}>
-              ⚠️ Save this code — it's the only way to log back in!
+              {t('loginSaveWarningTitle')}
             </p>
             <p style={{ margin: '4px 0 0', color: '#856404', fontSize: 13 }}>
-              There's no email recovery. If you lose this code, your account is gone forever.
+              {t('loginSaveWarningBody')}
             </p>
           </div>
 
@@ -337,24 +339,24 @@ const Login = () => {
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
             <button className="btn btn-lavender" onClick={() => { navigator.clipboard?.writeText(newCode).catch(() => {}); }}>
-              📋 Copy code
+              {t('loginCopyCode')}
             </button>
             <button className="btn btn-ghost" onClick={() => {
               const msg = `My Pastel Chat login code: ${newCode}\nDon't share this with anyone!`;
               if (navigator.share) { navigator.share({ text: msg }).catch(() => {}); }
               else { navigator.clipboard?.writeText(msg).catch(() => {}); }
             }}>
-              📤 Share / Save
+              {t('loginShareSave')}
             </button>
           </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', justifyContent: 'center', marginBottom: 16 }}>
             <input type="checkbox" checked={codeSaved} onChange={e => setCodeSaved(e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#4A4A4A' }}>Yes, I saved my login code safely ✓</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#4A4A4A' }}>{t('loginConfirmSaved')}</span>
           </label>
 
           <button className="btn btn-blue" disabled={!codeSaved} onClick={() => navigate('/home')} style={{ width: '100%' }}>
-            Enter PastelChat →
+            {t('loginEnterApp')}
           </button>
         </div>
       </div>
@@ -381,6 +383,22 @@ const Login = () => {
 
       <div className="center">
         <div className="login-card pop-in">
+          {/* Language toggle */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+            <button
+              onClick={() => setLang(lang === 'vi' ? 'en' : 'vi')}
+              style={{
+                background: 'linear-gradient(135deg, #F0E8FF, #E8F4FD)',
+                border: '1.5px solid #DDD0F0',
+                borderRadius: 20, padding: '4px 12px',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                color: '#7B5EA7', display: 'flex', alignItems: 'center', gap: 5
+              }}
+            >
+              {lang === 'vi' ? '🇬🇧 English' : '🇻🇳 Tiếng Việt'}
+            </button>
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: 14 }}>
             <div style={{ fontSize: 50 }} className="sticker-bounce">🌸</div>
             <h1 style={{ margin: '6px 0 4px', fontSize: 30 }}>
@@ -390,7 +408,12 @@ const Login = () => {
               }}>PastelChat</span>
             </h1>
             <p style={{ margin: 0, color: '#888', fontSize: 14 }}>
-              <TypewriterText words={['A cozy place to chat', 'Sweet as a daydream', 'Hi there, friend']} typingSpeed={70} />
+              <TypewriterText
+                words={lang === 'vi'
+                  ? ['Không gian trò chuyện ấm cúng', 'Ngọt ngào như giấc mơ', 'Chào bạn, người bạn nhỏ']
+                  : ['A cozy place to chat', 'Sweet as a daydream', 'Hi there, friend']}
+                typingSpeed={70}
+              />
             </p>
           </div>
 
@@ -404,12 +427,12 @@ const Login = () => {
               textAlign: 'center'
             }}>
               <div style={{ fontSize: 18, marginBottom: 3 }}>🔐</div>
-              <div style={{ fontWeight: 800, fontSize: 12, color: '#4285F4', marginBottom: 4 }}>Google Premium</div>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#4285F4', marginBottom: 4 }}>{t('loginGooglePremium')}</div>
               <div style={{ fontSize: 10, color: '#666', lineHeight: 1.5 }}>
-                ✅ Persistent profile<br />
-                ✅ Photo encryption<br />
-                ✅ No code to save<br />
-                ✅ Google avatar
+                ✅ {t('loginPersistentProfile')}<br />
+                ✅ {t('loginPhotoEncryption')}<br />
+                ✅ {t('loginNoCodeToSave')}<br />
+                ✅ {t('loginGoogleAvatar')}
               </div>
             </div>
             <div style={{
@@ -417,22 +440,22 @@ const Login = () => {
               borderRadius: 12, padding: '10px 10px', textAlign: 'center'
             }}>
               <div style={{ fontSize: 18, marginBottom: 3 }}>👤</div>
-              <div style={{ fontWeight: 800, fontSize: 12, color: '#888', marginBottom: 4 }}>Standard</div>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#888', marginBottom: 4 }}>{t('loginStandard')}</div>
               <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.5 }}>
-                ✓ Anonymous chat<br />
-                ✓ Custom avatar<br />
-                ✓ All chat features<br />
-                ⚠️ Must save login code
+                ✓ {t('loginAnonChat')}<br />
+                ✓ {t('loginCustomAvatar')}<br />
+                ✓ {t('loginAllFeatures')}<br />
+                ⚠️ {t('loginMustSaveCode')}
               </div>
             </div>
           </div>
 
           <div className="login-tabs">
             <button className={tab === 'register' ? 'active' : ''} onClick={() => { setTab('register'); setError(''); setShowRecovery(false); }}>
-              New here
+              {t('loginNewHere')}
             </button>
             <button className={tab === 'login' ? 'active' : ''} onClick={() => { setTab('login'); setError(''); }}>
-              Have a code
+              {t('loginHaveCode')}
             </button>
           </div>
 
@@ -450,12 +473,12 @@ const Login = () => {
                   background: 'linear-gradient(135deg, #4285F4, #34A853)',
                   color: 'white', fontSize: 9, fontWeight: 800,
                   padding: '2px 8px', borderRadius: 10
-                }}>⭐ RECOMMENDED</div>
+                }}>{t('loginGoogleRecommended')}</div>
                 <div style={{ fontWeight: 800, fontSize: 13, color: '#3A5DB0', marginBottom: 2 }}>
-                  🔐 Sign in with Google
+                  {t('loginGoogleTitle')}
                 </div>
                 <div style={{ fontSize: 11, color: '#7090C0', marginBottom: 12, lineHeight: 1.4 }}>
-                  Persistent profile · Photo encryption · No code needed
+                  {t('loginGoogleDesc')}
                 </div>
                 <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signup_with" />
@@ -464,7 +487,7 @@ const Login = () => {
               </div>
 
               {/* Divider */}
-              <div className="google-divider"><span>or create with code (Standard)</span></div>
+              <div className="google-divider"><span>{t('loginOrCreate')}</span></div>
 
               {/* ── Standard / Code signup ── */}
               <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -472,11 +495,11 @@ const Login = () => {
                   background: '#FFF8F0', border: '1px solid #FFE0B0',
                   borderRadius: 10, padding: '8px 12px', fontSize: 11, color: '#B08000'
                 }}>
-                  ⚠️ You'll get a login code — save it, there's no email recovery.
+                  {t('loginCodeWarning')}
                 </div>
 
                 <label>
-                  <span style={{ fontSize: 13, color: '#888' }}>Pick a name</span>
+                  <span style={{ fontSize: 13, color: '#888' }}>{t('loginPickName')}</span>
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                     <input
                       className="input"
@@ -492,7 +515,7 @@ const Login = () => {
 
                 {/* Avatar picker */}
                 <div>
-                  <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 10 }}>Pick your avatar ✿</span>
+                  <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 10 }}>{t('loginPickAvatar')}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <img
                       src={avatarUrl}
@@ -513,7 +536,7 @@ const Login = () => {
                 {error && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
 
                 <button className="btn" disabled={busy} type="submit">
-                  {busy ? 'Creating...' : '✿ Create standard account'}
+                  {busy ? t('loginCreating') : t('loginCreateStandard')}
                 </button>
               </form>
             </div>
@@ -526,10 +549,10 @@ const Login = () => {
                 border: '2px solid #C2D8F5', borderRadius: 16, padding: '14px 16px',
               }}>
                 <div style={{ fontWeight: 800, fontSize: 13, color: '#3A5DB0', marginBottom: 2 }}>
-                  🔐 Google Premium Login
+                  {t('loginGoogleTitle')}
                 </div>
                 <div style={{ fontSize: 11, color: '#7090C0', marginBottom: 12 }}>
-                  No code needed — just your Google account
+                  {t('loginGoogleDesc')}
                 </div>
                 <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signin_with" />
@@ -537,7 +560,7 @@ const Login = () => {
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
               </div>
 
-              <div className="google-divider"><span>or log in with code (Standard)</span></div>
+              <div className="google-divider"><span>{t('loginOrLogin')}</span></div>
 
               {/* Device recovery banner */}
               {storedAccount && !showRecovery && (
@@ -554,9 +577,9 @@ const Login = () => {
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: '#6B4E8B' }}>
-                      Previously logged in as {storedAccount.name}
+                      {t('loginPrevDevice', storedAccount.name)}
                     </div>
-                    <div style={{ fontSize: 12, color: '#9B7EB8' }}>Tap to recover your code from this device</div>
+                    <div style={{ fontSize: 12, color: '#9B7EB8' }}>{t('loginRecoverHint')}</div>
                   </div>
                   <span style={{ color: '#DDA0DD', fontSize: 18 }}>›</span>
                 </div>
@@ -579,14 +602,14 @@ const Login = () => {
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-lavender" style={{ flex: 1, fontSize: 13 }}
-                      onClick={() => navigator.clipboard?.writeText(storedAccount.loginCode).catch(() => {})}>📋 Copy</button>
+                      onClick={() => navigator.clipboard?.writeText(storedAccount.loginCode).catch(() => {})}>📋 {t('loginCopyCode').replace('📋 ', '')}</button>
                     <button className="btn" style={{ flex: 1, fontSize: 13 }} disabled={busy} onClick={handleRecoverLogin}>
-                      {busy ? 'Logging in...' : '🔑 Log in now'}
+                      {busy ? t('loginChecking') : t('loginLogBackIn')}
                     </button>
                   </div>
                   <button onClick={() => setShowRecovery(false)}
                     style={{ marginTop: 8, fontSize: 12, color: '#999', width: '100%', textAlign: 'center' }}>
-                    Cancel
+                    {t('cancel')}
                   </button>
                   {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}
                 </div>
@@ -594,7 +617,7 @@ const Login = () => {
 
               <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <label>
-                  <span style={{ fontSize: 13, color: '#888' }}>Your login code</span>
+                  <span style={{ fontSize: 13, color: '#888' }}>{t('loginCodeLabel')}</span>
                   <input
                     className="code-input"
                     value={loginCode}
@@ -605,7 +628,7 @@ const Login = () => {
                 </label>
                 {error && !showRecovery && <p style={{ color: '#e57373', fontSize: 13, margin: 0 }}>{error}</p>}
                 <button className="btn btn-blue" disabled={busy} type="submit">
-                  {busy ? 'Checking...' : '🔑 Log back in'}
+                  {busy ? t('loginChecking') : t('loginLogBackIn')}
                 </button>
               </form>
             </div>
