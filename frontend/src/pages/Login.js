@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
+import { signInWithMicrosoft } from '../services/microsoft-auth';
 import TypewriterText from '../components/TypewriterText';
 import AVATARS, {
   getAvatarUrl,
@@ -243,7 +244,7 @@ const Login = () => {
   const [codeSaved, setCodeSaved] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [avatarModal, setAvatarModal] = useState(null); // 'sticker' | 'character' | null
-  const { register, loginWithCode, loginWithGoogle, checkName } = useAuth();
+  const { register, loginWithCode, loginWithGoogle, loginWithMicrosoft, checkName } = useAuth();
   const { t, lang, setLang } = useLang();
   const navigate = useNavigate();
 
@@ -296,6 +297,27 @@ const Login = () => {
 
   const handleGoogleError = () => {
     setError(t('loginGoogleFailed'));
+  };
+
+  const handleMicrosoftLogin = async () => {
+    if (!process.env.REACT_APP_MICROSOFT_CLIENT_ID) {
+      return setError('Microsoft login is not configured yet. Please add REACT_APP_MICROSOFT_CLIENT_ID to your .env file.');
+    }
+    setError('');
+    setBusy(true);
+    try {
+      const accessToken = await signInWithMicrosoft();
+      const r = await loginWithMicrosoft(accessToken);
+      if (!r.success) return setError(r.error);
+      window.location.replace('/home');
+    } catch (err) {
+      if (err.errorCode !== 'user_cancelled') {
+        setError('Microsoft sign-in failed. Please try again.');
+        console.error('[Microsoft]', err);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleRecoverLogin = async () => {
@@ -483,6 +505,22 @@ const Login = () => {
                 <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signup_with" />
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={handleMicrosoftLogin}
+                    disabled={busy}
+                    className="microsoft-btn"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0 }}>
+                      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                    </svg>
+                    Sign up with Microsoft
+                  </button>
+                </div>
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
               </div>
 
@@ -556,6 +594,22 @@ const Login = () => {
                 </div>
                 <div className="google-btn-wrap" style={{ display: 'flex', justifyContent: 'center' }}>
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} shape="pill" theme="outline" text="signin_with" />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={handleMicrosoftLogin}
+                    disabled={busy}
+                    className="microsoft-btn"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0 }}>
+                      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                    </svg>
+                    Sign in with Microsoft
+                  </button>
                 </div>
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
               </div>

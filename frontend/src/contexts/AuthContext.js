@@ -140,6 +140,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithMicrosoft = async (accessToken) => {
+    try {
+      const { data } = await api.post('/auth/microsoft', { token: accessToken });
+      persist(data.token, data.user);
+      trySubscribePush();
+      return { success: true, user: data.user };
+    } catch (err) {
+      if (!err.response) {
+        return { success: false, error: 'Cannot reach the server. Check your connection.' };
+      }
+      const msg = err.response?.data?.message || 'Microsoft sign-in failed. Please try again.';
+      const detail = err.response?.data?.detail;
+      console.error('[Auth] Microsoft error:', msg, detail || '');
+      return { success: false, error: detail ? `${msg}: ${detail}` : msg };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -156,6 +173,7 @@ export const AuthProvider = ({ children }) => {
         register,
         loginWithCode,
         loginWithGoogle,
+        loginWithMicrosoft,
         checkName,
         updateName,
         updateProfile,
