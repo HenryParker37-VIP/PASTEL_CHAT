@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
+const fetch = require('node-fetch');
 const {
   findUser,
   findUserById,
@@ -186,6 +187,56 @@ router.post('/google', async (req, res) => {
   } catch (error) {
     console.error('[OAuth] Google login error:', error.message);
     res.status(401).json({ message: 'Google authentication failed', detail: error.message });
+  }
+});
+
+// POST /auth/microsoft - Sign in or register via Microsoft OAuth
+router.post('/microsoft', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Microsoft token required' });
+
+    const graphRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!graphRes.ok) {
+      const err = await graphRes.text();
+      console.error('[OAuth] Microsoft Graph error:', err);
+      return res.status(401).json({ message: 'Microsoft token validation failed' });
+    }
+    const profile = await graphRes.json();
+    const microsoftId = profile.id;
+    const microsoftEmail = profile.mail || profile.userPrincipalName || '';
+    const microsoftName = profile.displayName || profile.givenName || 'PastelUser';
+    const microsoftAvatar = defaultAvatar(microsoftName);
+
+    let user = findUser({ microsoftId });
+    if (!user && microsoftEmail) user = findUser({ email: microsoftEmail });
+
+    if (!user) {
+      let baseName = microsoftName.replace(/[^a-zA-Z0-9 ]/g, '').trim().slice(0, 20) || 'PastelUser';
+      let finalName = baseName;
+      let suffix = 1;
+      while (isNameTaken(finalName)) finalName = `${baseName}${suffix++}`;
+      user = createUser({
+        name: finalName,
+        loginCode: generateLoginCode(),
+        avatar: microsoftAvatar,
+        microsoftId,
+        email: microsoftEmail,
+        loginMethod: 'microsoft',
+      });
+    } else if (!user.microsoftId) {
+      user = updateUser(user._id, { microsoftId, loginMethod: 'microsoft' });
+    }
+
+    res.json({
+      token: issueToken(user),
+      user: { ...userPublic(user), loginCode: user.loginCode },
+    });
+  } catch (error) {
+    console.error('[OAuth] Microsoft login error:', error.message);
+    res.status(401).json({ message: 'Microsoft authentication failed', detail: error.message });
   }
 });
 

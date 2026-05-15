@@ -387,6 +387,16 @@ input, textarea {
 }
 .google-divider span { padding: 0 10px; }
 .google-btn-wrap { display: flex; justify-content: center; }
+.microsoft-btn {
+  display: flex; align-items: center; gap: 10px;
+  background: white; color: #444; border: 1px solid #dadce0;
+  border-radius: 20px; padding: 8px 18px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.microsoft-btn:hover { background: #f8f8f8; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.microsoft-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .google-security-note {
   text-align: center; font-size: 11px; color: #aaa; margin: 2px 0 0;
 }
@@ -454,13 +464,8 @@ input, textarea {
 .chat-wrap {
   display: flex;
   flex-direction: column;
-  /* Shrinks when keyboard opens (Android Chrome + interactive-widget=resizes-content).
-     JS hook sets --keyboard-height for iOS Safari fallback. */
-  height: calc(100dvh - var(--keyboard-height));
-  max-height: calc(100dvh - var(--keyboard-height));
+  height: 100%;
   overflow: hidden;
-  /* safe-area-inset-top is handled per-section below, NOT here,
-     so sticky header doesn't slip behind the status bar */
 }
 .chat-header {
   display: flex;
