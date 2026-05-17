@@ -207,15 +207,21 @@ const Chat = () => {
 
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: 'var(--visual-height, 100dvh)',
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
       overflow: 'hidden',
       background: 'var(--cream)'
     }}>
       <Header />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* Content area positioned below the fixed header — never affected by keyboard */}
+      <div style={{
+        position: 'absolute',
+        top: 'calc(60px + env(safe-area-inset-top))',
+        left: 0, right: 0, bottom: 0,
+        display: 'flex',
+        overflow: 'hidden'
+      }}>
         {/* Sidebar */}
         {sidebarOpen && (
           <div style={{

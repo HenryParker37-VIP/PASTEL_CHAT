@@ -157,10 +157,16 @@ const GroupChat = () => {
   const isCreator = group.creatorId === user?._id;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--visual-height, 100dvh)', overflow: 'hidden', background: 'var(--cream)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', background: 'var(--cream)' }}>
       <Header />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{
+        position: 'absolute',
+        top: 'calc(60px + env(safe-area-inset-top))',
+        left: 0, right: 0, bottom: 0,
+        display: 'flex',
+        overflow: 'hidden'
+      }}>
         {/* Main chat */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
           {/* Toolbar */}

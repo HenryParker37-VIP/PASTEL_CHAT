@@ -39,9 +39,12 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
         padding: '12px 0',
         display: 'flex',
         flexDirection: 'column',
+        minHeight: 0,
         background: 'var(--cream)'
       }}
     >
@@ -52,10 +55,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          /* Fixed top offset instead of flex vertical centering — prevents
-             the empty state from jumping when the keyboard opens and the
-             chat-body shrinks. The content stays anchored near the top-center. */
-          paddingTop: '22vh',
+          paddingTop: '80px',
           gap: '12px',
           color: '#CCCCCC'
         }}>
