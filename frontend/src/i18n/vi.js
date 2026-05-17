@@ -203,6 +203,11 @@ const vi = {
   mySpaceFriendName: 'Tên bạn bè',
   mySpaceDescription: 'Ghi chú nhanh cho ghi chú hoặc nội dung được chia sẻ',
 
+  // Tutorial
+  tutorialReplay: 'Xem lại hướng dẫn chào mừng',
+  tutorialReplayDesc: 'Xem lại hướng dẫn bắt đầu từ đầu.',
+  tutorialReplayBtn: '🎓 Xem lại Hướng dẫn',
+
   // Privacy & support
   privacyAppearance: 'Giao diện',
   privacyAppearanceDesc: 'Chọn giữa chế độ sáng và tối để có trải nghiệm thoải mái hơn.',

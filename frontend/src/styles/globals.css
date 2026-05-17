@@ -195,6 +195,18 @@ input, textarea {
 .alarm-bell  { animation: bellSwing 0.7s ease-in-out infinite; display: inline-block; }
 .alarm-glow  { animation: alarmGlow 1.4s ease-in-out infinite; }
 
+/* ---------- Onboarding tutorial ---------- */
+
+@keyframes spotlightPulse {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.74), 0 0 0 3px rgba(255,182,193,0.55); }
+  50%       { box-shadow: 0 0 0 9999px rgba(0,0,0,0.74), 0 0 0 7px rgba(255,182,193,0.18); }
+}
+
+@keyframes tooltipSlideIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ---------- Reusable components ---------- */
 
 .card {

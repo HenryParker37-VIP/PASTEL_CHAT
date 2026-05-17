@@ -437,14 +437,16 @@ function getGroupConversation(groupId, { limit = 100, before = null } = {}) {
 }
 
 // ===== Private Space: Notes =====
-function createNote(userId, { title, content, sharedWith = [] }) {
+function createNote(userId, { title, content, sharedWith = [], images = [] }) {
   const note = {
     _id: genId(),
     userId,
     title: (title || '').slice(0, 120),
     content: (content || '').slice(0, 5000),
     sharedWith: Array.isArray(sharedWith) ? sharedWith : [],
-    createdAt: new Date().toISOString()
+    images: Array.isArray(images) ? images : [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
   store.notes.push(note);
   persist();
@@ -468,9 +470,11 @@ function deleteNote(noteId) {
 function updateNote(noteId, updates) {
   const n = findNote(noteId);
   if (!n) return null;
-  if (updates.title) n.title = updates.title.slice(0, 120);
-  if (updates.content) n.content = updates.content.slice(0, 5000);
-  if (updates.sharedWith) n.sharedWith = updates.sharedWith;
+  if (updates.title !== undefined) n.title = (updates.title || '').slice(0, 120);
+  if (updates.content !== undefined) n.content = (updates.content || '').slice(0, 5000);
+  if (updates.sharedWith !== undefined) n.sharedWith = updates.sharedWith;
+  if (updates.images !== undefined) n.images = Array.isArray(updates.images) ? updates.images : [];
+  n.updatedAt = new Date().toISOString();
   persist();
   return n;
 }
