@@ -407,8 +407,15 @@ input, textarea {
   font-family: inherit; transition: background 0.15s, box-shadow 0.15s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
-.microsoft-btn:hover { background: #f8f8f8; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-.microsoft-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.microsoft-btn:hover:not(:disabled) { background: #f8f8f8; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.microsoft-btn:disabled { cursor: not-allowed; }
+.microsoft-btn--soon {
+  opacity: 0.55;
+  background: #f7f7f7;
+  border-style: dashed;
+  color: #999;
+  font-style: italic;
+}
 .google-security-note {
   text-align: center; font-size: 11px; color: #aaa; margin: 2px 0 0;
 }
