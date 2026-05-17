@@ -300,11 +300,7 @@ const Login = () => {
     setError(t('loginGoogleFailed'));
   };
 
-  const microsoftAvailable = AUTH_PROVIDERS.microsoft.available;
-
   const handleMicrosoftLogin = async () => {
-    // Button is disabled when not configured — this guard is a safety net only
-    if (!microsoftAvailable) return;
     setError('');
     setBusy(true);
     try {
@@ -510,18 +506,17 @@ const Login = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                   <button
                     type="button"
-                    onClick={microsoftAvailable ? handleMicrosoftLogin : undefined}
-                    disabled={busy || !microsoftAvailable}
-                    className={`microsoft-btn${!microsoftAvailable ? ' microsoft-btn--soon' : ''}`}
-                    title={microsoftAvailable ? undefined : 'Microsoft login coming soon'}
+                    onClick={handleMicrosoftLogin}
+                    disabled={busy}
+                    className="microsoft-btn"
                   >
-                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0, opacity: microsoftAvailable ? 1 : 0.45 }}>
+                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0 }}>
                       <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                       <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
                       <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
                       <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
                     </svg>
-                    {microsoftAvailable ? 'Sign up with Microsoft' : 'Microsoft — Coming soon ✨'}
+                    Sign up with Microsoft
                   </button>
                 </div>
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
@@ -601,18 +596,17 @@ const Login = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                   <button
                     type="button"
-                    onClick={microsoftAvailable ? handleMicrosoftLogin : undefined}
-                    disabled={busy || !microsoftAvailable}
-                    className={`microsoft-btn${!microsoftAvailable ? ' microsoft-btn--soon' : ''}`}
-                    title={microsoftAvailable ? undefined : 'Microsoft login coming soon'}
+                    onClick={handleMicrosoftLogin}
+                    disabled={busy}
+                    className="microsoft-btn"
                   >
-                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0, opacity: microsoftAvailable ? 1 : 0.45 }}>
+                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0 }}>
                       <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                       <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
                       <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
                       <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
                     </svg>
-                    {microsoftAvailable ? 'Sign in with Microsoft' : 'Microsoft — Coming soon ✨'}
+                    Sign in with Microsoft
                   </button>
                 </div>
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
