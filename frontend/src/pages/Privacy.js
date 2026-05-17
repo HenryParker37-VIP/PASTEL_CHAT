@@ -119,6 +119,32 @@ const Privacy = () => {
         </label>
       </div>
 
+      {/* ── Replay tutorial ── */}
+      <div className="card pop-in" style={{ marginBottom: 20 }}>
+        <h3 style={{ marginTop: 0 }}>🎓 {t('tutorialReplay')}</h3>
+        <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65, marginBottom: 14 }}>
+          {t('tutorialReplayDesc')}
+        </p>
+        <button
+          onClick={() => {
+            localStorage.removeItem('pastel_onboarding_done');
+            localStorage.removeItem('pastel_lang_chosen');
+            navigate('/home');
+          }}
+          style={{
+            padding: '10px 20px',
+            background: 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
+            border: 'none', borderRadius: 12,
+            color: 'white', fontWeight: 700,
+            fontSize: 14, cursor: 'pointer',
+            fontFamily: 'inherit',
+            boxShadow: '0 4px 14px rgba(221,160,221,0.35)',
+          }}
+        >
+          {t('tutorialReplayBtn')}
+        </button>
+      </div>
+
       {/* ── What we store ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0 }}>🛡️ {t('privacyWhatWeStore')}</h3>

@@ -5,6 +5,8 @@ import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import TypewriterText from '../components/TypewriterText';
 import TelegramSetup from '../components/TelegramSetup';
+import LanguagePickerModal from '../components/LanguagePickerModal';
+import OnboardingTutorial from '../components/OnboardingTutorial';
 
 const TILES = [
   {
@@ -61,10 +63,29 @@ const Home = () => {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { t, lang, setLang } = useLang();
   const [time, setTime] = useState(new Date());
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
   const [showTelegramSetup, setShowTelegramSetup] = useState(false);
+
+  // Onboarding: show language picker → then tutorial on first login
+  const [showLangPicker, setShowLangPicker] = useState(
+    () => !localStorage.getItem('pastel_onboarding_done') && !localStorage.getItem('pastel_lang_chosen')
+  );
+  const [showTutorial, setShowTutorial] = useState(
+    () => !localStorage.getItem('pastel_onboarding_done') && !!localStorage.getItem('pastel_lang_chosen')
+  );
+
+  const handleLangChosen = (code) => {
+    setLang(code);
+    localStorage.setItem('pastel_lang_chosen', '1');
+    setShowLangPicker(false);
+    setShowTutorial(true);
+  };
+
+  const handleTutorialDone = () => {
+    setShowTutorial(false);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -104,7 +125,7 @@ const Home = () => {
         </div>
 
         {/* 2×3 App icon grid */}
-        <div className="home-mobile-grid">
+        <div className="home-mobile-grid" data-tutorial="features">
           {TILES.map((tile, i) => (
             <button
               key={tile.key}
@@ -140,6 +161,7 @@ const Home = () => {
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
+                data-tutorial="telegram"
                 onClick={() => setShowTelegramSetup(true)}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -150,7 +172,7 @@ const Home = () => {
               >
                 <span style={{ fontSize: 15 }}>📱</span><span>Telegram</span>
               </button>
-              <div onClick={() => navigate('/install')} style={{
+              <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
                 background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
@@ -170,6 +192,7 @@ const Home = () => {
             <div className="code-display">{user.loginCode}</div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
+                data-tutorial="telegram"
                 onClick={() => setShowTelegramSetup(true)}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -180,7 +203,7 @@ const Home = () => {
               >
                 <span style={{ fontSize: 15 }}>📱</span><span>Telegram</span>
               </button>
-              <div onClick={() => navigate('/install')} style={{
+              <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
                 background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
@@ -202,11 +225,15 @@ const Home = () => {
             onConnected={() => setShowTelegramSetup(false)}
           />
         )}
+
+        {/* Onboarding: language picker → tutorial */}
+        {showLangPicker && <LanguagePickerModal onSelect={handleLangChosen} />}
+        {showTutorial && <OnboardingTutorial lang={lang} onComplete={handleTutorialDone} />}
       </div>
     );
   }
 
-  // ── Desktop layout (unchanged) ────────────────────────────────────────────
+  // ── Desktop layout ────────────────────────────────────────────
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -236,7 +263,7 @@ const Home = () => {
         <p className="tagline">{t('homeTagline')}</p>
       </div>
 
-      <div className="home-grid">
+      <div className="home-grid" data-tutorial="features">
         {TILES.map((tile, i) => (
           <div
             key={tile.key}
@@ -275,6 +302,7 @@ const Home = () => {
           </div>
           <div style={{ marginTop: 4, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
+              data-tutorial="telegram"
               onClick={() => setShowTelegramSetup(true)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -287,6 +315,7 @@ const Home = () => {
               <span>Telegram</span>
             </button>
             <div
+              data-tutorial="install"
               onClick={() => navigate('/install')}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -314,6 +343,7 @@ const Home = () => {
           <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
           <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
+              data-tutorial="telegram"
               onClick={() => setShowTelegramSetup(true)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -326,6 +356,7 @@ const Home = () => {
               <span>Telegram</span>
             </button>
             <div
+              data-tutorial="install"
               onClick={() => navigate('/install')}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -347,6 +378,10 @@ const Home = () => {
           onConnected={() => setShowTelegramSetup(false)}
         />
       )}
+
+      {/* Onboarding: language picker → tutorial */}
+      {showLangPicker && <LanguagePickerModal onSelect={handleLangChosen} />}
+      {showTutorial && <OnboardingTutorial lang={lang} onComplete={handleTutorialDone} />}
     </div>
   );
 };

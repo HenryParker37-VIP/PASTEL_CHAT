@@ -11,9 +11,9 @@ const router = express.Router();
 
 // ===== Notes =====
 router.post('/notes', authMiddleware, (req, res) => {
-  const { title, content, sharedWith } = req.body;
+  const { title, content, sharedWith, images } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'title and content required' });
-  const note = createNote(req.user._id, { title, content, sharedWith: sharedWith || [] });
+  const note = createNote(req.user._id, { title, content, sharedWith: sharedWith || [], images: images || [] });
   res.json(note);
 });
 
@@ -28,11 +28,12 @@ router.delete('/notes/:id', authMiddleware, (req, res) => {
 });
 
 router.put('/notes/:id', authMiddleware, (req, res) => {
-  const { title, content, sharedWith } = req.body;
+  const { title, content, sharedWith, images } = req.body;
   const updates = {};
-  if (title) updates.title = title;
-  if (content) updates.content = content;
-  if (sharedWith) updates.sharedWith = sharedWith;
+  if (title !== undefined) updates.title = title;
+  if (content !== undefined) updates.content = content;
+  if (sharedWith !== undefined) updates.sharedWith = sharedWith;
+  if (images !== undefined) updates.images = images;
   const note = updateNote(req.params.id, updates);
   if (!note) return res.status(404).json({ error: 'not found' });
   res.json(note);

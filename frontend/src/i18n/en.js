@@ -203,6 +203,11 @@ const en = {
   mySpaceFriendName: 'Friend name',
   mySpaceDescription: 'Quick note for notes or shared content',
 
+  // Tutorial
+  tutorialReplay: 'Replay welcome tutorial',
+  tutorialReplayDesc: 'See the onboarding walkthrough again from the beginning.',
+  tutorialReplayBtn: '🎓 Replay Tutorial',
+
   // Privacy & support
   privacyAppearance: 'Appearance',
   privacyAppearanceDesc: 'Choose between light and dark mode for a comfortable experience.',
