@@ -39,8 +39,10 @@ const Header = () => {
       height: 'calc(60px + env(safe-area-inset-top))',
       background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 50%, #ADD8E6 100%)',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      flexShrink: 0,
-      position: 'relative',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
       zIndex: 100
     }}>
       {/* Left: back button + logo */}
