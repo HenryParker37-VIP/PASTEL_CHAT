@@ -4,6 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
 import { signInWithMicrosoft } from '../services/microsoft-auth';
+import { AUTH_PROVIDERS } from '../services/authConfig';
 import TypewriterText from '../components/TypewriterText';
 import AVATARS, {
   getAvatarUrl,
@@ -299,10 +300,11 @@ const Login = () => {
     setError(t('loginGoogleFailed'));
   };
 
+  const microsoftAvailable = AUTH_PROVIDERS.microsoft.available;
+
   const handleMicrosoftLogin = async () => {
-    if (!process.env.REACT_APP_MICROSOFT_CLIENT_ID) {
-      return setError('Microsoft login is not configured yet. Please add REACT_APP_MICROSOFT_CLIENT_ID to your .env file.');
-    }
+    // Button is disabled when not configured — this guard is a safety net only
+    if (!microsoftAvailable) return;
     setError('');
     setBusy(true);
     try {
@@ -508,17 +510,18 @@ const Login = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                   <button
                     type="button"
-                    onClick={handleMicrosoftLogin}
-                    disabled={busy}
-                    className="microsoft-btn"
+                    onClick={microsoftAvailable ? handleMicrosoftLogin : undefined}
+                    disabled={busy || !microsoftAvailable}
+                    className={`microsoft-btn${!microsoftAvailable ? ' microsoft-btn--soon' : ''}`}
+                    title={microsoftAvailable ? undefined : 'Microsoft login coming soon'}
                   >
-                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0, opacity: microsoftAvailable ? 1 : 0.45 }}>
                       <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                       <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
                       <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
                       <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
                     </svg>
-                    Sign up with Microsoft
+                    {microsoftAvailable ? 'Sign up with Microsoft' : 'Microsoft — Coming soon ✨'}
                   </button>
                 </div>
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
@@ -598,17 +601,18 @@ const Login = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                   <button
                     type="button"
-                    onClick={handleMicrosoftLogin}
-                    disabled={busy}
-                    className="microsoft-btn"
+                    onClick={microsoftAvailable ? handleMicrosoftLogin : undefined}
+                    disabled={busy || !microsoftAvailable}
+                    className={`microsoft-btn${!microsoftAvailable ? ' microsoft-btn--soon' : ''}`}
+                    title={microsoftAvailable ? undefined : 'Microsoft login coming soon'}
                   >
-                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 21 21" style={{ flexShrink: 0, opacity: microsoftAvailable ? 1 : 0.45 }}>
                       <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                       <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
                       <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
                       <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
                     </svg>
-                    Sign in with Microsoft
+                    {microsoftAvailable ? 'Sign in with Microsoft' : 'Microsoft — Coming soon ✨'}
                   </button>
                 </div>
                 {error && <p style={{ color: '#e57373', fontSize: 12, margin: '8px 0 0', textAlign: 'center' }}>{error}</p>}
