@@ -3,7 +3,14 @@ import { useMobileViewport } from './hooks/useMobileViewport';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { initMsal } from './services/microsoft-auth';
+// MSAL v5 popup bridge — must be imported from the redirect-bridge sub-path.
+// The popup calls broadcastResponseToMainFrame() which:
+//   1. Parses the auth code / state from the URL  (no sessionStorage needed)
+//   2. Broadcasts the raw response via BroadcastChannel(state.id) to the parent
+//   3. Closes this popup window automatically
+// The parent's loginPopup() listens on that same BroadcastChannel — no
+// window.opener required, so this works even when COOP headers null it.
+import { broadcastResponseToMainFrame } from '@azure/msal-browser/redirect-bridge';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
 import { CallProvider, useCall } from './contexts/CallContext';
 import { ToastProvider, useToast } from './components/Toast';
@@ -28,48 +35,31 @@ import VideoCallScreen from './components/VideoCallScreen';
 import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
 import GlobalChecker from './components/GlobalChecker';
 
-// Rendered inside the Microsoft OAuth popup window — nothing else runs here.
+// Rendered inside the Microsoft OAuth popup window — nothing else in the app runs here.
 //
-// Two scenarios depending on whether window.opener survived the cross-origin trip:
-//
-//  A) window.opener is set  → MSAL detects popup internally, sends token to
-//     parent via postMessage, closes this window automatically.
-//
-//  B) window.opener is null → MSAL falls back to redirect handling: it parses
-//     the hash and returns the access token from handleRedirectPromise().
-//     We then push the token to the parent ourselves via a localStorage key
-//     (storage events propagate to all same-origin windows) and close.
+// MSAL v5 popup flow:
+//   broadcastResponseToMainFrame() reads the auth code from the URL hash/query,
+//   sends the raw response via BroadcastChannel(state.id) to the parent window,
+//   then calls window.close(). No window.opener required — BroadcastChannel is
+//   same-origin and works regardless of COOP headers or cross-origin navigation.
+//   The parent's loginPopup() is already listening on that exact channel.
 const MsalPopupHandler = () => {
   const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
     let active = true;
 
-    initMsal()
-      .then((accessToken) => {
-        if (!active) return;
-
-        if (accessToken) {
-          // Scenario B: window.opener was null; MSAL returned the token here.
-          // Relay it to the parent window via localStorage, then close.
-          localStorage.setItem(
-            'ms_popup_token',
-            JSON.stringify({ accessToken, ts: Date.now() })
-          );
-          // Small delay so the storage event has time to fire in the parent.
-          setTimeout(() => window.close(), 300);
-          return;
-        }
-
-        // Scenario A: MSAL should have already closed this window.
-        // If it is still open after 6 s, something went wrong.
+    broadcastResponseToMainFrame()
+      .then(() => {
+        // broadcastResponseToMainFrame() closes the window for popup interactions.
+        // If still open after 3 s (shouldn't happen), show a fallback message.
         setTimeout(() => {
-          if (active) setErrorMsg('Sign-in timed out. Please close and try again.');
-        }, 6000);
+          if (active) setErrorMsg('Sign-in complete — you can close this window.');
+        }, 3000);
       })
       .catch((err) => {
-        if (active) setErrorMsg('Sign-in failed. Please close and try again.');
         console.error('[MsalPopup]', err);
+        if (active) setErrorMsg('Sign-in failed. Please close this window and try again.');
       });
 
     return () => { active = false; };
