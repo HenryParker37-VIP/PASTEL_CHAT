@@ -305,6 +305,10 @@ const Login = () => {
     setBusy(true);
     try {
       const accessToken = await signInWithMicrosoft();
+      // accessToken is null when the redirect flow is used (iPhone/Safari/PWA).
+      // In that case the browser navigates away; AuthContext handles the login
+      // on the next page load. Nothing more to do here.
+      if (!accessToken) return;
       const r = await loginWithMicrosoft(accessToken);
       if (!r.success) return setError(r.error);
       window.location.replace('/home');

@@ -7,8 +7,10 @@ const msalConfig = {
     redirectUri: window.location.origin,
   },
   cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false,
+    // localStorage so auth state survives redirect flow page-reloads
+    // and is accessible from both the popup window and the opener.
+    cacheLocation: 'localStorage',
+    storeAuthStateInCookie: true, // Safari ITP fallback
   },
 };
 
@@ -22,8 +24,58 @@ export async function getMsalInstance() {
   return _pca;
 }
 
+/**
+ * Must be called once on every page load (app startup).
+ *
+ * Popup flow: MSAL detects window.opener + auth state, sends the token to
+ * the parent via postMessage, then closes this popup window automatically.
+ * Returns null in the popup.
+ *
+ * Redirect flow (iPhone/Safari): MSAL reads the token from the URL hash /
+ * query params, clears the hash, and returns the access token so the caller
+ * can complete the login without any user interaction.
+ */
+export async function initMsal() {
+  try {
+    const pca = await getMsalInstance();
+    const result = await pca.handleRedirectPromise();
+    return result?.accessToken ?? null;
+  } catch (err) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[MSAL] initMsal error:', err);
+    }
+    return null;
+  }
+}
+
+/** Popups are blocked on iOS Safari and in PWA standalone mode. */
+function canUsePopup() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isStandalone =
+    window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  return !isIOS && !isStandalone;
+}
+
+/**
+ * Starts the Microsoft sign-in flow.
+ *
+ * Desktop Chrome/Firefox: opens a popup; returns the access token when done.
+ * iPhone Safari / PWA: sets `ms_login_pending` in localStorage and redirects
+ * the current window (function never returns — the page navigates away).
+ */
 export async function signInWithMicrosoft() {
   const pca = await getMsalInstance();
-  const response = await pca.loginPopup({ scopes: ['user.read'] });
-  return response.accessToken;
+
+  if (canUsePopup()) {
+    const response = await pca.loginPopup({ scopes: ['user.read'] });
+    return response.accessToken;
+  }
+
+  // Mobile / standalone: use redirect flow.
+  // AuthContext.initMsal() will handle the token when the app reloads.
+  localStorage.setItem('ms_login_pending', '1');
+  await pca.loginRedirect({ scopes: ['user.read'] });
+  return null; // unreachable — browser navigates away
 }
