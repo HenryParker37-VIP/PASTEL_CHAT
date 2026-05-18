@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import api from '../services/api';
 import { subscribeToPush } from '../services/push';
 import { initializeCapacitorPush } from '../services/capacitor-push';
+import { initMsal } from '../services/microsoft-auth';
 
 async function trySubscribePush() {
   try {
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Restore existing session immediately
     const token = localStorage.getItem('token');
     const stored = localStorage.getItem('user');
     if (token && stored) {
@@ -45,7 +47,42 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
       }
     }
-    setLoading(false);
+
+    // Initialize MSAL on every page load.
+    //
+    // Popup flow (desktop): if this window was opened as an OAuth popup,
+    // MSAL detects window.opener + auth state, sends the token to the parent
+    // via postMessage, and closes this window. initMsal() returns null here.
+    //
+    // Redirect flow (iPhone/Safari/PWA): if we're returning from a Microsoft
+    // loginRedirect, initMsal() returns the access token so we can finish
+    // logging in without any user interaction.
+    let cancelled = false;
+    initMsal()
+      .then(async (msAccessToken) => {
+        if (cancelled) return;
+        if (msAccessToken && localStorage.getItem('ms_login_pending')) {
+          localStorage.removeItem('ms_login_pending');
+          try {
+            const { data } = await api.post('/auth/microsoft', { token: msAccessToken });
+            if (cancelled) return;
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            setUser(data.user);
+            trySubscribePush();
+            window.location.replace('/home');
+            return; // setLoading not needed — page is navigating
+          } catch (err) {
+            console.error('[Auth] MS redirect login failed:', err);
+          }
+        }
+        if (!cancelled) setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   const persist = (token, u) => {
