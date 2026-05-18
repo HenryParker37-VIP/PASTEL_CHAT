@@ -195,8 +195,14 @@ const AppRoutes = () => {
 //
 // We exclude iOS / PWA standalone because those use loginRedirect (not popup)
 // and the returning page also has auth params — AuthContext handles those.
+// MSAL uses response_mode=fragment for popup flow → auth code lands in the
+// URL hash (#code=...), NOT in query params. Check both.
 const _urlSearch = new URLSearchParams(window.location.search);
-const _hasOAuthParams = _urlSearch.has('code') && _urlSearch.has('state');
+const _hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+const _hasOAuthCode =
+  _urlSearch.has('code') || _urlSearch.has('error') ||
+  _hashParams.has('code') || _hashParams.has('error') ||
+  _hashParams.has('access_token');
 const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 const _isStandalone =
   window.navigator.standalone === true ||
@@ -204,7 +210,7 @@ const _isStandalone =
 
 const IS_OAUTH_POPUP =
   window.opener !== null ||
-  (_hasOAuthParams && !_isIOS && !_isStandalone);
+  (_hasOAuthCode && !_isIOS && !_isStandalone);
 
 const App = () => {
   useMobileViewport(); // tracks keyboard height → --keyboard-height CSS var
