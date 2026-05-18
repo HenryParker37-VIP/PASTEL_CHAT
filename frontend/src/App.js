@@ -28,32 +28,58 @@ import VideoCallScreen from './components/VideoCallScreen';
 import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
 import GlobalChecker from './components/GlobalChecker';
 
-// Minimal component rendered inside a Microsoft OAuth popup window.
-// Calling initMsal() triggers MSAL's popup-response handler, which posts the
-// auth result back to the parent window and then closes this popup.
-// Nothing else (AuthProvider, Router, session restoration) should run here.
+// Rendered inside the Microsoft OAuth popup window — nothing else runs here.
+//
+// Two scenarios depending on whether window.opener survived the cross-origin trip:
+//
+//  A) window.opener is set  → MSAL detects popup internally, sends token to
+//     parent via postMessage, closes this window automatically.
+//
+//  B) window.opener is null → MSAL falls back to redirect handling: it parses
+//     the hash and returns the access token from handleRedirectPromise().
+//     We then push the token to the parent ourselves via a localStorage key
+//     (storage events propagate to all same-origin windows) and close.
 const MsalPopupHandler = () => {
-  const [error, setError] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
-    let closed = false;
+    let active = true;
+
     initMsal()
-      .then(() => {
-        // MSAL closes the window automatically on success.
-        // If the window is still open after 5 s, something went wrong.
+      .then((accessToken) => {
+        if (!active) return;
+
+        if (accessToken) {
+          // Scenario B: window.opener was null; MSAL returned the token here.
+          // Relay it to the parent window via localStorage, then close.
+          localStorage.setItem(
+            'ms_popup_token',
+            JSON.stringify({ accessToken, ts: Date.now() })
+          );
+          // Small delay so the storage event has time to fire in the parent.
+          setTimeout(() => window.close(), 300);
+          return;
+        }
+
+        // Scenario A: MSAL should have already closed this window.
+        // If it is still open after 6 s, something went wrong.
         setTimeout(() => {
-          if (!closed) setError(true);
-        }, 5000);
+          if (active) setErrorMsg('Sign-in timed out. Please close and try again.');
+        }, 6000);
       })
-      .catch(() => { if (!closed) setError(true); });
-    return () => { closed = true; };
+      .catch((err) => {
+        if (active) setErrorMsg('Sign-in failed. Please close and try again.');
+        console.error('[MsalPopup]', err);
+      });
+
+    return () => { active = false; };
   }, []);
 
-  if (error) {
+  if (errorMsg) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: '#888' }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-        <div>Sign-in failed. Please close this window and try again.</div>
+        <div style={{ textAlign: 'center', padding: '0 24px' }}>{errorMsg}</div>
         <button onClick={() => window.close()} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 20, border: '1px solid #ddd', cursor: 'pointer' }}>
           Close
         </button>
@@ -64,7 +90,7 @@ const MsalPopupHandler = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
       <div style={{ fontSize: 50, marginBottom: 20 }}>🌸</div>
-      <div style={{ fontSize: 18, color: '#888', marginBottom: 20 }}>Signing in...</div>
+      <div style={{ fontSize: 18, color: '#888', marginBottom: 20 }}>Signing in…</div>
       <div style={{ width: 40, height: 40, border: '4px solid #DDD', borderTop: '4px solid #DDA0DD', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
