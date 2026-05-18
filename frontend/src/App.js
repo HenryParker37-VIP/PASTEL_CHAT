@@ -3,6 +3,7 @@ import { useMobileViewport } from './hooks/useMobileViewport';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { initMsal } from './services/microsoft-auth';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
 import { CallProvider, useCall } from './contexts/CallContext';
 import { ToastProvider, useToast } from './components/Toast';
@@ -26,6 +27,49 @@ import VoiceCallScreen from './components/VoiceCallScreen';
 import VideoCallScreen from './components/VideoCallScreen';
 import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
 import GlobalChecker from './components/GlobalChecker';
+
+// Minimal component rendered inside a Microsoft OAuth popup window.
+// Calling initMsal() triggers MSAL's popup-response handler, which posts the
+// auth result back to the parent window and then closes this popup.
+// Nothing else (AuthProvider, Router, session restoration) should run here.
+const MsalPopupHandler = () => {
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let closed = false;
+    initMsal()
+      .then(() => {
+        // MSAL closes the window automatically on success.
+        // If the window is still open after 5 s, something went wrong.
+        setTimeout(() => {
+          if (!closed) setError(true);
+        }, 5000);
+      })
+      .catch(() => { if (!closed) setError(true); });
+    return () => { closed = true; };
+  }, []);
+
+  if (error) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: '#888' }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+        <div>Sign-in failed. Please close this window and try again.</div>
+        <button onClick={() => window.close()} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 20, border: '1px solid #ddd', cursor: 'pointer' }}>
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <div style={{ fontSize: 50, marginBottom: 20 }}>🌸</div>
+      <div style={{ fontSize: 18, color: '#888', marginBottom: 20 }}>Signing in...</div>
+      <div style={{ width: 40, height: 40, border: '4px solid #DDD', borderTop: '4px solid #DDA0DD', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+};
 
 const GlobalSocketListener = ({ onHappyBirthday }) => {
   const { socket } = useSocket();
@@ -139,14 +183,28 @@ const AppRoutes = () => {
   );
 };
 
+// Evaluated once at module load — window.opener is stable for the lifetime of
+// a page (set by the browser when the page is opened via window.open()).
+const IS_OAUTH_POPUP = window.opener !== null;
+
 const App = () => {
   useMobileViewport(); // tracks keyboard height → --keyboard-height CSS var
 
   React.useEffect(() => {
-    console.log('[App] Initialized');
-    console.log('[App] Backend URL:', process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com');
-    console.log('[App] Environment:', process.env.NODE_ENV);
+    if (!IS_OAUTH_POPUP) {
+      console.log('[App] Initialized');
+      console.log('[App] Backend URL:', process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com');
+      console.log('[App] Environment:', process.env.NODE_ENV);
+    }
   }, []);
+
+  // If this window was opened as an OAuth popup (window.opener is set), render
+  // ONLY the MSAL popup handler. Rendering the full app here would restore the
+  // existing localStorage session and navigate to /home, preventing MSAL from
+  // completing the auth handshake and closing the popup.
+  if (IS_OAUTH_POPUP) {
+    return <MsalPopupHandler />;
+  }
 
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
