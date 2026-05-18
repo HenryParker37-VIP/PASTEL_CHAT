@@ -234,6 +234,32 @@ const CharacterAvatarModal = ({ currentUrl, onConfirm, onClose }) => {
 
 // ── Main Login Component ──────────────────────────────────────────────────────
 const Login = () => {
+  // Detect if we're in an MSAL popup handling an OAuth callback
+  const isPopupWithOAuthResponse =
+    window.opener !== null &&
+    (window.location.hash.includes('access_token') ||
+     window.location.hash.includes('code') ||
+     window.location.search.includes('code'));
+
+  // If we're in a popup handling OAuth, show loading screen instead of login UI
+  if (isPopupWithOAuthResponse) {
+    return (
+      <div className="center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 50, marginBottom: 20 }} className="sticker-bounce">🌸</div>
+          <div style={{ fontSize: 18, color: '#888', marginBottom: 20 }}>Signing in...</div>
+          <div style={{ width: 40, height: 40, border: '4px solid #DDD', borderTop: '4px solid #DDA0DD', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   const [tab, setTab] = useState('register');
   const [name, setName] = useState(randomCuteName());
   const [avatarUrl, setAvatarUrl] = useState(() => getAvatarUrl('Peach'));
