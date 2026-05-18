@@ -7,10 +7,12 @@ const msalConfig = {
     redirectUri: window.location.origin,
   },
   cache: {
-    // localStorage so auth state survives redirect flow page-reloads
-    // and is accessible from both the popup window and the opener.
-    cacheLocation: 'localStorage',
-    storeAuthStateInCookie: true, // Safari ITP fallback
+    // sessionStorage isolates auth state per tab, preventing multiple open tabs
+    // from each trying to process the same MSAL auth response.
+    // storeAuthStateInCookie covers Safari ITP which can clear sessionStorage
+    // during cross-origin redirects.
+    cacheLocation: 'sessionStorage',
+    storeAuthStateInCookie: true,
   },
 };
 
