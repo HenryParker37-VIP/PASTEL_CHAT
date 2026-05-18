@@ -183,9 +183,28 @@ const AppRoutes = () => {
   );
 };
 
-// Evaluated once at module load — window.opener is stable for the lifetime of
-// a page (set by the browser when the page is opened via window.open()).
-const IS_OAUTH_POPUP = window.opener !== null;
+// Detect an OAuth popup callback reliably at module load time.
+//
+// window.opener can be null even in a real popup because some browsers null it
+// out after a cross-origin navigation (popup goes through login.microsoft.com
+// then redirects back). We therefore use two independent signals:
+//
+//  1. window.opener !== null  — classic popup signal
+//  2. OAuth params in URL     — Microsoft ALWAYS appends ?code=&state= to the
+//                               redirect URI; normal app loads never have these
+//
+// We exclude iOS / PWA standalone because those use loginRedirect (not popup)
+// and the returning page also has auth params — AuthContext handles those.
+const _urlSearch = new URLSearchParams(window.location.search);
+const _hasOAuthParams = _urlSearch.has('code') && _urlSearch.has('state');
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const _isStandalone =
+  window.navigator.standalone === true ||
+  window.matchMedia('(display-mode: standalone)').matches;
+
+const IS_OAUTH_POPUP =
+  window.opener !== null ||
+  (_hasOAuthParams && !_isIOS && !_isStandalone);
 
 const App = () => {
   useMobileViewport(); // tracks keyboard height → --keyboard-height CSS var
