@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "cd frontend && npm run build",
+    "lint": "cd frontend && npm run lint",
     "cap:sync": "cap sync ios",
     "cap:open": "cap open ios",
     "cap:build": "cap sync ios && cap build ios"
