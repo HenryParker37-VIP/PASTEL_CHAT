@@ -1,0 +1,560 @@
+.resume-page-shell {
+  min-height: 100%;
+  background: #d6d3d1;
+  color: #1c1917;
+}
+
+.resume-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(214, 211, 209, 0.9);
+  background: rgba(245, 245, 244, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.resume-toolbar-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.resume-toolbar-sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #57534e;
+}
+
+.resume-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resume-toolbar-link {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #57534e;
+}
+
+.resume-toolbar-link:hover {
+  background: #ffffff;
+  color: #1c1917;
+}
+
+.resume-toolbar-download,
+.resume-primary-button,
+.resume-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.resume-toolbar-download,
+.resume-primary-button {
+  background: #1c1917;
+  color: #ffffff;
+}
+
+.resume-toolbar-download:hover,
+.resume-primary-button:hover {
+  background: #047857;
+}
+
+.resume-secondary-button {
+  border: 1px solid #d6d3d1;
+  background: #ffffff;
+  color: #292524;
+}
+
+.resume-secondary-button:hover {
+  border-color: #059669;
+}
+
+.resume-page-wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 12px 28px;
+}
+
+.resume-sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+  max-width: 1180px;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
+  box-shadow: 0 24px 60px rgba(28, 25, 23, 0.14);
+  overflow: hidden;
+}
+
+.resume-main-column,
+.resume-side-column {
+  padding: 20px 24px;
+}
+
+.resume-main-column {
+  border-right: 1px solid #e7e5e4;
+}
+
+.resume-section,
+.resume-header-block,
+.resume-contact-grid {
+  border-bottom: 1px solid #e7e5e4;
+}
+
+.resume-header-block,
+.resume-section {
+  padding: 16px 0;
+}
+
+.resume-header-block {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.resume-header-copy h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.05;
+}
+
+.resume-role {
+  margin: 6px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.resume-summary,
+.resume-body-copy,
+.resume-list-row,
+.resume-subhead p,
+.resume-modal-head span {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #57534e;
+}
+
+.resume-summary {
+  margin-top: 12px;
+  max-width: 760px;
+}
+
+.resume-availability-pill,
+.resume-proof-badge,
+.resume-card-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resume-availability-pill,
+.resume-proof-badge {
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.08);
+  color: #065f46;
+}
+
+.resume-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 0;
+}
+
+.resume-contact-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.resume-contact-card:hover {
+  border-color: #10b981;
+}
+
+.resume-contact-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #78716c;
+}
+
+.resume-contact-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c1917;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resume-section-head h2,
+.resume-subhead h3,
+.resume-card-frame h4,
+.resume-evidence-box h3,
+.resume-modal-head p {
+  margin: 0;
+  color: #1c1917;
+}
+
+.resume-section-head h2 {
+  margin-top: 12px;
+  font-size: 32px;
+}
+
+.resume-section-head p,
+.resume-subhead p {
+  margin-top: 4px;
+}
+
+.resume-subhead h3 {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #78716c;
+}
+
+.resume-skill-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.resume-skill-chip,
+.resume-neutral-chip,
+.resume-keyword-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resume-skill-chip {
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.08);
+  color: #065f46;
+}
+
+.resume-neutral-chip,
+.resume-keyword-chip {
+  border: 1px solid #e7e5e4;
+  background: #fafaf9;
+  color: #292524;
+}
+
+.resume-proof-actions,
+.resume-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.resume-proof-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(260px, 0.82fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.resume-proof-image-card {
+  overflow: hidden;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.resume-proof-image-card:hover {
+  border-color: #10b981;
+}
+
+.resume-proof-image-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e7e5e4;
+  background: #f5f5f4;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.resume-proof-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resume-proof-image-card-wide {
+  min-height: 100%;
+}
+
+.resume-proof-image-card-wide .resume-proof-image {
+  aspect-ratio: 16 / 11;
+}
+
+.resume-proof-image-tall {
+  aspect-ratio: 9 / 16;
+}
+
+.resume-evidence-box,
+.resume-card-frame,
+.resume-muted-card {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.resume-muted-card {
+  background: #fafaf9;
+}
+
+.resume-evidence-box p,
+.resume-card-frame p {
+  margin-top: 8px;
+}
+
+.resume-metric-grid,
+.resume-technical-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.resume-metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.resume-metric-card {
+  padding: 12px;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
+}
+
+.resume-metric-card span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #78716c;
+}
+
+.resume-metric-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #1c1917;
+}
+
+.resume-timeline-block {
+  margin-top: 12px;
+}
+
+.resume-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.resume-modal-panel {
+  width: 100%;
+  max-width: 1120px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: #0c0a09;
+}
+
+.resume-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.resume-modal-head p {
+  color: #ffffff;
+}
+
+.resume-modal-head span {
+  display: block;
+  margin-top: 4px;
+  color: #d6d3d1;
+}
+
+.resume-modal-head button {
+  min-width: 80px;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #ffffff;
+}
+
+.resume-modal-media {
+  padding: 16px;
+}
+
+.resume-modal-image {
+  display: block;
+  width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+body.dark .resume-page-shell {
+  background: #1c1917;
+  color: #f5f5f4;
+}
+
+body.dark .resume-toolbar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background: rgba(12, 10, 9, 0.92);
+}
+
+body.dark .resume-toolbar-name,
+body.dark .resume-contact-value,
+body.dark .resume-header-copy h1,
+body.dark .resume-section-head h2,
+body.dark .resume-section-head p,
+body.dark .resume-subhead h3,
+body.dark .resume-card-frame h4,
+body.dark .resume-evidence-box h3,
+body.dark .resume-modal-head p {
+  color: #ffffff;
+}
+
+body.dark .resume-toolbar-sub,
+body.dark .resume-summary,
+body.dark .resume-body-copy,
+body.dark .resume-list-row,
+body.dark .resume-subhead p,
+body.dark .resume-contact-label,
+body.dark .resume-modal-head span {
+  color: #d6d3d1;
+}
+
+body.dark .resume-sheet,
+body.dark .resume-contact-card,
+body.dark .resume-card-frame,
+body.dark .resume-evidence-box,
+body.dark .resume-proof-image-card,
+body.dark .resume-metric-card {
+  background: #0c0a09;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark .resume-main-column,
+body.dark .resume-header-block,
+body.dark .resume-contact-grid,
+body.dark .resume-section,
+body.dark .resume-side-column {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark .resume-proof-image-head,
+body.dark .resume-keyword-chip,
+body.dark .resume-neutral-chip,
+body.dark .resume-muted-card {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.dark .resume-secondary-button {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 1080px) {
+  .resume-sheet {
+    grid-template-columns: 1fr;
+  }
+
+  .resume-main-column {
+    border-right: 0;
+    border-bottom: 1px solid #e7e5e4;
+  }
+
+  .resume-proof-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resume-contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .resume-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .resume-page-wrap {
+    padding: 10px;
+  }
+
+  .resume-main-column,
+  .resume-side-column {
+    padding: 16px;
+  }
+
+  .resume-header-block {
+    flex-direction: column;
+  }
+
+  .resume-contact-grid,
+  .resume-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resume-header-copy h1 {
+    font-size: 30px;
+  }
+
+  .resume-section-head h2 {
+    font-size: 28px;
+  }
+}

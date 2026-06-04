@@ -27,6 +27,7 @@ import SharedPhotos from './pages/SharedPhotos';
 import InstallGuide from './pages/InstallGuide';
 import Privacy from './pages/Privacy';
 import Admin from './pages/Admin';
+import Resume from './pages/Resume';
 import LoadingAnimation from './components/LoadingAnimation';
 import Signature from './components/Signature';
 import IncomingCallAlert from './components/IncomingCallAlert';
@@ -157,6 +158,7 @@ const CallOverlays = () => {
 const AppRoutes = () => {
   const { user } = useAuth();
   const [birthdayOverlay, setBirthdayOverlay] = useState(null);
+  const location = useLocation();
 
   const handleBirthdayToday = useCallback(({ friendId, friendName, age }) => {
     setBirthdayOverlay({ friendName, age, isOwn: false });
@@ -180,6 +182,8 @@ const AppRoutes = () => {
         />
       )}
       <Routes>
+        <Route path="/" element={<PageFrame><Resume /></PageFrame>} />
+        <Route path="/resume" element={<PageFrame><Resume /></PageFrame>} />
         <Route path="/login" element={user ? <Navigate to="/home" replace /> : <PageFrame><Login /></PageFrame>} />
         <Route path="/home" element={<ProtectedRoute><PageFrame><Home /></PageFrame></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><PageFrame><Profile /></PageFrame></ProtectedRoute>} />
@@ -191,10 +195,9 @@ const AppRoutes = () => {
         <Route path="/install" element={<ProtectedRoute><PageFrame><InstallGuide /></PageFrame></ProtectedRoute>} />
         <Route path="/privacy" element={<ProtectedRoute><PageFrame><Privacy /></PageFrame></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><PageFrame><Admin /></PageFrame></ProtectedRoute>} />
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="*" element={<Navigate to="/home" replace />} />
+        <Route path="*" element={<Navigate to="/resume" replace />} />
       </Routes>
-      <Signature />
+      {location.pathname !== '/' && location.pathname !== '/resume' ? <Signature /> : null}
     </>
   );
 };
