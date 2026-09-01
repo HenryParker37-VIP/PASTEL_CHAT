@@ -20,7 +20,7 @@ const en = {
 
   // Home
   homeWelcome: (name) => `Hi ${name}!`,
-  homeWelcomeAlt: 'Welcome back ✿',
+  homeWelcomeAlt: 'Welcome back',
   homeTagline: 'Pick what to do today:',
   homeChangeName: 'Change name',
   homeChangeNameDesc: 'Update your name, login code, and sticker face.',
@@ -51,24 +51,24 @@ const en = {
   loginSaveHint: 'This is your only way back in — write it down!',
   loginNewHere: 'New here',
   loginHaveCode: 'Have a code',
-  loginGoogleTitle: '🔐 Sign in with Google',
+  loginGoogleTitle: 'Sign in with Google',
   loginGoogleDesc: 'Persistent profile · Photo encryption · No code needed',
-  loginGoogleRecommended: '⭐ RECOMMENDED',
+  loginGoogleRecommended: 'Recommended',
   loginOrCreate: 'or create with code (Standard)',
   loginOrLogin: 'or log in with code (Standard)',
-  loginCodeWarning: "⚠️ You'll get a login code — save it, there's no email recovery.",
+  loginCodeWarning: "You'll get a login code — save it, there's no email recovery.",
   loginPickName: 'Pick a name',
-  loginPickAvatar: 'Pick your avatar ✿',
-  loginCreateStandard: '✿ Create standard account',
+  loginPickAvatar: 'Pick your avatar',
+  loginCreateStandard: 'Create standard account',
   loginCreating: 'Creating...',
   loginChecking: 'Checking...',
-  loginLogBackIn: '🔑 Log back in',
+  loginLogBackIn: 'Log back in',
   loginWelcome: (name) => `Welcome, ${name}!`,
-  loginSaveWarningTitle: "⚠️ Save this code — it's the only way to log back in!",
+  loginSaveWarningTitle: "Save this code — it's the only way to log back in!",
   loginSaveWarningBody: "There's no email recovery. If you lose this code, your account is gone forever.",
-  loginCopyCode: '📋 Copy code',
-  loginShareSave: '📤 Share / Save',
-  loginConfirmSaved: 'Yes, I saved my login code safely ✓',
+  loginCopyCode: 'Copy code',
+  loginShareSave: 'Share / Save',
+  loginConfirmSaved: 'Yes, I saved my login code safely',
   loginEnterApp: 'Enter PastelChat →',
   loginGooglePremium: 'Google Premium',
   loginStandard: 'Standard',
@@ -89,20 +89,20 @@ const en = {
   loginEnterCode: 'Enter your 8-character login code',
 
   // Friends
-  friendsTitle: '💬 Your friends',
-  friendsPending: '📫 Pending Requests',
+  friendsTitle: 'Your friends',
+  friendsPending: 'Pending Requests',
   friendsAccept: 'Accept',
   friendsDecline: 'Decline',
   friendsSearchPlaceholder: 'Find by name...',
   friendsRequest: '＋ Request',
-  friendsNoFriends: 'No friends yet. Search above to add someone ✿',
+  friendsNoFriends: 'No friends yet. Search above to add someone.',
   friendsRemove: 'Remove this friend?',
-  friendsGroups: '👥 Groups',
+  friendsGroups: 'Groups',
   friendsNewGroup: '+ New Group',
-  friendsNoGroups: 'No groups yet. Create one above ✿',
+  friendsNoGroups: 'No groups yet. Create one above.',
   friendsCreateGroup: 'Create Group',
   friendsGroupName: 'Group name',
-  friendsGroupNamePlaceholder: 'e.g. Study Squad 🌸',
+  friendsGroupNamePlaceholder: 'e.g. Study Squad',
   friendsAddMembers: 'Add members (optional)',
   friendsMembers: 'members',
 
@@ -125,7 +125,7 @@ const en = {
   chatAttach: 'Attach file or image',
   chatFileTooLarge: 'File too large. Max 8 MB.',
   chatViewProfile: 'View profile',
-  chatOnlineNow: '🟢 Online now',
+  chatOnlineNow: 'Online now',
 
   // Group chat
   groupMembers: 'Members',
@@ -138,14 +138,14 @@ const en = {
   groupInfo: 'Group info',
 
   // Profile
-  profileTitle: '🎨 Your Profile',
+  profileTitle: 'Your Profile',
   profileName: 'Display Name',
   profileBio: 'Bio',
   profileBioPlaceholder: 'Tell friends a little about yourself...',
   profileStatus: 'Status',
   profileStatusPlaceholder: 'Or type a custom status...',
   profileFace: 'Sticker face',
-  profileSaved: 'Saved! ✿',
+  profileSaved: 'Saved!',
   profileLoginCode: 'Code:',
 
   // Status presets
@@ -165,7 +165,7 @@ const en = {
   homeInstallDesc: 'Save the app to your phone for quick access anytime.',
   homeSharedPhotos: 'Shared Photos',
   homeSharedPhotosDesc: 'Share and view photos with your close friends in real-time.',
-  installTitle: '📱 Install Pastel Chat',
+  installTitle: 'Install Pastel Chat',
   installSubtitle: 'Add the app to your home screen for quick access.',
   installIos: 'iPhone & iPad',
   installAndroid: 'Android',
@@ -175,7 +175,7 @@ const en = {
   // Private space
   homeMySpace: 'My Private Space',
   homeMySpaceDesc: 'Notes, photos, reminders, and friend birthdays.',
-  mySpaceTitle: '✨ My Private Space',
+  mySpaceTitle: 'My Private Space',
   mySpaceNotes: 'Notes',
   mySpacePhotos: 'Photos',
   mySpaceBirthdays: 'Birthdays',
@@ -206,7 +206,7 @@ const en = {
   // Tutorial
   tutorialReplay: 'Replay welcome tutorial',
   tutorialReplayDesc: 'See the onboarding walkthrough again from the beginning.',
-  tutorialReplayBtn: '🎓 Replay Tutorial',
+  tutorialReplayBtn: 'Replay Tutorial',
 
   // Privacy & support
   privacyAppearance: 'Appearance',
@@ -232,7 +232,7 @@ const en = {
   privacyFeedbackSent: 'Sent! Thank you for helping make PastelChat better.',
   privacyFeedbackAnother: 'Send another',
   privacyFeedbackSending: 'Sending...',
-  privacyFeedbackSend: '💌 Send to creator',
+  privacyFeedbackSend: 'Send to creator',
 };
 
 export default en;

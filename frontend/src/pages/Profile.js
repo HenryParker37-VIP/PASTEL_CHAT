@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AvatarCustomizer from '../components/AvatarCustomizer';
+import PastelIcon from '../components/PastelIcon';
 
 const isCustomPhoto = (url) => url && url.startsWith('data:');
 
@@ -34,16 +35,16 @@ const resizeToSquare = (file) =>
   });
 
 const STATUS_PRESETS = [
-  { emoji: '🟢', label: 'Available' },
-  { emoji: '🔴', label: 'Busy' },
-  { emoji: '💤', label: 'Away' },
-  { emoji: '🎮', label: 'Gaming' },
-  { emoji: '🎵', label: 'Listening' },
-  { emoji: '📚', label: 'Studying' },
-  { emoji: '💼', label: 'Working' },
-  { emoji: '🍕', label: 'Eating' },
-  { emoji: '✈️', label: 'Traveling' },
-  { emoji: '🏃', label: 'Working out' },
+  { icon: 'online', label: 'Available' },
+  { icon: 'alert', label: 'Busy' },
+  { icon: 'moon', label: 'Away' },
+  { icon: 'gift', label: 'Gaming' },
+  { icon: 'speaker', label: 'Listening' },
+  { icon: 'notebook', label: 'Studying' },
+  { icon: 'profile-edit', label: 'Working' },
+  { icon: 'gift', label: 'Eating' },
+  { icon: 'send', label: 'Traveling' },
+  { icon: 'bell', label: 'Working out' },
 ];
 
 const Profile = () => {
@@ -83,7 +84,7 @@ const Profile = () => {
       return;
     }
     const r = await checkName(name);
-    if (r.available) setNameStatus({ type: 'ok', msg: 'This name is free ✿' });
+    if (r.available) setNameStatus({ type: 'ok', msg: 'This name is free' });
     else setNameStatus({ type: 'err', msg: r.reason || 'Name already used' });
   };
 
@@ -107,20 +108,20 @@ const Profile = () => {
     }
 
     setBusy(false);
-    if (ok) setSaveStatus('Saved! ✿');
+    if (ok) setSaveStatus('Saved!');
   };
 
   const pickPreset = (preset) => {
-    setStatus(`${preset.emoji} ${preset.label}`);
+    setStatus(preset.label);
   };
 
   return (
     <div className="container">
       <button className="btn btn-ghost" onClick={() => navigate('/home')} style={{ marginBottom: 18 }}>
-        ← Back
+        <PastelIcon name="arrow-left" size={16} /> Back
       </button>
       <div className="card pop-in">
-        <h2 style={{ marginTop: 0 }}>🎨 Your Profile</h2>
+        <h2 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="profile-edit" size={24} /> Your Profile</h2>
 
         {/* Avatar preview + name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
@@ -131,14 +132,7 @@ const Profile = () => {
               alt=""
               style={{ objectFit: 'cover', borderRadius: '50%' }}
             />
-            {status && (
-              <span style={{
-                position: 'absolute', bottom: -2, right: -2,
-                fontSize: 18, lineHeight: 1
-              }}>
-                {status.split(' ')[0]}
-              </span>
-            )}
+            {status && <span style={{ position: 'absolute', bottom: -2, right: -2, color: '#C875A8', background: 'white', borderRadius: '50%', padding: 2 }}><PastelIcon name="online" size={14} title={status} /></span>}
           </div>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 18 }}>{name || user?.name}</p>
@@ -190,7 +184,7 @@ const Profile = () => {
             {/* Preset chips */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {STATUS_PRESETS.map((preset) => {
-                const full = `${preset.emoji} ${preset.label}`;
+                const full = preset.label;
                 const active = status === full;
                 return (
                   <button
@@ -208,7 +202,7 @@ const Profile = () => {
                       fontWeight: active ? 600 : 400
                     }}
                   >
-                    {preset.emoji} {preset.label}
+                    <PastelIcon name={preset.icon} size={14} /> {preset.label}
                   </button>
                 );
               })}
@@ -221,7 +215,7 @@ const Profile = () => {
                     border: '1.5px solid #eee', background: 'white',
                     color: '#bbb', fontSize: 12, cursor: 'pointer'
                   }}
-                >✕ Clear</button>
+                ><PastelIcon name="close" size={14} /> Clear</button>
               )}
             </div>
             {/* Custom status input */}
@@ -247,7 +241,7 @@ const Profile = () => {
                   color: '#B08ABD', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                {avatarMode === 'photo' ? '🎨 Switch to Avatar' : '📷 Upload Photo'}
+                <PastelIcon name={avatarMode === 'photo' ? 'profile-edit' : 'camera'} size={15} /> {avatarMode === 'photo' ? 'Switch to Avatar' : 'Upload Photo'}
               </button>
             </div>
 
@@ -270,7 +264,7 @@ const Profile = () => {
                         fontSize: 12, color: 'white', fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                       }}
-                    >✕</button>
+                    aria-label="Remove photo"><PastelIcon name="close" size={12} /></button>
                   </div>
                 ) : (
                   <div
@@ -282,7 +276,7 @@ const Profile = () => {
                       gap: 4, background: 'rgba(221,160,221,0.06)', transition: 'background 0.2s'
                     }}
                   >
-                    <span style={{ fontSize: 24 }}>📷</span>
+                    <PastelIcon name="camera" size={24} />
                     <span style={{ fontSize: 10, color: '#B08ABD', fontWeight: 600 }}>Upload</span>
                   </div>
                 )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useCall } from '../contexts/CallContext';
+import PastelIcon from './PastelIcon';
 
 const IncomingCallAlert = () => {
   const { incomingCall, answerCall, rejectCall } = useCall();
@@ -74,7 +75,7 @@ const IncomingCallAlert = () => {
         </div>
 
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 4, letterSpacing: '0.05em' }}>
-          Incoming {callType === 'video' ? '📹 Video' : '📞 Voice'} Call
+          Incoming <PastelIcon name={callType === 'video' ? 'video' : 'phone'} size={14} /> {callType === 'video' ? 'Video' : 'Voice'} Call
         </div>
         <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 28 }}>{from.name}</div>
 
@@ -92,7 +93,7 @@ const IncomingCallAlert = () => {
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            >📵</button>
+            ><PastelIcon name="end-call" size={28} title="Decline call" /></button>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Decline</span>
           </div>
 
@@ -109,7 +110,7 @@ const IncomingCallAlert = () => {
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            >{callType === 'video' ? '📹' : '📞'}</button>
+            ><PastelIcon name={callType === 'video' ? 'video' : 'phone'} size={28} title="Answer call" /></button>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Answer</span>
           </div>
         </div>

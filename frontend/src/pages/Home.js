@@ -7,10 +7,11 @@ import TypewriterText from '../components/TypewriterText';
 import TelegramSetup from '../components/TelegramSetup';
 import LanguagePickerModal from '../components/LanguagePickerModal';
 import OnboardingTutorial from '../components/OnboardingTutorial';
+import PastelIcon from '../components/PastelIcon';
 
 const TILES = [
   {
-    icon: '/images/home-icons/change-name.png',
+    icon: 'profile-edit',
     key: 'profile',
     labelKey: 'homeChangeName',
     descKey: 'homeChangeNameDesc',
@@ -18,7 +19,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #FFB6C1 0%, #FF8FA3 100%)',
   },
   {
-    icon: '/images/home-icons/chat-friends.png',
+    icon: 'chat-friends',
     key: 'chat',
     labelKey: 'homeChatFriends',
     descKey: 'homeChatFriendsDesc',
@@ -26,7 +27,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #ADD8E6 0%, #7EC8E3 100%)',
   },
   {
-    icon: '/images/home-icons/group-chats.png',
+    icon: 'users',
     key: 'groups',
     labelKey: 'homeGroups',
     descKey: 'homeGroupsDesc',
@@ -34,7 +35,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #B0E0E6 0%, #7DC9C9 100%)',
   },
   {
-    icon: '/images/home-icons/shared-photos.png',
+    icon: 'image',
     key: 'photos',
     labelKey: 'homeSharedPhotos',
     descKey: 'homeSharedPhotosDesc',
@@ -42,7 +43,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
   },
   {
-    icon: '/images/home-icons/private-space.png',
+    icon: 'notebook',
     key: 'myspace',
     labelKey: 'homeMySpace',
     descKey: 'homeMySpaceDesc',
@@ -50,7 +51,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #DDA0DD 0%, #C07BC0 100%)',
   },
   {
-    icon: '/images/home-icons/privacy-support.png',
+    icon: 'shield-heart',
     key: 'privacy',
     labelKey: 'homePrivacy',
     descKey: 'homePrivacyDesc',
@@ -119,7 +120,7 @@ const Home = () => {
         {/* Greeting */}
         <div className="home-mobile-greeting">
           <TypewriterText
-            words={[t('homeWelcome', user?.name?.split(' ')[0] || 'friend'), t('homeWelcomeAlt'), 'Shall we chat? 🌸']}
+            words={[t('homeWelcome', user?.name?.split(' ')[0] || 'friend'), t('homeWelcomeAlt'), 'Shall we chat?']}
             typingSpeed={80}
           />
         </div>
@@ -133,7 +134,7 @@ const Home = () => {
               style={{ animationDelay: `${i * 0.06}s`, background: tile.grad }}
               onClick={() => navigate(tile.path)}
             >
-              <img className="home-mobile-tile-icon" src={tile.icon} alt="" width="64" height="64" draggable="false" />
+              <PastelIcon className="home-mobile-tile-icon" name={tile.icon} size={58} />
               <span className="home-mobile-label">{t(tile.labelKey)}</span>
             </button>
           ))}
@@ -146,7 +147,7 @@ const Home = () => {
               {user.avatar && <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '2px solid #4285F4' }} />}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#4A4A4A' }}>{user.name}</div>
-                <div style={{ fontSize: 11, color: '#4285F4', fontWeight: 600 }}>✅ Google Verified</div>
+                <div style={{ fontSize: 11, color: '#4285F4', fontWeight: 600, display: 'flex', gap: 4, alignItems: 'center' }}><PastelIcon name="check" size={12} /> Google Verified</div>
               </div>
             </div>
             <div style={{
@@ -155,7 +156,7 @@ const Home = () => {
               background: 'linear-gradient(135deg, #4285F4, #34A853)',
               color: 'white', fontSize: 11, fontWeight: 700, marginBottom: 10
             }}>
-              🔐 Enhanced Security · Google OAuth
+              <PastelIcon name="shield-heart" size={12} /> Enhanced Security · Google OAuth
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
@@ -168,7 +169,7 @@ const Home = () => {
                   cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
                 }}
               >
-                <span style={{ fontSize: 15 }}>📱</span><span>Telegram</span>
+                <PastelIcon name="telegram" size={15} /><span>Telegram</span>
               </button>
               <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -176,7 +177,7 @@ const Home = () => {
                 background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
                 cursor: 'pointer'
               }}>
-                <span style={{ fontSize: 15 }}>📲</span>
+                <PastelIcon name="send" size={15} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
               </div>
             </div>
@@ -184,7 +185,7 @@ const Home = () => {
         ) : user?.loginCode ? (
           <div className="home-mobile-code-wrap">
             <div style={{ fontSize: 11, color: '#999', marginBottom: 4, textAlign: 'center' }}>
-              👤 Standard Account · Code Login
+              <PastelIcon name="profile-edit" size={15} /> Standard Account · Code Login
             </div>
             <p className="home-mobile-code-hint">{t('homeLoginCode')}</p>
             <div className="code-display">{user.loginCode}</div>
@@ -199,7 +200,7 @@ const Home = () => {
                   cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
                 }}
               >
-                <span style={{ fontSize: 15 }}>📱</span><span>Telegram</span>
+                <PastelIcon name="telegram" size={15} /><span>Telegram</span>
               </button>
               <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -207,7 +208,7 @@ const Home = () => {
                 background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
                 cursor: 'pointer'
               }}>
-                <span style={{ fontSize: 15 }}>📲</span>
+                <PastelIcon name="send" size={15} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
               </div>
             </div>
@@ -269,7 +270,7 @@ const Home = () => {
             style={{ animationDelay: `${0.05 + i * 0.05}s` }}
             onClick={() => navigate(tile.path)}
           >
-            <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" draggable="false" />
+            <PastelIcon className="home-tile-icon" name={tile.icon} size={74} />
             <h3>{t(tile.labelKey)}</h3>
             <p>{t(tile.descKey)}</p>
           </div>
@@ -287,7 +288,7 @@ const Home = () => {
             {user.avatar && <img src={user.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #4285F4' }} />}
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#4A4A4A' }}>{user.name}</div>
-              <div style={{ fontSize: 11, color: '#4285F4', fontWeight: 600 }}>✅ Google Verified</div>
+              <div style={{ fontSize: 11, color: '#4285F4', fontWeight: 600, display: 'flex', gap: 4, alignItems: 'center' }}><PastelIcon name="check" size={12} /> Google Verified</div>
             </div>
           </div>
           <div style={{
@@ -296,7 +297,7 @@ const Home = () => {
             background: 'linear-gradient(135deg, #4285F4, #34A853)',
             color: 'white', fontSize: 11, fontWeight: 700, marginBottom: 10
           }}>
-            🔐 Enhanced Security · Google OAuth
+            <PastelIcon name="shield-heart" size={12} /> Enhanced Security · Google OAuth
           </div>
           <div style={{ marginTop: 4, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
@@ -309,7 +310,7 @@ const Home = () => {
                 cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
               }}
             >
-              <span style={{ fontSize: 15 }}>📱</span>
+              <PastelIcon name="telegram" size={15} />
               <span>Telegram</span>
             </button>
             <div
@@ -322,7 +323,7 @@ const Home = () => {
                 cursor: 'pointer', border: 'none'
               }}
             >
-              <span style={{ fontSize: 15 }}>📲</span>
+              <PastelIcon name="send" size={15} />
               <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
             </div>
           </div>
@@ -330,7 +331,7 @@ const Home = () => {
       ) : user?.loginCode ? (
         <div className="card pop-in" style={{ marginTop: 30, textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
-            <span style={{ fontSize: 20 }}>👤</span>
+            <PastelIcon name="profile-edit" size={20} />
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: '#4A4A4A' }}>{user.name}</div>
               <div style={{ fontSize: 11, color: '#999' }}>Standard Security · Code Login</div>
@@ -350,7 +351,7 @@ const Home = () => {
                 cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
               }}
             >
-              <span style={{ fontSize: 15 }}>📱</span>
+              <PastelIcon name="telegram" size={15} />
               <span>Telegram</span>
             </button>
             <div
@@ -363,7 +364,7 @@ const Home = () => {
                 cursor: 'pointer', border: 'none'
               }}
             >
-              <span style={{ fontSize: 15 }}>📲</span>
+              <PastelIcon name="send" size={15} />
               <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
             </div>
           </div>

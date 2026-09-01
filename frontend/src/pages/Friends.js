@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
+import PastelIcon from '../components/PastelIcon';
 
 const Friends = () => {
   const { user } = useAuth();
@@ -195,7 +196,7 @@ const Friends = () => {
                 <img className="avatar" src={u.avatar} alt="" />
                 <div style={{ flex: 1 }}>
                   <p className="name">{u.name}</p>
-                  <p className="sub">{isOnline(u._id) ? `🟢 ${t('online')}` : `⚪ ${t('offline')}`}</p>
+                  <p className="sub"><PastelIcon name={isOnline(u._id) ? 'online' : 'offline'} size={10} /> {isOnline(u._id) ? t('online') : t('offline')}</p>
                 </div>
                 <button className="btn" disabled={busy} onClick={() => handleRequest(u._id)}>{t('friendsRequest')}</button>
               </div>
@@ -239,12 +240,12 @@ const Friends = () => {
                 className="btn btn-lavender"
                 style={{ padding: '4px 10px', fontSize: 12 }}
                 onClick={(e) => { e.stopPropagation(); setEditingId(f.friendId); setEditValue(f.customNickname); }}
-              >✎</button>
+              aria-label="Edit nickname"><PastelIcon name="edit" size={14} /></button>
               <button
                 className="btn btn-ghost"
                 style={{ padding: '4px 10px', fontSize: 12 }}
                 onClick={(e) => { e.stopPropagation(); handleRemove(f.friendId); }}
-              >✕</button>
+              aria-label="Remove friend"><PastelIcon name="close" size={14} /></button>
             </div>
           </div>
         ))}
@@ -281,7 +282,7 @@ const Friends = () => {
               background: 'linear-gradient(135deg, #DDA0DD, #ADD8E6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 20, flexShrink: 0
-            }}>👥</div>
+            }}><PastelIcon name="users" size={20} title="Group" /></div>
             <div style={{ flex: 1 }}>
               <p className="name">{g.name}</p>
               <p className="sub">{g.memberCount ?? g.members?.length ?? 0} {t('friendsMembers')}</p>
@@ -305,7 +306,7 @@ const Friends = () => {
             }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 20px', fontSize: 18 }}>✨ {t('friendsCreateGroup')}</h3>
+            <h3 style={{ margin: '0 0 20px', fontSize: 18, display: 'flex', gap: 8, alignItems: 'center' }}><PastelIcon name="users" size={20} /> {t('friendsCreateGroup')}</h3>
             <form onSubmit={handleCreateGroup}>
               <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 6 }}>
                 {t('friendsGroupName')}
@@ -359,7 +360,7 @@ const Friends = () => {
                   disabled={creatingGroup || !groupName.trim()}
                   style={{ flex: 1 }}
                 >
-                  {creatingGroup ? t('saving') : `✨ ${t('friendsCreateGroup')}`}
+                  {creatingGroup ? t('saving') : <><PastelIcon name="users" size={16} /> {t('friendsCreateGroup')}</>}
                 </button>
                 <button
                   type="button"

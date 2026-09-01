@@ -7,6 +7,7 @@ import api from '../services/api';
 import Header from '../components/Header';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
+import PastelIcon from '../components/PastelIcon';
 
 const isMobile = () => window.innerWidth <= 700;
 
@@ -207,7 +208,7 @@ const GroupChat = () => {
                   border: 'none', cursor: 'pointer', fontSize: 16,
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
-              >🔍</button>
+              ><PastelIcon name="search" size={17} /></button>
               <button
                 onClick={() => setShowInfo(v => !v)}
                 title={t('groupInfo')}
@@ -217,7 +218,7 @@ const GroupChat = () => {
                   border: 'none', cursor: 'pointer', fontSize: 16,
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
-              >👥</button>
+              ><PastelIcon name="users" size={17} /></button>
             </div>
           </div>
 
@@ -225,7 +226,7 @@ const GroupChat = () => {
           {searchOpen && (
             <div style={{ background: 'var(--card-bg)', borderBottom: '1px solid var(--border)', padding: '8px 12px', flexShrink: 0, position: 'relative' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--search-bg)', borderRadius: 20, padding: '6px 14px', border: '1.5px solid #DDA0DD' }}>
-                <span style={{ fontSize: 14, color: '#B08ABD' }}>🔍</span>
+                <PastelIcon name="search" size={14} style={{ color: '#B08ABD' }} />
                 <input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
@@ -234,7 +235,7 @@ const GroupChat = () => {
                   onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)}
                   autoFocus
                 />
-                {searchQuery && <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#B08ABD', padding: 0 }}>✕</button>}
+                {searchQuery && <button onClick={() => setSearchQuery('')} aria-label="Clear search" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#B08ABD', padding: 0 }}><PastelIcon name="close" size={14} /></button>}
               </div>
               {searchResults.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 12, right: 12, background: 'var(--card-bg)', borderRadius: 12, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', border: '1px solid var(--border)', maxHeight: 280, overflowY: 'auto' }}>
@@ -293,7 +294,7 @@ const GroupChat = () => {
           }}>
             {isMobile() && (
               <button onClick={() => setShowInfo(false)} style={{ margin: '8px 12px 0', padding: '6px 12px', background: '#F7F0FA', border: 'none', borderRadius: 10, fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
-                ✕ {t('close')}
+                <PastelIcon name="close" size={15} /> {t('close')}
               </button>
             )}
 
@@ -353,7 +354,7 @@ const GroupChat = () => {
                 onClick={handleLeave}
                 style={{ width: '100%', padding: '8px', background: '#FFF5F5', border: '1px solid #FFCDD2', borderRadius: 10, color: '#e57373', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                🚪 {t('groupLeave')}
+                <PastelIcon name="arrow-left" size={15} /> {t('groupLeave')}
               </button>
             </div>
           </div>

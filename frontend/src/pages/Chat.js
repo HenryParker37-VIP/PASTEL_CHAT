@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import OnlineUsers from '../components/OnlineUsers';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
+import PastelIcon from '../components/PastelIcon';
 
 const isMobile = () => window.innerWidth <= 700;
 
@@ -249,7 +250,7 @@ const Chat = () => {
                   textAlign: 'left'
                 }}
               >
-                ✕ Close
+                <PastelIcon name="close" size={15} /> Close
               </button>
             )}
             <OnlineUsers />
@@ -335,7 +336,7 @@ const Chat = () => {
                     }}
                     onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                  >🔍</button>
+                  ><PastelIcon name="search" size={17} /></button>
 
                   <button
                     onClick={() => startCall(friend, 'voice')}
@@ -351,7 +352,7 @@ const Chat = () => {
                     }}
                     onMouseEnter={e => !activeCall && (e.currentTarget.style.transform = 'scale(1.1)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                  >📞</button>
+                  ><PastelIcon name="phone" size={17} /></button>
                   <button
                     onClick={() => startCall(friend, 'video')}
                     disabled={!!activeCall}
@@ -366,7 +367,7 @@ const Chat = () => {
                     }}
                     onMouseEnter={e => !activeCall && (e.currentTarget.style.transform = 'scale(1.1)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                  >📹</button>
+                  ><PastelIcon name="video" size={17} /></button>
                 </div>
               </div>
             )}
@@ -385,10 +386,10 @@ const Chat = () => {
                 {friend.status && <div style={{ fontSize: 13, color: '#B08ABD', marginTop: 1 }}>{friend.status}</div>}
                 {friend.bio && <div style={{ fontSize: 13, color: 'var(--subtext)', marginTop: 4, wordBreak: 'break-word' }}>{friend.bio}</div>}
                 <div style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb', marginTop: 4 }}>
-                  {friend.isOnline ? '🟢 Online now' : '⚫ Offline'}
+                  <><PastelIcon name={friend.isOnline ? 'online' : 'offline'} size={10} /> {friend.isOnline ? 'Online now' : 'Offline'}</>
                 </div>
               </div>
-              <button onClick={() => setProfileOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ccc' }}>✕</button>
+              <button onClick={() => setProfileOpen(false)} aria-label="Close profile" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ccc' }}><PastelIcon name="close" size={18} /></button>
             </div>
           )}
 
@@ -406,7 +407,7 @@ const Chat = () => {
                 background: 'var(--search-bg)', borderRadius: 20, padding: '6px 14px',
                 border: '1.5px solid #DDA0DD'
               }}>
-                <span style={{ fontSize: 14, color: '#B08ABD' }}>🔍</span>
+                <PastelIcon name="search" size={14} style={{ color: '#B08ABD' }} />
                 <input
                   ref={searchInputRef}
                   value={searchQuery}
@@ -422,7 +423,7 @@ const Chat = () => {
                   <button
                     onClick={() => setSearchQuery('')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#B08ABD', padding: 0 }}
-                  >✕</button>
+                  aria-label="Clear search"><PastelIcon name="close" size={14} /></button>
                 )}
               </div>
 

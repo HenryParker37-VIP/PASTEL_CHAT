@@ -98,23 +98,23 @@ const GlobalSocketListener = ({ onHappyBirthday }) => {
     if (!socket || !user) return;
     const handler = (payload) => {
       if (payload.type === 'friend_requested') {
-        push({ emoji: '📫', title: 'New friend request!', body: `${payload.from?.name} wants to be friends.` });
+        push({ icon: 'users', title: 'New friend request!', body: `${payload.from?.name} wants to be friends.` });
       }
       if (payload.type === 'friend_accepted') {
-        push({ emoji: '🌸', title: 'Request accepted!', body: `You are now friends with ${payload.from?.name}.` });
+        push({ icon: 'check', title: 'Request accepted!', body: `You are now friends with ${payload.from?.name}.` });
       }
       if (payload.type === 'new_message') {
-        push({ emoji: '💬', title: `New message from ${payload.from?.name}`, body: payload.preview });
+        push({ icon: 'chat-friends', title: `New message from ${payload.from?.name}`, body: payload.preview });
       }
       if (payload.type === 'group_message') {
         push({
-          emoji: '👥', title: `${payload.groupName}`,
+          icon: 'users', title: `${payload.groupName}`,
           body: `${payload.from?.name}: ${payload.preview}`,
           onClick: () => navigate(`/group/${payload.groupId}`)
         });
       }
       if (payload.type === 'group_created' || payload.type === 'group_invited') {
-        push({ emoji: '👥', title: `Added to "${payload.group?.name}"`, body: `by ${payload.from?.name}` });
+        push({ icon: 'users', title: `Added to "${payload.group?.name}"`, body: `by ${payload.from?.name}` });
       }
       if (payload.type === 'happy_birthday') {
         onHappyBirthday({ friendName: user.name, age: payload.age, isOwn: true });
