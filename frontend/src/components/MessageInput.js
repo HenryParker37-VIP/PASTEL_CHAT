@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import GifStickerPicker from './GifStickerPicker';
+import SmartSuggestionBar from './SmartSuggestionBar';
 import PastelIcon from './PastelIcon';
 
 const EMOJI_LIST = ['😀','😂','🥰','😍','🤩','😎','🥳','🤗','😊','😉',
@@ -20,6 +21,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [suggestedGifQuery, setSuggestedGifQuery] = useState('');
   const [sending, setSending] = useState(false);
   const [media, setMedia] = useState(null); // { type, dataUrl, name, size, preview }
   const textareaRef = useRef(null);
@@ -121,6 +123,17 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     }
   };
 
+  const handleSuggestedSticker = (sticker) => handleGifSelect({
+    type: 'sticker', stickerId: sticker.id, imageUrl: sticker.asset,
+    label: sticker.labelVi || sticker.label, name: sticker.label
+  });
+
+  const handleSuggestedGif = (query) => {
+    setSuggestedGifQuery(query);
+    setShowEmoji(false);
+    setShowGifPicker(true);
+  };
+
   const insertEmoji = (emoji) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -188,10 +201,18 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
       {showGifPicker && (
         <GifStickerPicker
           keyword={text}
+          initialTab={suggestedGifQuery ? 'gifs' : 'stickers'}
+          initialSearch={suggestedGifQuery}
           onSelect={handleGifSelect}
-          onClose={() => setShowGifPicker(false)}
+          onClose={() => { setShowGifPicker(false); setSuggestedGifQuery(''); }}
         />
       )}
+
+      <SmartSuggestionBar
+        message={text}
+        onStickerSelect={handleSuggestedSticker}
+        onGifQuery={handleSuggestedGif}
+      />
 
       {/* Input row */}
       <div className="input-row">

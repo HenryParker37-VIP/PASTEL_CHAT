@@ -25,11 +25,12 @@ const gifMeta = (item) => { const original = image(item, 'original'); const prev
   provider: 'giphy', sourceId: item.id, name: item.title || item.content_description || 'GIF'
 }; };
 
-const GifStickerPicker = ({ keyword = '', onSelect, onClose }) => {
-  const [tab, setTab] = useState('stickers'); const [search, setSearch] = useState(''); const [category, setCategory] = useState('pastel');
+const GifStickerPicker = ({ keyword = '', initialTab = 'stickers', initialSearch = '', onSelect, onClose }) => {
+  const [tab, setTab] = useState(initialTab); const [search, setSearch] = useState(initialSearch); const [category, setCategory] = useState('pastel');
   const [recentIds, setRecentIds] = useState(getRecentStickerIds); const [favoriteIds, setFavoriteIds] = useState(getFavoriteStickerIds);
   const [gifs, setGifs] = useState([]); const [gifsLoading, setGifsLoading] = useState(false); const [gifError, setGifError] = useState(null);
   const abortRef = useRef(null);
+  useEffect(() => { setTab(initialTab); setSearch(initialSearch); }, [initialTab, initialSearch]);
   const loadGifs = useCallback(async (query) => { abortRef.current?.abort(); const controller = new AbortController(); abortRef.current = controller; setGifsLoading(true); setGifError(null);
     try { setGifs(await fetchGiphy(query ? '/search' : '/trending', query ? { q: query } : {}, controller.signal)); }
     catch (error) { if (error.name !== 'AbortError') { setGifError('GIFs could not load. Retry or choose a sticker.'); setGifs([]); } }
