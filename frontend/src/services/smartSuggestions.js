@@ -1,28 +1,36 @@
+import { SMART_SUGGESTION_TRIGGERS, applyLexiconNormalization } from './smartSuggestionLexicon';
+
 const SLANG = {
   ko: 'không', k: 'không', hk: 'không', iu: 'yêu', thik: 'thích', bùn: 'buồn', dc: 'được',
   lol: 'laugh', lmao: 'laugh', omg: 'surprise', pls: 'please', damn: 'surprise', cooked: 'toang'
 };
 
 const CONCEPTS = [
-  { id: 'affection', phrases: ['love', 'love you', 'yêu', 'thương', 'miss you', 'miss u', 'miss you lots', 'nhớ bạn', 'nhớ you', 'nhớ em', 'nhớ anh', 'nhớ m', 'i miss', 'like you', 'thinking of you', 'hug', 'ôm', 'thích bạn'], emotion: 'love', tone: 'tender', intent: 'affection', gif: 'cute love reaction' },
-  { id: 'joy', phrases: ['haha', 'hahaha', 'lol', 'lmao', 'funny', 'hilarious', 'buồn cười', 'mắc cười', 'cười', 'cười xỉu', 'great', 'yay', "let's go", 'gooo'], emotion: 'joy', tone: 'playful', intent: 'react', gif: 'funny laughing reaction' },
+  { id: 'affection', phrases: ['love', 'love you', 'yêu', 'thương', 'miss you', 'miss u', 'miss you lots', 'nhớ bạn', 'nhớ you', 'nhớ em', 'nhớ anh', 'nhớ m', 'i miss', 'like you', 'thinking of you', 'hug', 'ôm', 'thích bạn', ...SMART_SUGGESTION_TRIGGERS.affection], emotion: 'love', tone: 'tender', intent: 'affection', gif: 'cute love reaction' },
+  { id: 'joy', phrases: ['haha', 'hahaha', 'lol', 'lmao', 'funny', 'hilarious', 'buồn cười', 'mắc cười', 'cười', 'cười xỉu', 'great', 'yay', "let's go", 'gooo', ...SMART_SUGGESTION_TRIGGERS.laughter], emotion: 'joy', tone: 'playful', intent: 'react', gif: 'funny laughing reaction' },
   { id: 'panic', phrases: ['deadline', 'stress', 'stressed', 'lo quá', 'hoảng', 'panic', 'toang', 'cooked', 'thi rớt', 'cứu', 'fail'], emotion: 'panic', tone: 'dramatic', intent: 'commiserate', gif: 'stress panic reaction' },
   { id: 'surprise', phrases: ['omg', 'wow', 'what', 'shocked', 'trời ơi', 'vãi', 'xỉu', 'mind blown'], emotion: 'surprise', tone: 'dramatic', intent: 'react', gif: 'shocked surprised reaction' },
   { id: 'support', phrases: ['cố lên', 'you got this', 'i believe', 'ủng hộ', 'support', 'comfort', 'an ủi', 'cheer up', 'proud of you', 'good job', "it's okay", 'no problem'], emotion: 'encouragement', tone: 'warm', intent: 'support', gif: 'you got this encouragement' },
   { id: 'celebrate', phrases: ['chúc mừng', 'congrats', 'ăn mừng', 'celebrate', 'sinh nhật', 'birthday'], emotion: 'joy', tone: 'bright', intent: 'celebrate', gif: 'celebration congrats' },
-  { id: 'sleep', phrases: ['ngủ ngon', 'ngủ nha', 'good night', 'sweet dreams', 'good evening', 'buồn ngủ', 'sleepy', 'sleep', 'bed', 'đi ngủ'], emotion: 'calm', tone: 'tender', intent: 'greeting', gif: 'good night cute' },
-  { id: 'apology', phrases: ['xin lỗi', 'sorry', 'so sorry', 'my bad', 'tha lỗi', 'forgive me', 'please'], emotion: 'hope', tone: 'tender', intent: 'apologize', gif: 'sorry cute reaction' },
-  { id: 'sadness', phrases: ['buồn quá', 'sad', 'tired', 'so tired', 'mệt quá', 'bored', 'so bored', 'crying'], emotion: 'sadness', tone: 'tender', intent: 'support', gif: 'comfort hug reaction' },
-  { id: 'anger', phrases: ['tức', 'angry', 'mad', 'bực', 'vl'], emotion: 'anger', tone: 'dramatic', intent: 'commiserate', gif: 'angry reaction' },
-  { id: 'praise', phrases: ['m giỏi quá', 'proud of you', 'you are great', 'giỏi quá', 'proud'], emotion: 'admiration', tone: 'warm', intent: 'praise', gif: 'proud celebration reaction' },
+  { id: 'sleep', phrases: ['ngủ ngon', 'ngủ nha', 'good night', 'sweet dreams', 'good evening', 'buồn ngủ', 'sleepy', 'sleep', 'bed', 'đi ngủ', ...SMART_SUGGESTION_TRIGGERS.sleep], emotion: 'calm', tone: 'tender', intent: 'greeting', gif: 'good night cute' },
+  { id: 'apology', phrases: ['xin lỗi', 'sorry', 'so sorry', 'my bad', 'tha lỗi', 'forgive me', 'please', ...SMART_SUGGESTION_TRIGGERS.apology], emotion: 'hope', tone: 'tender', intent: 'apologize', gif: 'sorry cute reaction' },
+  { id: 'sadness', phrases: ['buồn quá', 'sad', 'tired', 'so tired', 'mệt quá', 'bored', 'so bored', 'crying', ...SMART_SUGGESTION_TRIGGERS.crying, ...SMART_SUGGESTION_TRIGGERS.sadness, ...SMART_SUGGESTION_TRIGGERS.tired], emotion: 'sadness', tone: 'tender', intent: 'support', gif: 'comfort hug reaction' },
+  { id: 'anger', phrases: ['tức', 'angry', 'mad', 'bực', 'giận', 'vl'], emotion: 'anger', tone: 'dramatic', intent: 'commiserate', gif: 'angry reaction' },
+  { id: 'praise', phrases: ['m giỏi quá', 'proud of you', 'you are great', 'giỏi quá', 'proud', 'vỗ tay'], emotion: 'admiration', tone: 'warm', intent: 'praise', gif: 'proud celebration reaction' },
   { id: 'food', phrases: ['đi ăn', 'eat', 'food', 'lunch', 'dinner'], emotion: 'joy', tone: 'playful', intent: 'invite', gif: 'food excited reaction' },
   { id: 'greeting', phrases: ['xin chào', 'chào nha', 'chào', 'hello', 'hi', 'hey', 'good morning', 'welcome', 'welcome back'], emotion: 'joy', tone: 'warm', intent: 'greeting', gif: 'cute hello wave' },
   { id: 'farewell', phrases: ['tạm biệt', 'bye bye', 'good bye', 'goodbye', 'see you', 'see ya', 'see ya later', 'take care', 'bye'], emotion: 'calm', tone: 'warm', intent: 'farewell', gif: 'cute goodbye wave' },
   { id: 'approval', phrases: ['ok', 'okay', 'okayyy', 'good', 'nice', 'no problem', 'được', 'chuẩn'], emotion: 'approval', tone: 'positive', intent: 'confirm', gif: 'thumbs up reaction' },
-  { id: 'thanks', phrases: ['thank you', 'thanks', 'cảm ơn'], emotion: 'gratitude', tone: 'warm', intent: 'thanks', gif: 'thank you cute reaction' }
+  { id: 'thanks', phrases: ['thank you', 'thanks', 'cảm ơn'], emotion: 'gratitude', tone: 'warm', intent: 'thanks', gif: 'thank you cute reaction' },
+  { id: 'hug', phrases: SMART_SUGGESTION_TRIGGERS.hug, emotion: 'comfort', tone: 'tender', intent: 'support', gif: 'cute hug reaction' },
+  { id: 'cute', phrases: SMART_SUGGESTION_TRIGGERS.cute, emotion: 'affection', tone: 'playful', intent: 'praise', gif: 'cute adorable reaction' },
+  { id: 'completion', phrases: SMART_SUGGESTION_TRIGGERS.completion, emotion: 'relief', tone: 'positive', intent: 'confirm', gif: 'done celebration reaction' },
+  { id: 'confusion', phrases: SMART_SUGGESTION_TRIGGERS.confusion, emotion: 'surprise', tone: 'dramatic', intent: 'react', gif: 'confused reaction' },
+  { id: 'helplessness', phrases: SMART_SUGGESTION_TRIGGERS.helplessness, emotion: 'frustration', tone: 'dramatic', intent: 'commiserate', gif: 'frustrated reaction' },
+  { id: 'study', phrases: SMART_SUGGESTION_TRIGGERS.study, emotion: 'effort', tone: 'warm', intent: 'support', gif: 'study encouragement reaction' }
 ];
 
-export const normalizeMessage = (value = '') => value.normalize('NFC').toLowerCase().replace(/[.,!?;:()[\]{}]/g, ' ').split(/\s+/).filter(Boolean).map(word => SLANG[word] || word).join(' ');
+export const normalizeMessage = (value = '') => applyLexiconNormalization(value).replace(/[.,!?;:()[\]{}]/g, ' ').split(/\s+/).filter(Boolean).map(word => SLANG[word] || word).join(' ');
 
 export const analyzeMessage = (value = '') => {
   const normalized = normalizeMessage(value);

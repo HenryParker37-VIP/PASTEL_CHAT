@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 

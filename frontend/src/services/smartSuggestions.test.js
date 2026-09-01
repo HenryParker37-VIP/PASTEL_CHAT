@@ -62,4 +62,22 @@ describe('smart sticker suggestions', () => {
     const ids = getSmartSuggestions(message, { stickers: LOCAL_STICKERS }).stickers.map(sticker => sticker.id);
     expect(expectedIds.some(id => ids.includes(id))).toBe(true);
   });
+
+  test.each([
+    ['huhu', 'sadness'], ['hiccc', 'sadness'], ['khóc đây', 'sadness'], ['khóc', 'sadness'], ['bùn', 'sadness'], ['buồn', 'sadness'], ['chán', 'sadness'],
+    ['iu', 'affection'], ['yêu', 'affection'], ['ôm', 'hug'], ['dễ thương', 'cute'], ['dệ thưn', 'cute'], ['dễ thưn', 'cute'], ['cute', 'cute'], ['cuti', 'cute'],
+    ['ngủ đây', 'sleep'], ['ngủ', 'sleep'], ['đi ngủ', 'sleep'], ['mệt', 'sadness'], ['xong', 'completion'], ['ok', 'approval'], ['oke', 'approval'], ['oki', 'approval'],
+    ['hả', 'confusion'], ['chịu', 'helplessness'], ['vỗ tay', 'praise'], ['omg', 'surprise'], ['lol', 'joy'], ['lmao', 'joy'], ['haha', 'joy'], ['hihi', 'joy'], ['hehe', 'joy'],
+    ['học', 'study'], ['sorry', 'apology'], ['xin lũi', 'apology'], ['xin lỗi', 'apology'], ['nhớ', 'affection']
+  ])('activates the lexicon for %s', (message, concept) => {
+    expect(analyzeMessage(message).concepts.map(item => item.id)).toContain(concept);
+  });
+
+  test.each(['huhuuu', 'hicccc', 'okiii', 'hahaaa', 'hehee', 'cutiii', 'iuuu', 'mệttt', 'bùnnn'])('normalizes stretched input %s', (message) => {
+    expect(analyzeMessage(message).concepts.length).toBeGreaterThan(0);
+  });
+
+  test.each(['huhu nhớ m quá', 'oki xong rồi', 'ngủ đây nha', 'xin lũi bro', 'haha dễ thưn quá', 'iu quá trời', 'mệt vl'])('activates combinations for %s', (message) => {
+    expect(getSmartSuggestions(message, { stickers: LOCAL_STICKERS }).stickers.length).toBeGreaterThan(0);
+  });
 });
