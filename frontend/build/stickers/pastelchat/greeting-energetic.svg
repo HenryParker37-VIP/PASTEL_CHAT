@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Energetic hello sticker">
+  <rect width="160" height="160" rx="42" fill="#FFF8CE"/>
+  <path d="M34 131c7-28 24-41 46-41s39 13 46 41" fill="#F4A261"/>
+  <circle cx="80" cy="69" r="38" fill="#FFDCB7"/>
+  <path d="M43 58c8-23 20-33 38-33 18 0 31 10 37 29-18-6-52-7-75 4Z" fill="#DB6D78"/>
+  <path d="M61 75l9-5M90 70l9 5" stroke="#553646" stroke-width="5" stroke-linecap="round"/>
+  <path d="M64 86c9 13 23 13 32 0" fill="#fff" stroke="#C8576A" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M43 100 22 77M117 100l21-23" stroke="#FFDCB7" stroke-width="13" stroke-linecap="round"/>
+  <path d="M17 72l-7-8M27 67l-2-11M143 72l7-8M133 67l2-11" stroke="#F4A261" stroke-width="5" stroke-linecap="round"/>
+  <path d="m23 40 4 9 9 4-9 4-4 9-4-9-9-4 9-4Z" fill="#F4A261"/>
+  <path d="m136 35 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#F4A261"/>
+</svg>

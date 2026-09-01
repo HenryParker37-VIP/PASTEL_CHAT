@@ -1,0 +1,11 @@
+{
+  "source": "OpenMoji",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "packs": ["greetings", "pastel", "cute", "love", "reactions", "funny", "animals"],
+  "pastelchatAssets": {
+    "path": "/stickers/pastelchat",
+    "format": "svg",
+    "source": "PastelChat original illustrations"
+  }
+}

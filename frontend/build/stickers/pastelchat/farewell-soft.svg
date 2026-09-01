@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Soft goodbye sticker">
+  <rect width="160" height="160" rx="42" fill="#F1EEFF"/>
+  <path d="M30 130c8-27 25-39 50-39 24 0 41 12 49 39" fill="#B8B5DE"/>
+  <circle cx="78" cy="71" r="38" fill="#F8D3B5"/>
+  <path d="M42 62c4-24 18-36 37-36 19 0 33 13 37 34-17-7-53-8-74 2Z" fill="#7771A7"/>
+  <path d="M62 75h8M89 75h8" stroke="#4C486C" stroke-width="5" stroke-linecap="round"/>
+  <path d="M67 91c6 5 16 5 22 0" fill="none" stroke="#C87891" stroke-width="4" stroke-linecap="round"/>
+  <path d="M118 100c10-12 18-22 24-28" fill="none" stroke="#F8D3B5" stroke-width="12" stroke-linecap="round"/>
+  <path d="M124 52c10 3 17 10 20 20" fill="none" stroke="#A29ACC" stroke-width="4" stroke-linecap="round"/>
+  <path d="M34 42c9-8 18-10 29-8" fill="none" stroke="#D7D2F1" stroke-width="6" stroke-linecap="round"/>
+</svg>

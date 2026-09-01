@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Waving hello sticker">
+  <rect width="160" height="160" rx="42" fill="#E9F7FF"/>
+  <path d="M32 129c8-26 25-39 48-39s40 13 48 39" fill="#A9D8EC"/>
+  <circle cx="78" cy="70" r="38" fill="#F9CFAC"/>
+  <path d="M43 62c4-25 21-37 39-37 17 0 30 9 35 27-18-7-46-8-74 10Z" fill="#4B6D8B"/>
+  <path d="M63 74h8M89 74h8" stroke="#3E4E5D" stroke-width="5" stroke-linecap="round"/>
+  <path d="M66 89c7 7 18 7 25 0" fill="none" stroke="#CE6B80" stroke-width="4" stroke-linecap="round"/>
+  <path d="M108 96c16-23 29-37 36-30 7 7-4 18-15 28" fill="none" stroke="#F9CFAC" stroke-width="13" stroke-linecap="round"/>
+  <path d="M132 48c7 4 11 9 13 16M143 62l8 7M124 42l4-10" stroke="#6D9CB8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M40 38l8 5M34 49l9 1" stroke="#9ACEE6" stroke-width="5" stroke-linecap="round"/>
+</svg>
