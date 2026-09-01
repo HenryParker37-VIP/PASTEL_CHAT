@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import PastelIcon from './PastelIcon';
 
 const TelegramSetup = ({ onClose, onConnected }) => {
   const [step, setStep] = useState('intro');
@@ -184,7 +185,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
         {step === 'intro' && (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: colors.text }}>
-              📱 Telegram Notifications
+              <PastelIcon name="telegram" size={22} /> Telegram Notifications
             </h2>
             <p style={{ fontSize: 14, color: colors.secondaryText, marginBottom: 16, lineHeight: 1.5 }}>
               Get reliable notifications for calls and messages, even when Pastel Chat is closed. Works great on iPhone!
@@ -194,10 +195,10 @@ const TelegramSetup = ({ onClose, onConnected }) => {
               background: colors.listBg, borderRadius: 12, padding: 12,
               marginBottom: 20, fontSize: 13, lineHeight: 1.7, color: colors.listText
             }}>
-              <div>📞 Incoming call alerts</div>
-              <div>💬 Message previews</div>
-              <div>👥 Friend requests</div>
-              <div>✅ Works even when app is closed</div>
+              <div><PastelIcon name="phone" size={15} /> Incoming call alerts</div>
+              <div><PastelIcon name="chat-friends" size={15} /> Message previews</div>
+              <div><PastelIcon name="users" size={15} /> Friend requests</div>
+              <div><PastelIcon name="check" size={15} /> Works even when app is closed</div>
             </div>
 
             {error && (
@@ -216,7 +217,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
                 opacity: loading ? 0.7 : 1, marginBottom: 10
               }}
             >
-              {loading ? '⏳ Opening Telegram...' : '✈️ Connect with Telegram'}
+              {loading ? 'Opening Telegram...' : <><PastelIcon name="telegram" size={17} /> Connect with Telegram</>}
             </button>
 
             {/* Secondary: get Telegram if not installed */}
@@ -232,7 +233,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
                 textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box'
               }}
             >
-              {isIOS ? '🍎 Download Telegram on App Store' : isAndroid ? '🤖 Get Telegram on Google Play' : '📥 Download Telegram'}
+              {isIOS ? 'Download Telegram on App Store' : isAndroid ? 'Get Telegram on Google Play' : 'Download Telegram'}
             </a>
 
             <button
@@ -251,7 +252,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
         {step === 'connect' && (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: colors.text }}>
-              ✓ Code ready
+              <PastelIcon name="check" size={21} /> Code ready
             </h2>
 
             <div style={{
@@ -313,7 +314,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
 
         {step === 'verifying' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
+            <PastelIcon name="telegram" size={48} style={{ marginBottom: 16 }} />
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: colors.text }}>
               Waiting for Telegram...
             </h2>
@@ -365,7 +366,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
         {step === 'connected' && (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: colors.text }}>
-              <span>✅</span> Connected!
+              <PastelIcon name="check" size={20} /> Connected!
             </h2>
 
             <p style={{ fontSize: 13, color: colors.secondaryText, marginBottom: 16, lineHeight: 1.5 }}>

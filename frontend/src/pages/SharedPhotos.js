@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import api from '../services/api';
 import PhotoUpload from '../components/PhotoUpload';
+import PastelIcon from '../components/PastelIcon';
 
 const TIMER_OPTIONS = [0, 3, 5, 10];
 
@@ -200,11 +201,11 @@ const SharedPhotos = () => {
               background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 20,
               color: 'white', fontSize: 13, fontWeight: 600, padding: '6px 14px', cursor: 'pointer'
             }}
-          >← Back</button>
+          ><PastelIcon name="arrow-left" size={16} /> Back</button>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>📸 Shared Photos</span>
+            <span style={{ color: 'white', fontWeight: 700, fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}><PastelIcon name="image" size={18} /> Shared Photos</span>
             {isGoogleUser && (
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 1 }}>🔐 Premium · Photo encryption enabled</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 1 }}><PastelIcon name="lock" size={12} /> Premium · Photo encryption enabled</div>
             )}
           </div>
           <button
@@ -213,7 +214,7 @@ const SharedPhotos = () => {
               background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 20,
               color: 'white', fontSize: 13, fontWeight: 600, padding: '6px 14px', cursor: 'pointer'
             }}
-          >🔄 Flip</button>
+          ><PastelIcon name="flip" size={16} /> Flip</button>
         </div>
 
         {/* Camera viewfinder */}
@@ -259,7 +260,7 @@ const SharedPhotos = () => {
               position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24
             }}>
-              <span style={{ fontSize: 48 }}>📷</span>
+              <PastelIcon name="camera" size={48} />
               <p style={{ color: '#aaa', fontSize: 14, textAlign: 'center', margin: 0 }}>{cameraError}</p>
               <button
                 onClick={() => startCamera(facingMode)}
@@ -322,7 +323,7 @@ const SharedPhotos = () => {
                   fontSize: 26
                 }}
               >
-                {sending ? '✓' : countdown !== null ? '⏹' : ''}
+                {sending ? <PastelIcon name="check" size={26} /> : countdown !== null ? <PastelIcon name="close" size={22} /> : ''}
               </button>
             </div>
           )}
@@ -367,7 +368,7 @@ const SharedPhotos = () => {
               alignItems: 'center', justifyContent: 'center',
               minHeight: 120, gap: 8
             }}>
-              <span style={{ fontSize: 36 }}>🌸</span>
+              <PastelIcon name="image" size={36} />
               <p style={{ color: '#555', fontSize: 13, margin: 0, textAlign: 'center' }}>
                 No photos yet — be the first to share one!
               </p>
@@ -400,7 +401,7 @@ const SharedPhotos = () => {
                         background: 'linear-gradient(135deg, #1a1a2e, #2d1b69)',
                         gap: 4
                       }}>
-                        <span style={{ fontSize: 20 }}>🔒</span>
+                        <PastelIcon name="lock" size={20} />
                         <span style={{ color: '#aaa', fontSize: 9, textAlign: 'center', padding: '0 4px' }}>
                           Photo hidden by user
                         </span>
@@ -440,7 +441,7 @@ const SharedPhotos = () => {
                               color: 'white', fontSize: 9, cursor: 'pointer', fontWeight: 700
                             }}
                           >
-                            {isHidden ? '👁 Show' : '🔒'}
+                            {isHidden ? 'Show' : <PastelIcon name="lock" size={13} title="Hide photo" />}
                           </button>
                         )}
                       </div>
@@ -465,7 +466,7 @@ const SharedPhotos = () => {
           >
             {selectedPhoto.isHidden && selectedPhoto.uploadedBy._id !== user?._id ? (
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 64 }}>🔒</div>
+                <PastelIcon name="lock" size={64} />
                 <p style={{ color: '#aaa', fontSize: 16, marginTop: 12 }}>Photo hidden by user</p>
               </div>
             ) : (
@@ -505,7 +506,7 @@ const SharedPhotos = () => {
                     color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer'
                   }}
                 >
-                  {selectedPhoto.isHidden ? '👁 Show Photo' : '🔒 Hide Photo'}
+                  {selectedPhoto.isHidden ? 'Show Photo' : 'Hide Photo'}
                 </button>
               )}
             </div>
@@ -513,7 +514,7 @@ const SharedPhotos = () => {
               <p style={{ color: '#555', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
                 {selectedPhoto.isHidden
                   ? 'Other users see "Photo hidden by user"'
-                  : 'Click 🔒 Hide Photo to restrict visibility to yourself only'}
+                  : 'Use Hide Photo to restrict visibility to yourself only'}
               </p>
             )}
             <p style={{ color: '#666', fontSize: 12, marginTop: 10 }}>Tap anywhere to close</p>

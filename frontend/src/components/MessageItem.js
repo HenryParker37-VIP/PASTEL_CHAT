@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import GifMessage from './GifMessage';
 import StickerDisplay from './StickerDisplay';
+import PastelIcon from './PastelIcon';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -177,12 +178,12 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
                   download={message.media.name}
                   className="bubble-media-file"
                 >
-                  <span style={{ fontSize: 22 }}>📄</span>
+                  <PastelIcon name="file" size={22} title="File attachment" />
                   <div style={{ minWidth: 0 }}>
                     <div className="bubble-file-name">{message.media.name}</div>
                     <div className="bubble-file-size">{formatBytes(message.media.size)}</div>
                   </div>
-                  <span style={{ fontSize: 14, opacity: 0.6, marginLeft: 'auto' }}>↓</span>
+                  <PastelIcon name="arrow-down" size={16} className="muted-icon" title="Download file" />
                 </a>
               )
             )}
@@ -193,7 +194,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
             {/* Time + pin */}
             {!emojiOnly && (
               <div className="bubble-meta">
-                {message.isPinned && <span title="Pinned" style={{ fontSize: 10 }}>📌</span>}
+                {message.isPinned && <PastelIcon name="pin" size={12} title="Pinned" />}
                 <span>{formatTime(message.timestamp)}</span>
               </div>
             )}
@@ -207,20 +208,20 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
                 title="React"
                 onClick={() => setShowReactionPicker(v => !v)}
                 style={{ fontSize: 14 }}
-              >😊</button>
-              <button title="Reply" onClick={() => onReply?.(message)} disabled={busy}>↩</button>
+              ><PastelIcon name="smile" size={16} title="React" /></button>
+              <button title="Reply" onClick={() => onReply?.(message)} disabled={busy}><PastelIcon name="reply" size={16} title="Reply" /></button>
               <button
                 title={message.isPinned ? 'Unpin' : 'Pin'}
                 onClick={handlePin}
                 disabled={busy}
-              >{message.isPinned ? '📌' : '📍'}</button>
+              ><PastelIcon name="pin" size={16} title={message.isPinned ? 'Unpin' : 'Pin'} /></button>
               {isOwn && (
                 <button
                   title="Recall"
                   onClick={handleRecall}
                   disabled={busy}
                   style={{ color: '#e57373' }}
-                >🗑</button>
+                ><PastelIcon name="trash" size={16} title="Recall" /></button>
               )}
 
               {/* Reaction picker popup */}

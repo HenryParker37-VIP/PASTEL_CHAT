@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import MessageItem from './MessageItem';
 import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
+import PastelIcon from './PastelIcon';
 
 const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId }) => {
   const bottomRef = useRef(null);
@@ -59,7 +60,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
           gap: '12px',
           color: '#CCCCCC'
         }}>
-          <div style={{ fontSize: '48px' }}>💬</div>
+          <PastelIcon name="chat-friends" size={48} />
           <p style={{ fontSize: '15px', fontWeight: 500 }}>No messages yet</p>
           <p style={{ fontSize: '13px' }}>Be the first to say hello!</p>
         </div>

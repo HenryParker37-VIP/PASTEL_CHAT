@@ -4,19 +4,19 @@ const STEPS = {
   en: [
     {
       selector: '[data-tutorial="install"]',
-      title: '📲 Add to Home Screen',
+      title: 'Add to Home Screen',
       body: 'Install Pastel Chat on your phone for faster access, better push notifications, and an app-like experience on iPhone & Android — no App Store needed!',
       position: 'above',
     },
     {
       selector: '[data-tutorial="telegram"]',
-      title: '📱 Telegram Notifications',
+      title: 'Telegram Notifications',
       body: 'Connect your Telegram account to receive instant alerts for incoming calls, friend requests, and new messages — even when Pastel Chat is closed.',
       position: 'above',
     },
     {
       selector: '[data-tutorial="features"]',
-      title: '🌸 Everything in One Place',
+      title: 'Everything in One Place',
       body: 'Chat with friends, join group conversations, share photos, make voice & video calls, customize your avatar, organize your Private Space — it\'s all here waiting for you!',
       position: 'below',
     },
@@ -24,19 +24,19 @@ const STEPS = {
   vi: [
     {
       selector: '[data-tutorial="install"]',
-      title: '📲 Thêm vào Màn hình Chính',
+      title: 'Thêm vào Màn hình Chính',
       body: 'Cài Pastel Chat lên điện thoại để truy cập nhanh hơn, nhận thông báo tốt hơn và trải nghiệm như ứng dụng thật trên iPhone & Android — không cần App Store!',
       position: 'above',
     },
     {
       selector: '[data-tutorial="telegram"]',
-      title: '📱 Thông báo Telegram',
+      title: 'Thông báo Telegram',
       body: 'Kết nối Telegram để nhận thông báo tức thì về cuộc gọi đến, yêu cầu kết bạn và tin nhắn mới — ngay cả khi Pastel Chat đang đóng.',
       position: 'above',
     },
     {
       selector: '[data-tutorial="features"]',
-      title: '🌸 Tất cả trong Một nơi',
+      title: 'Tất cả trong Một nơi',
       body: 'Nhắn tin với bạn bè, tham gia nhóm chat, chia sẻ ảnh, gọi thoại & video, tùy chỉnh avatar, quản lý Không gian Riêng tư — tất cả đều có ở đây!',
       position: 'below',
     },
@@ -123,7 +123,7 @@ const OnboardingTutorial = ({ lang = 'vi', onComplete }) => {
   const isFirst = step === 0;
 
   const labelNext = isLast
-    ? (lang === 'vi' ? '✓ Xong!' : '✓ Done!')
+    ? (lang === 'vi' ? 'Xong!' : 'Done!')
     : (lang === 'vi' ? 'Tiếp →' : 'Next →');
   const labelBack = lang === 'vi' ? '← Lại' : '← Back';
   const labelSkip = lang === 'vi' ? 'Bỏ qua' : 'Skip';

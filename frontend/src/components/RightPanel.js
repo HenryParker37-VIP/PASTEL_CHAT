@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import PastelIcon from './PastelIcon';
 
 const BACKGROUNDS = [
   { id: 'cream',    label: 'Cream',    value: '#FFF8F3' },
@@ -48,7 +49,7 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
     <>
       <div className="drawer-backdrop" onClick={onClose} />
       <aside className="drawer slide-in-right" role="dialog" aria-label="Chat options">
-        <button className="drawer-close" onClick={onClose} aria-label="Close">✕</button>
+        <button className="drawer-close" onClick={onClose} aria-label="Close"><PastelIcon name="close" size={20} /></button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 30 }}>
           <img className="avatar" src={user?.avatar} alt="" />
@@ -65,7 +66,7 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
               <img className="avatar" src={peer.avatar} alt="" style={{ width: 40, height: 40 }} />
               <div>
                 <p style={{ margin: 0, fontWeight: 700 }}>{peer.customNickname || peer.name}</p>
-                <p style={{ margin: 0, fontSize: 11, color: '#888' }}>{peer.isOnline ? '🟢 Online' : '⚪ Offline'}</p>
+                <p style={{ margin: 0, fontSize: 11, color: '#888', display: 'flex', alignItems: 'center', gap: 4 }}><PastelIcon name={peer.isOnline ? 'online' : 'offline'} size={10} />{peer.isOnline ? 'Online' : 'Offline'}</p>
               </div>
             </div>
           </>
@@ -82,7 +83,7 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
           <button className="btn" type="submit">Go</button>
         </form>
 
-        <h3>📌 Pinned</h3>
+        <h3><PastelIcon name="pin" size={17} /> Pinned</h3>
         {loading && <p style={{ fontSize: 13, color: '#999' }}>Loading...</p>}
         {!loading && pinned.length === 0 && <p style={{ fontSize: 13, color: '#999' }}>No pinned messages yet.</p>}
         {pinned.map((m) => (
@@ -97,7 +98,7 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
           </div>
         ))}
 
-        <h3>🎨 Chat background</h3>
+        <h3><PastelIcon name="palette" size={17} /> Chat background</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {BACKGROUNDS.map((bg) => (
             <button
@@ -118,7 +119,7 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
           ))}
         </div>
 
-        <h3>⚠️ Danger zone</h3>
+        <h3><PastelIcon name="alert" size={17} /> Danger zone</h3>
         <button
           className="btn"
           style={{ width: '100%', background: '#ffb3b3' }}

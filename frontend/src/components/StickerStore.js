@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { stickerApi } from '../services/api';
 import StickerDisplay from './StickerDisplay';
+import PastelIcon from './PastelIcon';
 
 const StickerStore = ({ onClose, onPacksChanged }) => {
   const [packs, setPacks] = useState([]);
@@ -58,9 +59,9 @@ const StickerStore = ({ onClose, onPacksChanged }) => {
       <div className="sticker-store" onClick={e => e.stopPropagation()}>
         {/* Detail header */}
         <div className="sticker-store-header">
-          <button className="store-back-btn" onClick={() => setSelected(null)}>←</button>
+          <button className="store-back-btn" onClick={() => setSelected(null)} aria-label="Back"><PastelIcon name="arrow-left" size={18} /></button>
           <span className="store-title">{selected.nameVi || selected.name}</span>
-          <button className="gif-close" onClick={onClose}>✕</button>
+          <button className="gif-close" onClick={onClose} aria-label="Close"><PastelIcon name="close" size={18} /></button>
         </div>
 
         {/* Pack info */}
@@ -98,7 +99,7 @@ const StickerStore = ({ onClose, onPacksChanged }) => {
             {busy === selected.id
               ? '...'
               : selected.isAdded
-                ? '✓ Added to your stickers'
+                ? 'Added to your stickers'
                 : '+ Add to my stickers'}
           </button>
         </div>
@@ -110,8 +111,8 @@ const StickerStore = ({ onClose, onPacksChanged }) => {
     <div className="sticker-store" onClick={e => e.stopPropagation()}>
       {/* Header */}
       <div className="sticker-store-header">
-        <span className="store-title">🛍️ Sticker Store</span>
-        <button className="gif-close" onClick={onClose}>✕</button>
+        <span className="store-title"><PastelIcon name="gift" size={20} /> Sticker Store</span>
+        <button className="gif-close" onClick={onClose} aria-label="Close"><PastelIcon name="close" size={18} /></button>
       </div>
 
       <div className="store-subtitle">Tap a pack to preview · {packs.filter(p => p.isAdded).length} added</div>
@@ -184,7 +185,7 @@ const StickerStore = ({ onClose, onPacksChanged }) => {
                     togglePack(pack);
                   }}
                 >
-                  {busy === pack.id ? '…' : pack.isAdded ? '✓ Added' : '+ Add'}
+                  {busy === pack.id ? '…' : pack.isAdded ? 'Added' : '+ Add'}
                 </button>
               </div>
             </div>

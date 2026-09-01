@@ -80,34 +80,34 @@ export const PASTEL_BG_COLORS = [
 ];
 
 export const EXPRESSIONS = [
-  { id: 'cheery',   label: '😊 Cheery',   value: 'variant01' },
-  { id: 'curious',  label: '🤔 Curious',  value: 'variant02' },
-  { id: 'happy',    label: '😄 Happy',    value: 'variant03' },
-  { id: 'sleepy',   label: '😴 Sleepy',   value: 'variant04' },
-  { id: 'excited',  label: '🤩 Excited',  value: 'variant05' },
-  { id: 'calm',     label: '😌 Calm',     value: 'variant06' },
-  { id: 'wink',     label: '😉 Wink',     value: 'variant07' },
-  { id: 'heart',    label: '🥰 Heart',    value: 'variant08' },
+  { id: 'cheery',   label: 'Cheery',   value: 'variant01' },
+  { id: 'curious',  label: 'Curious',  value: 'variant02' },
+  { id: 'happy',    label: 'Happy',    value: 'variant03' },
+  { id: 'sleepy',   label: 'Sleepy',   value: 'variant04' },
+  { id: 'excited',  label: 'Excited',  value: 'variant05' },
+  { id: 'calm',     label: 'Calm',     value: 'variant06' },
+  { id: 'wink',     label: 'Wink',     value: 'variant07' },
+  { id: 'heart',    label: 'Heart',    value: 'variant08' },
 ];
 
 export const ACCESSORIES = [
   { id: 'none',      label: 'None',       value: '' },
-  { id: 'glasses1',  label: '👓 Glasses', value: 'variant01' },
-  { id: 'glasses2',  label: '🕶️ Shades',  value: 'variant02' },
-  { id: 'glasses3',  label: '🤓 Nerd',    value: 'variant03' },
-  { id: 'glasses4',  label: '💎 Cat-eye', value: 'variant04' },
-  { id: 'glasses5',  label: '✨ Round',   value: 'variant05' },
+  { id: 'glasses1',  label: 'Glasses', value: 'variant01' },
+  { id: 'glasses2',  label: 'Shades',  value: 'variant02' },
+  { id: 'glasses3',  label: 'Nerd',    value: 'variant03' },
+  { id: 'glasses4',  label: 'Cat-eye', value: 'variant04' },
+  { id: 'glasses5',  label: 'Round',   value: 'variant05' },
 ];
 
 export const OUTFITS = [
-  { id: 'o1',  label: '👕 Casual',     value: 'variant01' },
-  { id: 'o2',  label: '🎀 Cute',       value: 'variant02' },
-  { id: 'o3',  label: '🌸 Floral',     value: 'variant03' },
-  { id: 'o4',  label: '⭐ Sporty',     value: 'variant04' },
-  { id: 'o5',  label: '💼 Smart',      value: 'variant05' },
-  { id: 'o6',  label: '🎓 Academic',   value: 'variant06' },
-  { id: 'o7',  label: '🌙 Cozy',       value: 'variant07' },
-  { id: 'o8',  label: '🦋 Boho',       value: 'variant08' },
+  { id: 'o1',  label: 'Casual',     value: 'variant01' },
+  { id: 'o2',  label: 'Cute',       value: 'variant02' },
+  { id: 'o3',  label: 'Floral',     value: 'variant03' },
+  { id: 'o4',  label: 'Sporty',     value: 'variant04' },
+  { id: 'o5',  label: 'Smart',      value: 'variant05' },
+  { id: 'o6',  label: 'Academic',   value: 'variant06' },
+  { id: 'o7',  label: 'Cozy',       value: 'variant07' },
+  { id: 'o8',  label: 'Boho',       value: 'variant08' },
 ];
 
 // Build lorelei avatar URL from custom options
