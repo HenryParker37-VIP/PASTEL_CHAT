@@ -45,6 +45,7 @@ const glyphs = {
   'chevron-right': <path d="m9.5 5 7 7-7 7" {...common}/>,
   'arrow-left': <><path d="M20 12H4M10 6l-6 6 6 6" {...common}/></>,
   'arrow-down': <><path d="M12 4v16M6 14l6 6 6-6" {...common}/></>,
+  home: <><path d="m4 11 8-7 8 7v9H4z" {...common}/><path d="M9 20v-5h6v5" {...common}/></>,
   reply: <><path d="M9 8 4 12l5 4v-3h4.2a5.8 5.8 0 0 1 5.3 3.5c.3-4.7-2.4-8.5-7.2-8.5z" {...common}/></>,
   check: <path d="m5 12 4.2 4.2L19 6.5" {...common}/>,
   alert: <><path d="M12 3 21 20H3z" {...common}/><path d="M12 9v4M12 16.5h.01" {...common}/></>,

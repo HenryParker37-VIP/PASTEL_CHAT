@@ -11,7 +11,7 @@ import PastelIcon from '../components/PastelIcon';
 
 const TILES = [
   {
-    icon: 'profile-edit',
+    icon: '/images/home-icons/change-name.png',
     key: 'profile',
     labelKey: 'homeChangeName',
     descKey: 'homeChangeNameDesc',
@@ -19,7 +19,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #FFB6C1 0%, #FF8FA3 100%)',
   },
   {
-    icon: 'chat-friends',
+    icon: '/images/home-icons/chat-friends.png',
     key: 'chat',
     labelKey: 'homeChatFriends',
     descKey: 'homeChatFriendsDesc',
@@ -27,7 +27,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #ADD8E6 0%, #7EC8E3 100%)',
   },
   {
-    icon: 'users',
+    icon: '/images/home-icons/group-chats.png',
     key: 'groups',
     labelKey: 'homeGroups',
     descKey: 'homeGroupsDesc',
@@ -35,7 +35,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #B0E0E6 0%, #7DC9C9 100%)',
   },
   {
-    icon: 'image',
+    icon: '/images/home-icons/shared-photos.png',
     key: 'photos',
     labelKey: 'homeSharedPhotos',
     descKey: 'homeSharedPhotosDesc',
@@ -43,7 +43,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
   },
   {
-    icon: 'notebook',
+    icon: '/images/home-icons/private-space.png',
     key: 'myspace',
     labelKey: 'homeMySpace',
     descKey: 'homeMySpaceDesc',
@@ -51,7 +51,7 @@ const TILES = [
     grad: 'linear-gradient(135deg, #DDA0DD 0%, #C07BC0 100%)',
   },
   {
-    icon: 'shield-heart',
+    icon: '/images/home-icons/privacy-support.png',
     key: 'privacy',
     labelKey: 'homePrivacy',
     descKey: 'homePrivacyDesc',
@@ -134,7 +134,7 @@ const Home = () => {
               style={{ animationDelay: `${i * 0.06}s`, background: tile.grad }}
               onClick={() => navigate(tile.path)}
             >
-              <PastelIcon className="home-mobile-tile-icon" name={tile.icon} size={58} />
+              <img className="home-mobile-tile-icon" src={tile.icon} alt="" width="64" height="64" draggable="false" />
               <span className="home-mobile-label">{t(tile.labelKey)}</span>
             </button>
           ))}
@@ -177,7 +177,7 @@ const Home = () => {
                 background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
                 cursor: 'pointer'
               }}>
-                <PastelIcon name="send" size={15} />
+                <PastelIcon name="home" size={15} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
               </div>
             </div>
@@ -208,7 +208,7 @@ const Home = () => {
                 background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 100%)',
                 cursor: 'pointer'
               }}>
-                <PastelIcon name="send" size={15} />
+                <PastelIcon name="home" size={15} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
               </div>
             </div>
@@ -270,7 +270,7 @@ const Home = () => {
             style={{ animationDelay: `${0.05 + i * 0.05}s` }}
             onClick={() => navigate(tile.path)}
           >
-            <PastelIcon className="home-tile-icon" name={tile.icon} size={74} />
+            <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" draggable="false" />
             <h3>{t(tile.labelKey)}</h3>
             <p>{t(tile.descKey)}</p>
           </div>
@@ -323,7 +323,7 @@ const Home = () => {
                 cursor: 'pointer', border: 'none'
               }}
             >
-              <PastelIcon name="send" size={15} />
+              <PastelIcon name="home" size={15} />
               <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
             </div>
           </div>
@@ -364,7 +364,7 @@ const Home = () => {
                 cursor: 'pointer', border: 'none'
               }}
             >
-              <PastelIcon name="send" size={15} />
+              <PastelIcon name="home" size={15} />
               <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
             </div>
           </div>
