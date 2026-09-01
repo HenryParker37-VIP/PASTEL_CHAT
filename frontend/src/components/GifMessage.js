@@ -1,104 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-const GifMessage = ({ url, preview, title = 'GIF' }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  if (!url) return null;
-
-  const handleLoad = () => setLoading(false);
-  const handleError = () => {
-    setLoading(false);
-    setError(true);
-  };
-
-  return (
-    <div
-      style={{
-        marginTop: 8,
-        borderRadius: 8,
-        overflow: 'hidden',
-        backgroundColor: '#f0f0f0',
-        maxWidth: '100%',
-        aspectRatio: '16 / 9',
-      }}
-    >
-      {loading && (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#e0e0e0',
-            color: '#999',
-            fontSize: 12,
-          }}
-        >
-          Loading GIF...
-        </div>
-      )}
-
-      {error ? (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f5f5f5',
-            color: '#999',
-            fontSize: 12,
-            textAlign: 'center',
-            padding: 8,
-          }}
-        >
-          Failed to load GIF
-        </div>
-      ) : (
-        <>
-          {/* Use img for direct GIF rendering (supports animation natively) */}
-          <img
-            src={url}
-            alt={title}
-            title={title}
-            loading="lazy"
-            onLoad={handleLoad}
-            onError={handleError}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: loading ? 'none' : 'block',
-            }}
-          />
-
-          {/* Fallback video element for better mobile support (if URL is a .gif file) */}
-          {url.toLowerCase().endsWith('.gif') && (
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              onLoadedMetadata={handleLoad}
-              onError={handleError}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: loading ? 'none' : 'block',
-              }}
-            >
-              <source src={url} type="video/mp4" />
-              GIF not supported
-            </video>
-          )}
-        </>
-      )}
-    </div>
-  );
+export const getGifAspectRatio = (width, height) => {
+  const w = Number(width); const h = Number(height);
+  return w > 0 && h > 0 ? `${Math.min(Math.max(w / h, 0.5), 2.5)}` : '16 / 9';
 };
 
+const GifMessage = ({ url, preview, previewUrl, width, height, title = 'GIF' }) => {
+  const previewSource = previewUrl || preview || url;
+  const [primaryLoaded, setPrimaryLoaded] = useState(false);
+  const [previewLoaded, setPreviewLoaded] = useState(false);
+  const [primaryFailed, setPrimaryFailed] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const aspectRatio = useMemo(() => getGifAspectRatio(width, height), [width, height]);
+
+  useEffect(() => { setPrimaryLoaded(false); setPreviewLoaded(false); setPrimaryFailed(false); setPreviewFailed(false); }, [url, previewSource, retryKey]);
+  useEffect(() => {
+    if (!url || primaryLoaded || primaryFailed) return undefined;
+    const timer = setTimeout(() => setPrimaryFailed(true), 10000);
+    return () => clearTimeout(timer);
+  }, [url, primaryLoaded, primaryFailed, retryKey]);
+  if (!url) return null;
+
+  const showPreview = previewSource && !previewFailed && (!primaryLoaded || primaryFailed || previewSource === url);
+  const unavailable = primaryFailed && (!previewSource || previewFailed);
+  return <div className="gif-message" style={{ aspectRatio }}>
+    {!unavailable && showPreview && <img className="gif-message-preview" src={previewSource} alt="" aria-hidden="true" onLoad={() => setPreviewLoaded(true)} onError={() => setPreviewFailed(true)} />}
+    {!unavailable && <img className="gif-message-primary" src={url} alt={title} title={title} width={width || undefined} height={height || undefined} onLoad={() => setPrimaryLoaded(true)} onError={() => setPrimaryFailed(true)} style={{ opacity: primaryLoaded ? 1 : 0 }} />}
+    {!unavailable && !primaryLoaded && !previewLoaded && <div className="gif-message-loading" role="status">Loading GIF…</div>}
+    {unavailable && <div className="gif-message-error" role="alert"><span>GIF unavailable</span><button type="button" onClick={() => setRetryKey(value => value + 1)}>Retry</button></div>}
+  </div>;
+};
 export default GifMessage;

@@ -1,313 +1,57 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { stickerApi } from '../services/api';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import StickerStore from './StickerStore';
 import PastelIcon from './PastelIcon';
 import StickerDisplay from './StickerDisplay';
+import { LOCAL_STICKER_PACKS, LOCAL_STICKERS } from '../data/stickerPacks';
+import { getRecentStickerIds, getFavoriteStickerIds, recordRecentSticker, toggleFavoriteSticker } from '../services/stickerPreferences';
+import { getSmartSuggestions } from '../services/smartSuggestions';
 
-// Giphy API
 const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || 'UdbjLjW3ybC1o4BljzlKM3zijH4VA9vj';
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
 const LIMIT = 20;
 
-async function fetchGiphy(endpoint, params = {}) {
+async function fetchGiphy(endpoint, params = {}, signal) {
   const url = new URL(`${GIPHY_BASE}${endpoint}`);
-  url.searchParams.set('api_key', GIPHY_KEY);
-  url.searchParams.set('limit', LIMIT);
-  url.searchParams.set('rating', 'pg');
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-
-  console.log('[Giphy] Fetching:', endpoint, 'with params:', params);
-
-  try {
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('[Giphy] Response error:', res.status, errText);
-      throw new Error(`Giphy ${res.status}: ${errText}`);
-    }
-
-    const data = await res.json();
-    console.log('[Giphy] Got', data.data?.length || 0, 'results');
-
-    if (!data.data) {
-      console.warn('[Giphy] No data field in response:', data);
-      return [];
-    }
-
-    return data.data;
-  } catch (err) {
-    console.error('[Giphy] Fetch error:', err.message);
-    throw err;
-  }
+  url.searchParams.set('api_key', GIPHY_KEY); url.searchParams.set('limit', LIMIT); url.searchParams.set('rating', 'pg');
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' }, signal });
+  if (!res.ok) throw new Error(`GIF service returned ${res.status}`);
+  const data = await res.json(); return data.data || [];
 }
+const image = (item, preferred) => item?.images?.[preferred] || item?.images?.original || {};
+const gifMeta = (item) => { const original = image(item, 'original'); const preview = image(item, 'fixed_width_small'); return {
+  type: 'gif', url: original.url, previewUrl: preview.url || original.url, preview: preview.url || original.url,
+  width: Number(original.width) || Number(preview.width) || null, height: Number(original.height) || Number(preview.height) || null,
+  provider: 'giphy', sourceId: item.id, name: item.title || item.content_description || 'GIF'
+}; };
 
-const gifUrl = (item) =>
-  item?.images?.original?.url || '';
-const gifPreview = (item) =>
-  item?.images?.fixed_height?.url || item?.images?.original?.url || '';
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-const GifStickerPicker = ({ onSelect, onClose }) => {
-  const [tab, setTab] = useState('stickers'); // 'stickers' | 'gifs' | 'store'
-  const [search, setSearch] = useState('');
-
-  // Sticker state
-  const [myPacks, setMyPacks] = useState([]);
-  const [activePack, setActivePack] = useState(null);
-  const [packsLoading, setPacksLoading] = useState(true);
-
-  // GIF state
-  const [gifs, setGifs] = useState([]);
-  const [gifsLoading, setGifsLoading] = useState(false);
-  const [gifError, setGifError] = useState(null);
-
-  const debounceRef = useRef(null);
-  const searchRef = useRef(null);
-
-  // ── Load user's sticker packs ─────────────────────────────────────────────
-  const loadMyPacks = useCallback(async () => {
-    setPacksLoading(true);
-    try {
-      const { data } = await stickerApi.getMyPacks();
-      setMyPacks(data.packs || []);
-      if (data.packs?.length > 0 && !activePack) {
-        setActivePack(data.packs[0].id);
-      }
-    } catch (e) {
-      console.error('[Picker] loadMyPacks', e);
-    } finally {
-      setPacksLoading(false);
-    }
-  }, []); // eslint-disable-line
-
-  useEffect(() => { loadMyPacks(); }, [loadMyPacks]);
-
-  // ── Load GIFs via Tenor ───────────────────────────────────────────────────
-  const loadGifs = useCallback(async (query) => {
-    setGifsLoading(true);
-    setGifError(null);
-    try {
-      const endpoint = query ? '/search' : '/trending';
-      const params = query ? { q: query } : {};
-      console.log('[Picker] Loading GIFs:', { endpoint, params });
-      const data = await fetchGiphy(endpoint, params);
-      console.log('[Picker] Got', data.length, 'GIFs');
-      setGifs(data);
-      if (data.length === 0) {
-        setGifError('No GIFs found. Try a different search.');
-      }
-    } catch (e) {
-      console.error('[Picker] loadGifs error:', e);
-      setGifError(`GIF error: ${e.message || 'Failed to load'}`);
-      setGifs([]);
-    } finally {
-      setGifsLoading(false);
-    }
+const GifStickerPicker = ({ keyword = '', onSelect, onClose }) => {
+  const [tab, setTab] = useState('stickers'); const [search, setSearch] = useState(''); const [category, setCategory] = useState('pastel');
+  const [recentIds, setRecentIds] = useState(getRecentStickerIds); const [favoriteIds, setFavoriteIds] = useState(getFavoriteStickerIds);
+  const [gifs, setGifs] = useState([]); const [gifsLoading, setGifsLoading] = useState(false); const [gifError, setGifError] = useState(null);
+  const abortRef = useRef(null);
+  const loadGifs = useCallback(async (query) => { abortRef.current?.abort(); const controller = new AbortController(); abortRef.current = controller; setGifsLoading(true); setGifError(null);
+    try { setGifs(await fetchGiphy(query ? '/search' : '/trending', query ? { q: query } : {}, controller.signal)); }
+    catch (error) { if (error.name !== 'AbortError') { setGifError('GIFs could not load. Retry or choose a sticker.'); setGifs([]); } }
+    finally { if (!controller.signal.aborted) setGifsLoading(false); }
   }, []);
+  useEffect(() => { if (tab === 'gifs') loadGifs(''); return () => abortRef.current?.abort(); }, [tab, loadGifs]);
+  useEffect(() => { if (tab !== 'gifs') return undefined; const timer = setTimeout(() => loadGifs(search.trim()), 350); return () => clearTimeout(timer); }, [search, tab, loadGifs]);
 
-  useEffect(() => {
-    if (tab === 'gifs') loadGifs('');
-  }, [tab, loadGifs]);
-
-  useEffect(() => {
-    if (tab !== 'gifs') return;
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => loadGifs(search), 450);
-    return () => clearTimeout(debounceRef.current);
-  }, [search, tab, loadGifs]);
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-  const sendSticker = (sticker) => {
-    onSelect({
-      type: 'sticker',
-      emoji: sticker.emoji,
-      label: sticker.labelVi || sticker.label,
-      imageUrl: sticker.imageUrl,
-      name: sticker.label || sticker.emoji,
-    });
-    onClose();
-  };
-
-  const sendGif = (item) => {
-    const url = gifUrl(item);
-    const preview = gifPreview(item);
-    onSelect({
-      type: 'gif',
-      url,
-      preview,
-      name: item.title || 'GIF',
-      duration: item.content_description ? null : item.duration || null
-    });
-    onClose();
-  };
-
-  // Current pack stickers (optionally filtered by search)
-  const currentPack = myPacks.find(p => p.id === activePack) || myPacks[0];
-  const visibleStickers = currentPack
-    ? (search.trim()
-        ? myPacks.flatMap(p => p.stickers || []).filter(s =>
-            s.labelVi?.toLowerCase().includes(search.toLowerCase()) ||
-            s.label?.toLowerCase().includes(search.toLowerCase())
-          ).slice(0, 40)
-        : currentPack.stickers || [])
-    : [];
-
-  if (tab === 'store') {
-    return (
-      <div className="gif-picker" onClick={e => e.stopPropagation()}>
-        <StickerStore
-          onClose={onClose}
-          onPacksChanged={() => { loadMyPacks(); setTab('stickers'); }}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="gif-picker" onClick={e => e.stopPropagation()}>
-      {/* ── Tab bar ── */}
-      <div className="gif-picker-header">
-        <div className="gif-tabs">
-          <button className={`gif-tab ${tab === 'stickers' ? 'active' : ''}`}
-            onClick={() => { setTab('stickers'); setSearch(''); }}><PastelIcon name="gift" size={15} /> Stickers</button>
-          <button className={`gif-tab ${tab === 'gifs' ? 'active' : ''}`}
-            onClick={() => { setTab('gifs'); setSearch(''); }}><PastelIcon name="gif" size={15} /> GIFs</button>
-          <button className={`gif-tab ${tab === 'store' ? 'active' : ''}`}
-            onClick={() => setTab('store')}><PastelIcon name="gift" size={15} /> Store</button>
-        </div>
-        <button className="gif-close" onClick={onClose} aria-label="Close picker"><PastelIcon name="close" size={16} /></button>
-      </div>
-
-      {/* ── Search bar ── */}
-      <div className="gif-search-wrap">
-        <PastelIcon className="gif-search-icon" name="search" size={16} />
-        <input
-          ref={searchRef}
-          className="gif-search-input"
-          placeholder={tab === 'stickers' ? 'Search stickers…' : 'Search GIFs…'}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && <button className="gif-search-clear" onClick={() => setSearch('')} aria-label="Clear search"><PastelIcon name="close" size={14} /></button>}
-      </div>
-
-      {/* ── STICKERS tab ── */}
-      {tab === 'stickers' && (
-        <>
-          {!search && myPacks.length > 0 && (
-            <div className="sticker-pack-tabs">
-              {myPacks.map(pack => (
-                <button
-                  key={pack.id}
-                  className={`sticker-pack-tab ${activePack === pack.id ? 'active' : ''}`}
-                  onClick={() => setActivePack(pack.id)}
-                  title={pack.nameVi || pack.name}
-                >
-                  {pack.cover}
-                </button>
-              ))}
-              <button className="sticker-pack-tab sticker-store-shortcut" onClick={() => setTab('store')} title="Get more sticker packs">＋</button>
-            </div>
-          )}
-
-          <div className="gif-scroll">
-            {packsLoading ? (
-              <div className="gif-loading">
-                {[...Array(12)].map((_, i) => <div key={i} className="gif-skeleton" style={{ borderRadius: 12, height: 52 }} />)}
-              </div>
-            ) : myPacks.length === 0 ? (
-              <div className="gif-empty" style={{ textAlign: 'center', padding: 24 }}>
-                <div style={{ color: '#DDA0DD' }}><PastelIcon name="gift" size={40} /></div>
-                <p style={{ margin: '8px 0 4px', fontWeight: 700 }}>No sticker packs yet!</p>
-                <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px' }}>Visit the store to add packs</p>
-                <button className="btn btn-blue" onClick={() => setTab('store')}>Open Sticker Store</button>
-              </div>
-            ) : (
-              <div className="gif-grid sticker-emoji-grid">
-                {visibleStickers.map((s, i) => (
-                  <button
-                    key={`${s.id || i}`}
-                    className="sticker-emoji-btn"
-                    onClick={() => sendSticker(s)}
-                    title={s.labelVi || s.label}
-                    style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    <StickerDisplay
-                      emoji={s.emoji}
-                      imageUrl={s.imageUrl}
-                      label={s.labelVi || s.label}
-                      size="small"
-                    />
-                  </button>
-                ))}
-                {visibleStickers.length === 0 && search && (
-                  <div className="gif-empty">No stickers match "{search}"</div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="gif-footer">
-            <span style={{ fontSize: 11, color: '#bbb' }}>
-              {currentPack?.nameVi || currentPack?.name || 'Pastel Stickers'} · {visibleStickers.length} stickers
-            </span>
-            <button style={{ fontSize: 11, color: '#DDA0DD', background: 'none', border: 'none', cursor: 'pointer' }}
-              onClick={() => setTab('store')}>+ More</button>
-          </div>
-        </>
-      )}
-
-      {/* ── GIFs tab ── */}
-      {tab === 'gifs' && (
-        <>
-          <div className="gif-scroll">
-            {gifsLoading ? (
-              <div className="gif-loading">
-                {[...Array(12)].map((_, i) => <div key={i} className="gif-skeleton" />)}
-              </div>
-            ) : gifError ? (
-              <div className="gif-empty" style={{ textAlign: 'center', padding: 20 }}>
-                <div style={{ color: '#B08ABD', marginBottom: 8 }}><PastelIcon name="alert" size={32} /></div>
-                <p style={{ fontSize: 13, color: '#aaa' }}>{gifError}</p>
-                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => loadGifs(search)}>Retry</button>
-              </div>
-            ) : gifs.length === 0 ? (
-              <div className="gif-empty">No GIFs found</div>
-            ) : (
-              <div className="gif-grid">
-                {gifs.map(item => (
-                  <button
-                    key={item.id}
-                    className="gif-item"
-                    onClick={() => sendGif(item)}
-                    title={item.title}
-                  >
-                    <img
-                      src={gifPreview(item)}
-                      alt={item.title}
-                      loading="lazy"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="gif-footer">
-            <span style={{ fontSize: 11, color: '#bbb' }}>Powered by Tenor</span>
-          </div>
-        </>
-      )}
-    </div>
-  );
+  const suggestions = useMemo(() => getSmartSuggestions(keyword, { stickers: LOCAL_STICKERS, recentIds, favoriteIds }), [keyword, recentIds, favoriteIds]);
+  const activePack = LOCAL_STICKER_PACKS.find(pack => pack.id === category); const term = search.trim().toLowerCase();
+  const visibleStickers = useMemo(() => { let list = category === 'recent' ? recentIds.map(id => LOCAL_STICKERS.find(item => item.id === id)).filter(Boolean) : category === 'favorites' ? favoriteIds.map(id => LOCAL_STICKERS.find(item => item.id === id)).filter(Boolean) : activePack?.stickers || [];
+    return term ? LOCAL_STICKERS.filter(item => [item.label, item.labelVi, ...(item.tags?.en || []), ...(item.tags?.vi || [])].join(' ').toLowerCase().includes(term)) : list;
+  }, [activePack, category, favoriteIds, recentIds, term]);
+  const sendSticker = item => { setRecentIds(recordRecentSticker(item.id)); onSelect({ type: 'sticker', stickerId: item.id, pack: item.pack, imageUrl: item.asset, label: item.labelVi || item.label, name: item.label }); onClose(); };
+  const favorite = (event, item) => { event.stopPropagation(); setFavoriteIds(toggleFavoriteSticker(item.id)); };
+  const selectTab = next => { setTab(next); setSearch(''); };
+  if (tab === 'store') return <div className="gif-picker" onClick={event => event.stopPropagation()}><StickerStore onClose={onClose} onPacksChanged={() => selectTab('stickers')} /></div>;
+  return <div className="gif-picker" onClick={event => event.stopPropagation()}>
+    <div className="gif-picker-header"><div className="gif-tabs"><button className={`gif-tab ${tab === 'stickers' ? 'active' : ''}`} onClick={() => selectTab('stickers')}><PastelIcon name="gift" size={15} /> Stickers</button><button className={`gif-tab ${tab === 'gifs' ? 'active' : ''}`} onClick={() => selectTab('gifs')}><PastelIcon name="gif" size={15} /> GIFs</button><button className="gif-tab" onClick={() => setTab('store')}><PastelIcon name="gift" size={15} /> Store</button></div><button className="gif-close" onClick={onClose} aria-label="Close picker"><PastelIcon name="close" size={16} /></button></div>
+    <div className="gif-search-wrap"><PastelIcon className="gif-search-icon" name="search" size={16} /><input className="gif-search-input" placeholder={tab === 'stickers' ? 'Search stickers in English or Vietnamese…' : 'Search GIFs…'} value={search} onChange={event => setSearch(event.target.value)} />{search && <button className="gif-search-clear" onClick={() => setSearch('')} aria-label="Clear search"><PastelIcon name="close" size={14} /></button>}</div>
+    {tab === 'stickers' && <><div className="sticker-category-tabs" role="tablist" aria-label="Sticker categories"><button className={`sticker-category-tab ${category === 'recent' ? 'active' : ''}`} onClick={() => setCategory('recent')}>Recent</button><button className={`sticker-category-tab ${category === 'favorites' ? 'active' : ''}`} onClick={() => setCategory('favorites')}>Favorites</button>{LOCAL_STICKER_PACKS.map(pack => <button key={pack.id} className={`sticker-category-tab ${category === pack.id ? 'active' : ''}`} onClick={() => setCategory(pack.id)}>{pack.name}</button>)}</div>{!!suggestions.stickers.length && !search && <div className="sticker-suggestions" aria-label="Suggested stickers"><span className="sticker-suggestion-label">For this message</span>{suggestions.stickers.map(item => <button key={item.id} className="sticker-suggestion" onClick={() => sendSticker(item)} title={item.labelVi}><StickerDisplay imageUrl={item.asset} label={item.labelVi} size="small" /></button>)}</div>}<div className="gif-scroll"><div className="gif-grid sticker-emoji-grid">{visibleStickers.map(item => <button key={item.id} className="sticker-emoji-btn sticker-asset-btn" onClick={() => sendSticker(item)} title={item.labelVi || item.label}><StickerDisplay imageUrl={item.asset} label={item.labelVi || item.label} size="small" /><span className="sticker-favorite-btn" role="button" aria-label={`${favoriteIds.includes(item.id) ? 'Remove from' : 'Add to'} favorites`} onClick={event => favorite(event, item)}>{favoriteIds.includes(item.id) ? '★' : '☆'}</span></button>)}{!visibleStickers.length && <div className="gif-empty">{category === 'favorites' ? 'Favorite stickers will appear here.' : 'No stickers match that search.'}</div>}</div></div><div className="gif-footer"><span>{activePack?.nameVi || (category === 'recent' ? 'Recently used' : category === 'favorites' ? 'Favorites' : 'Pastel Stickers')} · {visibleStickers.length}</span><button onClick={() => setTab('store')}>+ More</button></div></>}
+    {tab === 'gifs' && <><div className="gif-scroll">{gifsLoading ? <div className="gif-loading">{[...Array(12)].map((_, index) => <div key={index} className="gif-skeleton" />)}</div> : gifError ? <div className="gif-empty"><PastelIcon name="alert" size={32} /><p>{gifError}</p><button className="btn btn-ghost" onClick={() => loadGifs(search)}>Retry</button></div> : <div className="gif-grid">{gifs.map(item => <button key={item.id} className="gif-item" onClick={() => { onSelect(gifMeta(item)); onClose(); }} title={item.title}><img src={image(item, 'fixed_height').url || image(item, 'original').url} alt={item.title || 'GIF'} loading="lazy" /></button>)}</div>}</div><div className="gif-footer"><span>Powered by GIPHY</span>{suggestions.gifQueries[0] && <button onClick={() => { setSearch(suggestions.gifQueries[0]); loadGifs(suggestions.gifQueries[0]); }}>Try a suggested GIF</button>}</div></>}
+  </div>;
 };
-
 export default GifStickerPicker;

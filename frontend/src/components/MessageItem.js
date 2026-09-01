@@ -146,6 +146,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
                   imageUrl={message.media.imageUrl}
                   label={message.media.name}
                   size="large"
+                  allowEmojiFallback={false}
                 />
               </div>
             )}
@@ -156,6 +157,9 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
                 <GifMessage
                   url={message.media.url || message.media.dataUrl}
                   preview={message.media.preview}
+                  previewUrl={message.media.previewUrl}
+                  width={message.media.width}
+                  height={message.media.height}
                   title={message.media.name || 'GIF'}
                 />
               </div>
