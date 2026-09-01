@@ -1,3 +1,5 @@
+import { PASTEL_BUNNY_PACK } from './pastelBunnyStickers';
+
 const asset = (pack, name) => `/stickers/openmoji/${pack}/${name}.png`;
 const pastelAsset = (name) => `/stickers/pastelchat/${name}.svg`;
 
@@ -26,6 +28,7 @@ const pastelSticker = (id, name, nameVi, tags, emotion, intent, tone, intensity 
 });
 
 export const LOCAL_STICKER_PACKS = [
+  PASTEL_BUNNY_PACK,
   {
     id: 'greetings', name: 'Hello & Bye', nameVi: 'Chào & Tạm biệt', category: 'Greetings',
     cover: pastelAsset('greeting-wave'), source: 'PastelChat',

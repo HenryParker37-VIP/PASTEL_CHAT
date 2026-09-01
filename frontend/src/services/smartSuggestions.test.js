@@ -43,6 +43,23 @@ describe('smart sticker suggestions', () => {
     const result = getSmartSuggestions(message, { stickers: LOCAL_STICKERS });
     expect(result.stickers.slice(0, 3)).toHaveLength(3);
     expect(result.stickers.slice(0, 3).every(sticker => sticker.intent.includes(intent))).toBe(true);
-    expect(result.stickers.slice(0, 3).every(sticker => sticker.asset.endsWith('.svg'))).toBe(true);
+  });
+
+  test.each([
+    ['xin chào', ['bunny_hello', 'bunny_xinchao']],
+    ['bye bye', ['bunny_byebye', 'bunny_seeyou']],
+    ['sorry nha', ['bunny_sorry']],
+    ['nhớ you quá', ['bunny_imissyou', 'bunny_nhoyou']],
+    ['ngủ nha', ['bunny_goodnight', 'bunny_sleepy']],
+    ['mắc cười quá haha', ['bunny_laugh']],
+    ['buồn, bùn quá', ['bunny_cry']],
+    ['tức quá, angry', ['bunny_angry']],
+    ['omg what shocked', ['bunny_shocked']],
+    ['love you, iu quá', ['bunny_love']],
+    ['ok, được rồi', ['bunny_thumbsup']],
+    ["yay let's go", ['bunny_celebrate']]
+  ])('surfaces Pastel Bunny for %s', (message, expectedIds) => {
+    const ids = getSmartSuggestions(message, { stickers: LOCAL_STICKERS }).stickers.map(sticker => sticker.id);
+    expect(expectedIds.some(id => ids.includes(id))).toBe(true);
   });
 });

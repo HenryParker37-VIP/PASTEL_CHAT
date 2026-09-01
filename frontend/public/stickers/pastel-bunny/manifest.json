@@ -1,0 +1,72 @@
+{
+  "id": "pastel-bunny",
+  "name": "Pastel Bunny",
+  "source": "kawaii pink bunny pastel sticker sheet",
+  "assetType": "webp",
+  "stickers": [
+    {
+      "id": "bunny_hello",
+      "asset": "/stickers/pastel-bunny/bunny_hello.webp"
+    },
+    {
+      "id": "bunny_xinchao",
+      "asset": "/stickers/pastel-bunny/bunny_xinchao.webp"
+    },
+    {
+      "id": "bunny_byebye",
+      "asset": "/stickers/pastel-bunny/bunny_byebye.webp"
+    },
+    {
+      "id": "bunny_seeyou",
+      "asset": "/stickers/pastel-bunny/bunny_seeyou.webp"
+    },
+    {
+      "id": "bunny_sorry",
+      "asset": "/stickers/pastel-bunny/bunny_sorry.webp"
+    },
+    {
+      "id": "bunny_imissyou",
+      "asset": "/stickers/pastel-bunny/bunny_imissyou.webp"
+    },
+    {
+      "id": "bunny_nhoyou",
+      "asset": "/stickers/pastel-bunny/bunny_nhoyou.webp"
+    },
+    {
+      "id": "bunny_goodnight",
+      "asset": "/stickers/pastel-bunny/bunny_goodnight.webp"
+    },
+    {
+      "id": "bunny_laugh",
+      "asset": "/stickers/pastel-bunny/bunny_laugh.webp"
+    },
+    {
+      "id": "bunny_cry",
+      "asset": "/stickers/pastel-bunny/bunny_cry.webp"
+    },
+    {
+      "id": "bunny_angry",
+      "asset": "/stickers/pastel-bunny/bunny_angry.webp"
+    },
+    {
+      "id": "bunny_shocked",
+      "asset": "/stickers/pastel-bunny/bunny_shocked.webp"
+    },
+    {
+      "id": "bunny_sleepy",
+      "asset": "/stickers/pastel-bunny/bunny_sleepy.webp"
+    },
+    {
+      "id": "bunny_love",
+      "asset": "/stickers/pastel-bunny/bunny_love.webp"
+    },
+    {
+      "id": "bunny_thumbsup",
+      "asset": "/stickers/pastel-bunny/bunny_thumbsup.webp"
+    },
+    {
+      "id": "bunny_celebrate",
+      "asset": "/stickers/pastel-bunny/bunny_celebrate.webp"
+    }
+  ]
+}
