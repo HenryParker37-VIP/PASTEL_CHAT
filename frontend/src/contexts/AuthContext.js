@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { subscribeToPush } from '../services/push';
+import { syncExistingSubscription, unsubscribeFromPush } from '../services/push';
 import { initializeCapacitorPush } from '../services/capacitor-push';
 import { initMsal } from '../services/microsoft-auth';
 
@@ -14,12 +14,12 @@ async function trySubscribePush() {
       console.warn('[Push] Capacitor push failed (expected on web):', err.message);
     }
 
-    // Fall back to web push
+    // Fall back to web push (only sync if permission was already granted)
     if (!('serviceWorker' in navigator)) return;
     const reg = await navigator.serviceWorker.ready;
-    await subscribeToPush(reg);
+    await syncExistingSubscription(reg);
   } catch (e) {
-    console.warn('[Push] post-login subscribe failed:', e.message);
+    console.warn('[Push] post-login sync failed:', e.message);
   }
 }
 
@@ -195,6 +195,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    unsubscribeFromPush().catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

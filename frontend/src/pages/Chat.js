@@ -116,7 +116,21 @@ const Chat = () => {
     // Re-fetch on socket reconnect to catch messages missed while disconnected
     socket.on('connect', fetchMessages);
 
+    // Mark active chat on server so push notifications are suppressed while viewing this chat
+    socket.emit('chat:active', { friendId });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        socket.emit('chat:active', { friendId });
+      } else {
+        socket.emit('chat:inactive', { friendId });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      socket.emit('chat:inactive', { friendId });
       socket.off(`msg:${roomKey}`, onMessage);
       socket.off(`msg:${reverseKey}`, onMessage);
       socket.off(`msg_recall:${roomKey}`, onRecall);

@@ -1,4 +1,4 @@
-import { subscribeToPush } from './services/push';
+import { syncExistingSubscription } from './services/push';
 
 const SW_URL = `${process.env.PUBLIC_URL}/sw.js`;
 
@@ -11,19 +11,18 @@ export function register(config) {
       navigator.serviceWorker
         .register(SW_URL)
         .then((registration) => {
-          // Only re-subscribe on SW activate if user is already logged in
-          // (first-time subscribe happens in AuthContext after login)
-          const subscribe = () => {
-            if (localStorage.getItem('token')) subscribeToPush(registration);
+          // Only sync existing push subscription if permission was already granted
+          const syncPush = () => {
+            if (localStorage.getItem('token')) syncExistingSubscription(registration);
           };
           if (registration.active) {
-            subscribe();
+            syncPush();
           } else {
             registration.addEventListener('updatefound', () => {
               const worker = registration.installing;
               if (!worker) return;
               worker.addEventListener('statechange', () => {
-                if (worker.state === 'activated') subscribe();
+                if (worker.state === 'activated') syncPush();
               });
             });
           }

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { notifyNewMessage, notifySticker, notifyGif } = require('../integrations/notificationManager');
+const { sendMessagePush } = require('../services/pushService');
 const {
   createMessage,
   updateMessage,
@@ -118,6 +119,11 @@ router.post('/', authMiddleware, (req, res) => {
       messageId: populated._id
     });
 
+    // Send Web Push notification
+    sendMessagePush(receiverId, req.user, validMedia || content).catch(e =>
+      console.error('[Push] Failed to send message push:', e.message)
+    );
+
     // Send Telegram notification if applicable
     if (validMedia?.type === 'sticker') {
       notifySticker(receiverId, req.user, validMedia.name).catch(e =>
@@ -227,6 +233,12 @@ router.post('/:id/reply', authMiddleware, (req, res) => {
       preview: populated.content.slice(0, 80),
       messageId: populated._id
     });
+
+    // Send Web Push notification
+    sendMessagePush(otherId, req.user, populated.content).catch(e =>
+      console.error('[Push] Failed to send reply push:', e.message)
+    );
+
     res.status(201).json(populated);
   } catch (e) {
     res.status(500).json({ message: 'Failed to reply' });

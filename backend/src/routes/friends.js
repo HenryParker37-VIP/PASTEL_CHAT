@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const { sendFriendRequestPush } = require('../services/pushService');
 const {
   getFriends,
   addFriend,
@@ -41,6 +42,11 @@ router.post('/request', authMiddleware, (req, res) => {
     type: 'friend_requested',
     from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
   });
+
+  // Send Web Push notification
+  sendFriendRequestPush(friendId, req.user).catch(e =>
+    console.error('[Push] Failed to send friend request push:', e.message)
+  );
 
   res.json(reqObj);
 });

@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const webpush = require('web-push');
 const {
   findUserById,
   updateUser,
@@ -9,35 +8,15 @@ const {
   createMessage,
   populateMessage,
   addSharedPhoto,
-  genId,
-  getPushSubscriptions,
-  removePushSubscription
+  genId
 } = require('../db/store');
 const { notifyIncomingCall } = require('../integrations/notificationManager');
-
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_EMAIL || 'admin@pastelchat.app'}`,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
-}
-
-async function sendPush(toUserId, payload) {
-  if (!process.env.VAPID_PUBLIC_KEY) return;
-  const subs = getPushSubscriptions(toUserId);
-  for (const sub of subs) {
-    try {
-      await webpush.sendNotification(sub, JSON.stringify(payload));
-    } catch (err) {
-      if (err.statusCode === 410 || err.statusCode === 404) {
-        removePushSubscription(toUserId, sub.endpoint);
-      } else {
-        console.warn('[Push] sendNotification error:', err.message);
-      }
-    }
-  }
-}
+const {
+  sendMessagePush,
+  sendPushToUser,
+  setActiveChat,
+  clearActiveChat
+} = require('../services/pushService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
 
@@ -79,6 +58,15 @@ const setupSocket = (io) => {
 
     updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
     broadcastOnlineFriends();
+
+    // Active chat tracking for suppressing unnecessary push notifications
+    socket.on('chat:active', ({ friendId }) => {
+      if (friendId) setActiveChat(user._id, friendId);
+    });
+
+    socket.on('chat:inactive', ({ friendId }) => {
+      clearActiveChat(user._id, friendId);
+    });
 
     // Typing: targeted to a specific peer
     let typingTimeouts = {};
@@ -125,16 +113,9 @@ const setupSocket = (io) => {
         messageId: populated._id
       });
       // Push notification for when recipient's app is closed/backgrounded
-      const preview = populated.content
-        ? populated.content.slice(0, 80)
-        : validMedia ? `Sent ${validMedia.type === 'image' ? 'a photo' : 'a file'}` : '📎 Attachment';
-      sendPush(to, {
-        type:  'new_message',
-        title: user.name,
-        body:  preview,
-        tag:   `msg-${user._id}`,
-        url:   '/',
-      });
+      sendMessagePush(to, user, validMedia || populated.content).catch(e =>
+        console.error('[Push] Failed to send socket message push:', e.message)
+      );
     });
 
     // ── WebRTC call signaling ─────────────────────────────────────────────
@@ -148,13 +129,13 @@ const setupSocket = (io) => {
         callType: type
       });
       // Send push notification
-      sendPush(to, {
+      sendPushToUser(to, {
         type:        'incoming_call',
         callType:    type,
         callerId:    user._id,
         callerName:  user.name,
         callerAvatar: user.avatar,
-      });
+      }, { senderId: user._id }).catch(() => {});
       // Send Telegram notification (async, non-blocking)
       notifyIncomingCall(to, { name: user.name, avatar: user.avatar }, type).catch(() => {});
     });
@@ -259,6 +240,7 @@ const setupSocket = (io) => {
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Disconnected: ${user.name}`);
+      clearActiveChat(user._id);
       Object.values(typingTimeouts).forEach(clearTimeout);
       updateUser(user._id, { isOnline: false, lastSeen: new Date().toISOString() });
       broadcastOnlineFriends();
