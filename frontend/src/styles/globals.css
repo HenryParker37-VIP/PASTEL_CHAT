@@ -353,10 +353,14 @@ input, textarea {
   border: 3px solid transparent;
 }
 .home-tile:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: 0 10px 30px rgba(180,150,180,0.25); border-color: var(--soft-pink); }
-.home-tile .emoji {
-  font-size: 54px;
+.home-tile-icon {
+  width: 80px;
+  height: 80px;
   display: block;
+  object-fit: contain;
   margin-bottom: 10px;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 .home-tile h3 { margin: 0 0 8px; font-size: 20px; }
 .home-tile p  { margin: 0; color: #777; font-size: 14px; }
@@ -667,21 +671,28 @@ input, textarea {
 
 .chat-input-area {
   position: relative;
-  /* ✅ Removed the hardcoded 42px — safe area bottom is enough */
-  padding: 10px 14px calc(8px + var(--sab));
+  /* The composer owns the bottom edge of a conversation screen. */
+  padding:
+    12px max(14px, var(--sar))
+    max(12px, calc(10px + var(--sab)))
+    max(14px, var(--sal));
   background: white;
   border-top: 1px solid #F0E6F0;
   flex-shrink: 0;
+  z-index: 4;
+  box-shadow: 0 -8px 20px rgba(180, 150, 180, 0.08);
 }
 
 .input-row {
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  min-width: 0;
 }
 
 .input-pill {
   flex: 1;
+  min-width: 0;
   background: #F7F0FA;
   border-radius: 22px;
   border: 1.5px solid transparent;
@@ -1175,10 +1186,13 @@ input, textarea {
   box-shadow: 0 2px 8px rgba(0,0,0,0.14);
 }
 
-.home-mobile-emoji {
-  font-size: 42px;
+.home-mobile-tile-icon {
+  width: 64px;
+  height: 64px;
   display: block;
-  line-height: 1;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .home-mobile-label {
@@ -1219,7 +1233,7 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
 @media (max-width: 700px) {
   .hero h1 { font-size: 34px; }
   .home-tile { padding: 22px 16px; }
-  .home-tile .emoji { font-size: 44px; }
+  .home-tile-icon { width: 68px; height: 68px; }
   .container { padding: 16px 14px 70px; }
   .drawer { width: 100vw; max-width: 100vw; }
   .msg-bubble { max-width: 85%; }
@@ -1234,6 +1248,14 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .login-card { padding: 22px 16px 20px; border-radius: 20px; }
   .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); max-height: 190px; }
   .btn { padding: 10px 16px; font-size: 14px; }
+  .chat-input-area {
+    padding-left: max(10px, var(--sal));
+    padding-right: max(10px, var(--sar));
+  }
+  .input-row { gap: 6px; }
+  .icon-btn,
+  .send-btn { width: 40px; height: 40px; }
+  .message-textarea { min-height: 40px; padding: 9px 12px; }
   /* Hide "Home" label text in chat header, keep just the arrow */
   .back-label { display: none; }
 }
@@ -1260,7 +1282,7 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     gap: 16px;
   }
   .home-tile { padding: 24px 18px; }
-  .home-tile .emoji { font-size: 44px; }
+  .home-tile-icon { width: 68px; height: 68px; }
   .home-tile h3 { font-size: 14px; }
   .home-tile p { font-size: 12px; }
   .hero h1 { font-size: 38px; }
