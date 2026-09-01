@@ -20,7 +20,7 @@ const vi = {
 
   // Home
   homeWelcome: (name) => `Chào ${name}!`,
-  homeWelcomeAlt: 'Chào mừng trở lại ✿',
+  homeWelcomeAlt: 'Chào mừng trở lại',
   homeTagline: 'Hôm nay bạn muốn làm gì?',
   homeChangeName: 'Đổi tên',
   homeChangeNameDesc: 'Cập nhật tên, mã đăng nhập và khuôn mặt sticker.',
@@ -51,24 +51,24 @@ const vi = {
   loginSaveHint: 'Đây là cách duy nhất để quay lại — hãy ghi xuống!',
   loginNewHere: 'Mới ở đây',
   loginHaveCode: 'Có mã rồi',
-  loginGoogleTitle: '🔐 Đăng nhập bằng Google',
+  loginGoogleTitle: 'Đăng nhập bằng Google',
   loginGoogleDesc: 'Hồ sơ vĩnh viễn · Mã hóa ảnh · Không cần mã',
-  loginGoogleRecommended: '⭐ GỢI Ý',
+  loginGoogleRecommended: 'Gợi ý',
   loginOrCreate: 'hoặc tạo tài khoản bằng mã (Thường)',
   loginOrLogin: 'hoặc đăng nhập bằng mã (Thường)',
-  loginCodeWarning: '⚠️ Bạn sẽ nhận được mã đăng nhập — hãy lưu lại, không có khôi phục qua email.',
+  loginCodeWarning: 'Bạn sẽ nhận được mã đăng nhập — hãy lưu lại, không có khôi phục qua email.',
   loginPickName: 'Chọn tên',
-  loginPickAvatar: 'Chọn hình đại diện ✿',
-  loginCreateStandard: '✿ Tạo tài khoản thường',
+  loginPickAvatar: 'Chọn hình đại diện',
+  loginCreateStandard: 'Tạo tài khoản thường',
   loginCreating: 'Đang tạo...',
   loginChecking: 'Đang kiểm tra...',
-  loginLogBackIn: '🔑 Đăng nhập lại',
+  loginLogBackIn: 'Đăng nhập lại',
   loginWelcome: (name) => `Chào mừng, ${name}!`,
-  loginSaveWarningTitle: '⚠️ Lưu mã này — đây là cách duy nhất để đăng nhập lại!',
+  loginSaveWarningTitle: 'Lưu mã này — đây là cách duy nhất để đăng nhập lại!',
   loginSaveWarningBody: 'Không có khôi phục qua email. Nếu mất mã này, tài khoản sẽ mất vĩnh viễn.',
-  loginCopyCode: '📋 Sao chép mã',
-  loginShareSave: '📤 Chia sẻ / Lưu',
-  loginConfirmSaved: 'Tôi đã lưu mã đăng nhập an toàn ✓',
+  loginCopyCode: 'Sao chép mã',
+  loginShareSave: 'Chia sẻ / Lưu',
+  loginConfirmSaved: 'Tôi đã lưu mã đăng nhập an toàn',
   loginEnterApp: 'Vào PastelChat →',
   loginGooglePremium: 'Google Premium',
   loginStandard: 'Thường',
@@ -89,15 +89,15 @@ const vi = {
   loginEnterCode: 'Nhập mã đăng nhập 8 ký tự',
 
   // Friends
-  friendsTitle: '💬 Bạn bè của bạn',
-  friendsPending: '📫 Lời mời kết bạn',
+  friendsTitle: 'Bạn bè của bạn',
+  friendsPending: 'Lời mời kết bạn',
   friendsAccept: 'Chấp nhận',
   friendsDecline: 'Từ chối',
   friendsSearchPlaceholder: 'Tìm theo tên...',
   friendsRequest: '＋ Kết bạn',
   friendsNoFriends: 'Chưa có bạn bè nào. Tìm kiếm ở trên để thêm ✿',
   friendsRemove: 'Xóa bạn bè này?',
-  friendsGroups: '👥 Nhóm',
+  friendsGroups: 'Nhóm',
   friendsNewGroup: '+ Nhóm mới',
   friendsNoGroups: 'Chưa có nhóm nào. Tạo nhóm ở trên ✿',
   friendsCreateGroup: 'Tạo nhóm',
@@ -125,7 +125,7 @@ const vi = {
   chatAttach: 'Đính kèm file hoặc ảnh',
   chatFileTooLarge: 'File quá lớn. Tối đa 8 MB.',
   chatViewProfile: 'Xem hồ sơ',
-  chatOnlineNow: '🟢 Đang trực tuyến',
+  chatOnlineNow: 'Đang trực tuyến',
 
   // Group chat
   groupMembers: 'Thành viên',
@@ -138,7 +138,7 @@ const vi = {
   groupInfo: 'Thông tin nhóm',
 
   // Profile
-  profileTitle: '🎨 Hồ sơ của bạn',
+  profileTitle: 'Hồ sơ của bạn',
   profileName: 'Tên hiển thị',
   profileBio: 'Giới thiệu',
   profileBioPlaceholder: 'Kể cho bạn bè nghe một chút về bạn...',
@@ -165,7 +165,7 @@ const vi = {
   homeInstallDesc: 'Lưu ứng dụng vào điện thoại để truy cập nhanh.',
   homeSharedPhotos: 'Chia sẻ Ảnh',
   homeSharedPhotosDesc: 'Chia sẻ và xem ảnh với bạn bè thân thiết theo thời gian thực.',
-  installTitle: '📱 Cài đặt Pastel Chat',
+  installTitle: 'Cài đặt Pastel Chat',
   installSubtitle: 'Thêm ứng dụng vào màn hình chính để truy cập nhanh.',
   installIos: 'iPhone & iPad',
   installAndroid: 'Android',
@@ -175,7 +175,7 @@ const vi = {
   // Private space
   homeMySpace: 'Không gian riêng của tôi',
   homeMySpaceDesc: 'Ghi chú, ảnh, nhắc nhở và sinh nhật bạn bè.',
-  mySpaceTitle: '✨ Không gian riêng của tôi',
+  mySpaceTitle: 'Không gian riêng của tôi',
   mySpaceNotes: 'Ghi chú',
   mySpacePhotos: 'Ảnh',
   mySpaceBirthdays: 'Sinh nhật',
@@ -206,7 +206,7 @@ const vi = {
   // Tutorial
   tutorialReplay: 'Xem lại hướng dẫn chào mừng',
   tutorialReplayDesc: 'Xem lại hướng dẫn bắt đầu từ đầu.',
-  tutorialReplayBtn: '🎓 Xem lại Hướng dẫn',
+  tutorialReplayBtn: 'Xem lại Hướng dẫn',
 
   // Privacy & support
   privacyAppearance: 'Giao diện',
@@ -232,7 +232,7 @@ const vi = {
   privacyFeedbackSent: 'Đã gửi! Cảm ơn bạn đã giúp PastelChat tốt hơn.',
   privacyFeedbackAnother: 'Gửi thêm',
   privacyFeedbackSending: 'Đang gửi...',
-  privacyFeedbackSend: '💌 Gửi cho người tạo',
+  privacyFeedbackSend: 'Gửi cho người tạo',
 };
 
 export default vi;

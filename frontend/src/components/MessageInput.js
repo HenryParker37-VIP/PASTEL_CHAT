@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import GifStickerPicker from './GifStickerPicker';
+import PastelIcon from './PastelIcon';
 
 const EMOJI_LIST = ['😀','😂','🥰','😍','🤩','😎','🥳','🤗','😊','😉',
   '❤️','💕','💖','💗','🌸','🌺','✨','🌟','💫','⭐',
@@ -148,7 +149,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
             </div>
             <div className="reply-bar-text">{replyingTo.content}</div>
           </div>
-          <button className="reply-bar-close" onClick={onCancelReply}>✕</button>
+          <button className="reply-bar-close" onClick={onCancelReply} aria-label="Cancel reply"><PastelIcon name="close" size={16} /></button>
         </div>
       )}
 
@@ -159,7 +160,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
             <img src={media.preview} alt="preview" className="media-preview-img" />
           ) : (
             <div className="media-preview-file">
-              <span className="media-file-icon">📄</span>
+              <PastelIcon className="media-file-icon" name="file" size={22} title="File attachment" />
               <div className="media-file-info">
                 <span className="media-file-name">{media.name}</span>
                 <span className="media-file-size">{formatBytes(media.size)}</span>
@@ -170,7 +171,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
             className="media-preview-remove"
             onClick={() => setMedia(null)}
             title="Remove"
-          >✕</button>
+          ><PastelIcon name="close" size={16} /></button>
         </div>
       )}
 
@@ -200,7 +201,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
           onClick={() => { setShowEmoji(v => !v); setShowGifPicker(false); }}
           title="Emoji"
           type="button"
-        >😊</button>
+        ><PastelIcon name="smile" size={21} /></button>
 
         {/* GIF / Sticker */}
         <button
@@ -220,7 +221,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
           title="Attach file or image"
           type="button"
           disabled={disabled || sending}
-        >📎</button>
+        ><PastelIcon name="attachment" size={21} /></button>
         <input
           ref={fileInputRef}
           type="file"
@@ -249,10 +250,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
           title="Send"
           type="button"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <PastelIcon name="send" size={21} />
         </button>
       </div>
     </div>

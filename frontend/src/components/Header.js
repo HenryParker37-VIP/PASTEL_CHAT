@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import TelegramSetup from './TelegramSetup';
+import PastelIcon from './PastelIcon';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -63,7 +64,7 @@ const Header = () => {
           onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.35)'}
           onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
         >
-          ← <span className="back-label">Home</span>
+          <PastelIcon name="arrow-left" size={16} /> <span className="back-label">Home</span>
         </button>
         <img
           src="/icons/icon.svg"
@@ -138,7 +139,7 @@ const Header = () => {
           <span style={{ color: 'white', fontSize: '13px', fontWeight: 500, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.name?.split(' ')[0]}
           </span>
-          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '10px' }}>▼</span>
+          <PastelIcon name="chevron-down" size={14} style={{ color: 'rgba(255,255,255,0.8)' }} />
         </button>
 
         {showMenu && (
@@ -159,7 +160,7 @@ const Header = () => {
                   background: 'linear-gradient(135deg, #E8F4FD, #EDE7FF)',
                   fontSize: 10, fontWeight: 700, color: '#4285F4'
                 }}>
-                  🔐 Google Verified · Premium
+                  <PastelIcon name="shield-heart" size={12} /> Google Verified · Premium
                 </div>
               ) : (
                 <div style={{
@@ -168,7 +169,7 @@ const Header = () => {
                   background: '#F5F5F5',
                   fontSize: 10, fontWeight: 600, color: '#999'
                 }}>
-                  👤 Standard Account
+                  <PastelIcon name="profile-edit" size={12} /> Standard Account
                 </div>
               )}
             </div>
@@ -185,7 +186,7 @@ const Header = () => {
               onMouseEnter={e => e.currentTarget.style.background = '#F0F4FF'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              📱 Telegram Notifications
+              <PastelIcon name="telegram" size={16} /> Telegram Notifications
             </button>
             <button
               onClick={() => { setShowMenu(false); logout(); }}

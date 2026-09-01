@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import PastelIcon from './PastelIcon';
 
 const ToastContext = createContext(null);
 
@@ -39,7 +40,7 @@ const ToastCard = ({ toast }) => {
   }, [toast]);
   return (
     <div className={`toast toast-in ${leaving ? 'slide-out-right' : ''}`}>
-      {toast.emoji && <span style={{ fontSize: 22 }}>{toast.emoji}</span>}
+      {toast.icon && <PastelIcon name={toast.icon} size={22} title={toast.title} />}
       <div>
         <p className="toast-title">{toast.title}</p>
         {toast.body && <p className="toast-body">{toast.body}</p>}

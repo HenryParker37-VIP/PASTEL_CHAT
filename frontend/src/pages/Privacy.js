@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useLang, LANGUAGES } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
+import PastelIcon from '../components/PastelIcon';
 
 const Privacy = () => {
   const navigate = useNavigate();
@@ -52,17 +53,17 @@ const Privacy = () => {
       <button className="btn btn-ghost" onClick={() => navigate('/home')} style={{ marginBottom: 18 }}>
         {t('back')}
       </button>
-      <h2 style={{ margin: '4px 0 14px' }}>🔒 {t('homePrivacy')}</h2>
+      <h2 style={{ margin: '4px 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="shield-heart" size={25} /> {t('homePrivacy')}</h2>
 
       {/* ── Appearance ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>🎨 {t('privacyAppearance')}</h3>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="palette" size={20} /> {t('privacyAppearance')}</h3>
         <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65, marginBottom: 16 }}>
           {t('privacyAppearanceDesc')}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>{theme === 'dark' ? '🌙' : '☀️'}</span>
+            <PastelIcon name={theme === 'dark' ? 'moon' : 'sun'} size={22} />
             <span style={{ fontWeight: 700, fontSize: 15 }}>
               {theme === 'dark' ? t('privacyDark') : t('privacyLight')}
             </span>
@@ -74,8 +75,8 @@ const Privacy = () => {
               onChange={toggleTheme}
             />
             <div className="theme-toggle-track">
-              <span>☀️</span>
-              <span>🌙</span>
+              <PastelIcon name="sun" size={14} />
+              <PastelIcon name="moon" size={14} />
             </div>
             <div className="theme-toggle-thumb" />
           </label>
@@ -84,7 +85,7 @@ const Privacy = () => {
 
       {/* ── Language ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>🌍 {t('privacyLanguage')}</h3>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="globe" size={20} /> {t('privacyLanguage')}</h3>
         <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65, marginBottom: 16 }}>
           {t('privacyLanguageDesc')}
         </p>
@@ -95,7 +96,6 @@ const Privacy = () => {
               className={`lang-btn${lang === l.code ? ' active' : ''}`}
               onClick={() => setLang(l.code)}
             >
-              <span style={{ fontSize: 20 }}>{l.flag}</span>
               {l.label}
             </button>
           ))}
@@ -104,7 +104,7 @@ const Privacy = () => {
 
       {/* ── Notifications ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>🔔 {t('privacyNotifications')}</h3>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="bell" size={20} /> {t('privacyNotifications')}</h3>
         <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65 }}>
           {t('privacyNotificationsDesc')}
         </p>
@@ -121,7 +121,7 @@ const Privacy = () => {
 
       {/* ── Replay tutorial ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>🎓 {t('tutorialReplay')}</h3>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="flip" size={20} /> {t('tutorialReplay')}</h3>
         <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65, marginBottom: 14 }}>
           {t('tutorialReplayDesc')}
         </p>
@@ -147,7 +147,7 @@ const Privacy = () => {
 
       {/* ── What we store ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>🛡️ {t('privacyWhatWeStore')}</h3>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="shield-heart" size={20} /> {t('privacyWhatWeStore')}</h3>
         <ul style={{ fontSize: 14, color: 'var(--text)', opacity: 0.7, paddingLeft: 20 }}>
           <li>{t('privacyStore1')}</li>
           <li>{t('privacyStore2')}</li>
@@ -158,14 +158,14 @@ const Privacy = () => {
 
       {/* ── Bug / Feature report ── */}
       <div className="card pop-in">
-        <h3 style={{ marginTop: 0 }}>🐞 {t('privacyFeedbackTitle')}</h3>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="chat-friends" size={20} /> {t('privacyFeedbackTitle')}</h3>
         <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65 }}>
           {t('privacyFeedbackDesc')}
         </p>
 
         {sent ? (
           <div style={{ textAlign: 'center', padding: 20 }}>
-            <div className="pop-in" style={{ fontSize: 50 }}>💌</div>
+            <div className="pop-in" style={{ color: '#C875A8' }}><PastelIcon name="send" size={50} title="Feedback sent" /></div>
             <p style={{ fontWeight: 700 }}>{t('privacyFeedbackSent')}</p>
             <button className="btn btn-ghost" onClick={() => setSent(false)}>{t('privacyFeedbackAnother')}</button>
           </div>
@@ -180,7 +180,7 @@ const Privacy = () => {
                   className={`btn ${type === tp ? '' : 'btn-ghost'}`}
                   style={{ flex: 1, textTransform: 'capitalize' }}
                 >
-                  {tp === 'bug' ? '🐞 Bug' : tp === 'feature' ? '✨ Feature' : '💭 Feedback'}
+                  <PastelIcon name={tp === 'bug' ? 'alert' : tp === 'feature' ? 'gift' : 'chat-friends'} size={16} /> {tp === 'bug' ? 'Bug' : tp === 'feature' ? 'Feature' : 'Feedback'}
                 </button>
               ))}
             </div>

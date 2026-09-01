@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { stickerApi } from '../services/api';
 import StickerStore from './StickerStore';
+import PastelIcon from './PastelIcon';
 import StickerDisplay from './StickerDisplay';
 
 // Giphy API
@@ -176,18 +177,18 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
       <div className="gif-picker-header">
         <div className="gif-tabs">
           <button className={`gif-tab ${tab === 'stickers' ? 'active' : ''}`}
-            onClick={() => { setTab('stickers'); setSearch(''); }}>🩷 Stickers</button>
+            onClick={() => { setTab('stickers'); setSearch(''); }}><PastelIcon name="gift" size={15} /> Stickers</button>
           <button className={`gif-tab ${tab === 'gifs' ? 'active' : ''}`}
-            onClick={() => { setTab('gifs'); setSearch(''); }}>🎞️ GIFs</button>
+            onClick={() => { setTab('gifs'); setSearch(''); }}><PastelIcon name="gif" size={15} /> GIFs</button>
           <button className={`gif-tab ${tab === 'store' ? 'active' : ''}`}
-            onClick={() => setTab('store')}>🛍️ Store</button>
+            onClick={() => setTab('store')}><PastelIcon name="gift" size={15} /> Store</button>
         </div>
-        <button className="gif-close" onClick={onClose}>✕</button>
+        <button className="gif-close" onClick={onClose} aria-label="Close picker"><PastelIcon name="close" size={16} /></button>
       </div>
 
       {/* ── Search bar ── */}
       <div className="gif-search-wrap">
-        <span className="gif-search-icon">🔍</span>
+        <PastelIcon className="gif-search-icon" name="search" size={16} />
         <input
           ref={searchRef}
           className="gif-search-input"
@@ -195,7 +196,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        {search && <button className="gif-search-clear" onClick={() => setSearch('')}>✕</button>}
+        {search && <button className="gif-search-clear" onClick={() => setSearch('')} aria-label="Clear search"><PastelIcon name="close" size={14} /></button>}
       </div>
 
       {/* ── STICKERS tab ── */}
@@ -224,7 +225,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
               </div>
             ) : myPacks.length === 0 ? (
               <div className="gif-empty" style={{ textAlign: 'center', padding: 24 }}>
-                <div style={{ fontSize: 40 }}>🛍️</div>
+                <div style={{ color: '#DDA0DD' }}><PastelIcon name="gift" size={40} /></div>
                 <p style={{ margin: '8px 0 4px', fontWeight: 700 }}>No sticker packs yet!</p>
                 <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px' }}>Visit the store to add packs</p>
                 <button className="btn btn-blue" onClick={() => setTab('store')}>Open Sticker Store</button>
@@ -256,7 +257,7 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
 
           <div className="gif-footer">
             <span style={{ fontSize: 11, color: '#bbb' }}>
-              🩷 {currentPack?.nameVi || currentPack?.name || 'Pastel Stickers'} · {visibleStickers.length} stickers
+              {currentPack?.nameVi || currentPack?.name || 'Pastel Stickers'} · {visibleStickers.length} stickers
             </span>
             <button style={{ fontSize: 11, color: '#DDA0DD', background: 'none', border: 'none', cursor: 'pointer' }}
               onClick={() => setTab('store')}>+ More</button>
@@ -274,12 +275,12 @@ const GifStickerPicker = ({ onSelect, onClose }) => {
               </div>
             ) : gifError ? (
               <div className="gif-empty" style={{ textAlign: 'center', padding: 20 }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>😔</div>
+                <div style={{ color: '#B08ABD', marginBottom: 8 }}><PastelIcon name="alert" size={32} /></div>
                 <p style={{ fontSize: 13, color: '#aaa' }}>{gifError}</p>
                 <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => loadGifs(search)}>Retry</button>
               </div>
             ) : gifs.length === 0 ? (
-              <div className="gif-empty">No GIFs found 😔</div>
+              <div className="gif-empty">No GIFs found</div>
             ) : (
               <div className="gif-grid">
                 {gifs.map(item => (

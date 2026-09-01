@@ -357,10 +357,12 @@ input, textarea {
   width: 80px;
   height: 80px;
   display: block;
-  object-fit: contain;
   margin-bottom: 10px;
-  user-select: none;
-  -webkit-user-drag: none;
+  color: #C875A8;
+  padding: 12px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #FFF5FA, #F3EDFF);
+  box-shadow: inset 0 0 0 1px rgba(203, 152, 193, 0.22);
 }
 .home-tile h3 { margin: 0 0 8px; font-size: 20px; }
 .home-tile p  { margin: 0; color: #777; font-size: 14px; }
@@ -1190,9 +1192,34 @@ input, textarea {
   width: 64px;
   height: 64px;
   display: block;
-  object-fit: contain;
-  user-select: none;
-  -webkit-user-drag: none;
+  color: #FFFFFF;
+  padding: 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.2);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
+}
+
+.pastel-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  vertical-align: -0.14em;
+  color: currentColor;
+}
+
+.pastel-icon--online { color: #56B882; }
+.pastel-icon--offline { color: #A9A3B2; }
+
+button .pastel-icon {
+  pointer-events: none;
+}
+
+.icon-btn .pastel-icon,
+.send-btn .pastel-icon {
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pastel-icon { transition: none; }
 }
 
 .home-mobile-label {

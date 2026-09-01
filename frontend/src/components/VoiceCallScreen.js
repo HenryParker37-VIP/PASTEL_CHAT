@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
+import PastelIcon from './PastelIcon';
 
 const formatDuration = (ms) => {
   if (!ms) return '0:00';
@@ -25,7 +26,6 @@ const CallBtn = ({ icon, label, active, danger, onClick, disabled }) => (
           ? 'rgba(255,255,255,0.9)'
           : 'rgba(255,255,255,0.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 26,
       boxShadow: danger ? '0 6px 20px rgba(255,68,68,0.5)' : '0 2px 8px rgba(0,0,0,0.2)',
       transition: 'transform 0.15s, background 0.2s',
       backdropFilter: 'blur(8px)'
@@ -33,7 +33,7 @@ const CallBtn = ({ icon, label, active, danger, onClick, disabled }) => (
       onMouseEnter={e => !disabled && (e.currentTarget.style.transform = 'scale(1.08)')}
       onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
     >
-      {icon}
+      <PastelIcon name={icon} size={26} title={label} />
     </div>
     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{label}</span>
   </button>
@@ -109,7 +109,7 @@ const VoiceCallScreen = () => {
       <div>
         <div style={{ display: 'flex', gap: 28, justifyContent: 'center', marginBottom: 36 }}>
           <CallBtn
-            icon={isMuted ? '🔇' : '🎙️'}
+            icon={isMuted ? 'mic-off' : 'mic'}
             label={isMuted ? 'Unmute' : 'Mute'}
             active={isMuted}
             onClick={toggleMute}
@@ -117,7 +117,7 @@ const VoiceCallScreen = () => {
           />
           {/* Speaker button: active (white) = loudspeaker ON, inactive = earpiece mode */}
           <CallBtn
-            icon={isSpeaker ? '🔊' : '🔈'}
+            icon={isSpeaker ? 'speaker' : 'speaker-low'}
             label={isSpeaker ? 'Speaker' : 'Earpiece'}
             active={isSpeaker}
             onClick={toggleSpeaker}
@@ -126,7 +126,7 @@ const VoiceCallScreen = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CallBtn icon="📵" label="End Call" danger onClick={endCall} />
+          <CallBtn icon="end-call" label="End Call" danger onClick={endCall} />
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
 import NoteCard from '../components/NoteCard';
+import PastelIcon from '../components/PastelIcon';
 
 // Synthesise a soft multi-tone bell chime via Web Audio API
 const playBell = () => {
@@ -257,9 +258,9 @@ const PrivateSpace = () => {
       {/* Tab navigation */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 28, overflowX: 'auto', paddingBottom: 4 }}>
         {[
-          { key: 'notes',     label: t('mySpaceNotes'),     emoji: '📝', color: '#FFB6C1' },
-          { key: 'reminders', label: t('mySpaceReminders'), emoji: '⏰', color: '#87CEEB' },
-          { key: 'birthdays', label: t('mySpaceBirthdays'), emoji: '🎂', color: '#FFD700' },
+          { key: 'notes',     label: t('mySpaceNotes'),     icon: 'notebook', color: '#FFB6C1' },
+          { key: 'reminders', label: t('mySpaceReminders'), icon: 'bell', color: '#87CEEB' },
+          { key: 'birthdays', label: t('mySpaceBirthdays'), icon: 'gift', color: '#FFD700' },
         ].map(item => (
           <button
             key={item.key}
@@ -274,7 +275,7 @@ const PrivateSpace = () => {
               boxShadow: tab === item.key ? `0 4px 16px ${item.color}40` : 'none'
             }}
           >
-            {item.emoji} {item.label}
+            <PastelIcon name={item.icon} size={17} /> {item.label}
           </button>
         ))}
       </div>
@@ -298,7 +299,7 @@ const PrivateSpace = () => {
               background: 'linear-gradient(135deg, rgba(255,182,193,0.08), rgba(221,160,221,0.08))',
               borderRadius: 16, border: '1px solid rgba(255,182,193,0.2)'
             }}>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>📝</div>
+              <div style={{ color: '#FFB6C1', marginBottom: 16 }}><PastelIcon name="notebook" size={56} /></div>
               <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#fff' }}>No notes yet</h3>
               <p style={{ margin: '0 0 16px', fontSize: 14, color: '#999' }}>
                 Start capturing your thoughts and ideas
@@ -343,7 +344,7 @@ const PrivateSpace = () => {
               background: 'linear-gradient(135deg, rgba(135,206,235,0.08), rgba(176,224,230,0.08))',
               borderRadius: 16, border: '1px solid rgba(135,206,235,0.2)'
             }}>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>⏰</div>
+              <div style={{ color: '#87CEEB', marginBottom: 16 }}><PastelIcon name="bell" size={56} /></div>
               <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#fff' }}>No reminders yet</h3>
               <p style={{ margin: '0 0 16px', fontSize: 14, color: '#999' }}>Never miss an important moment</p>
               <button onClick={() => setShowReminderModal(true)} style={{
@@ -365,7 +366,7 @@ const PrivateSpace = () => {
                     <p style={{ margin: 0, fontSize: 13, color: '#555' }}>{reminder.text}</p>
                   </div>
                   <button className="btn btn-ghost" onClick={() => handleDeleteReminder(reminder._id)}
-                    style={{ fontSize: 12, padding: '4px 8px', flexShrink: 0 }}>✕</button>
+                    aria-label="Delete reminder" style={{ fontSize: 12, padding: '4px 8px', flexShrink: 0 }}><PastelIcon name="trash" size={14} /></button>
                 </div>
               </div>
             ))}
@@ -389,7 +390,7 @@ const PrivateSpace = () => {
               background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,165,0,0.08))',
               borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)'
             }}>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>🎂</div>
+              <div style={{ color: '#FFD700', marginBottom: 16 }}><PastelIcon name="gift" size={56} /></div>
               <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#fff' }}>No birthdays tracked</h3>
               <p style={{ margin: '0 0 16px', fontSize: 14, color: '#999' }}>Celebrate special days with friends</p>
               <button onClick={() => setShowBirthdayModal(true)} style={{
@@ -420,7 +421,7 @@ const PrivateSpace = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                     <div>
                       <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14 }}>
-                        {isToday ? '🎉' : '🎂'} {bday.friendName}
+                        <PastelIcon name={isToday ? 'gift' : 'bell'} size={16} /> {bday.friendName}
                         {isToday && <span style={{ marginLeft: 8, fontSize: 12, color: '#C06080', fontWeight: 700 }}>TODAY!</span>}
                       </p>
                       <p style={{ margin: 0, fontSize: 12, color: '#999' }}>
@@ -428,7 +429,7 @@ const PrivateSpace = () => {
                       </p>
                     </div>
                     <button className="btn btn-ghost" onClick={() => handleDeleteBirthday(bday._id)}
-                      style={{ fontSize: 12, padding: '4px 8px', flexShrink: 0 }}>✕</button>
+                      aria-label="Delete birthday" style={{ fontSize: 12, padding: '4px 8px', flexShrink: 0 }}><PastelIcon name="trash" size={14} /></button>
                   </div>
                 </div>
               );
@@ -446,7 +447,7 @@ const PrivateSpace = () => {
             onClick={() => closeModal('note', () => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); })}
           >
             <div className={cardClass('note')} style={CARD} onClick={e => e.stopPropagation()}>
-              <h3 style={TITLE}>📝 {t('mySpaceNewNote')}</h3>
+              <h3 style={{ ...TITLE, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="notebook" size={20} /> {t('mySpaceNewNote')}</h3>
               <form onSubmit={handleCreateNote}>
                 <label style={LABEL}>{t('mySpaceNoteTitle')}</label>
                 <input className="input" placeholder={t('mySpaceNoteTitle')} value={noteTitle}
@@ -475,10 +476,10 @@ const PrivateSpace = () => {
                   </>
                 )}
                 <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b5a8a' }}>
-                  💡 After creating, click the note to expand it and add images
+                  Tip: after creating, click the note to expand it and add images
                 </p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button type="submit" style={BTN_SAVE}>💾 {t('save')}</button>
+                  <button type="submit" style={BTN_SAVE}><PastelIcon name="check" size={16} /> {t('save')}</button>
                   <button type="button" style={BTN_CANCEL}
                     onClick={() => closeModal('note', () => { setShowNoteModal(false); setNoteTitle(''); setNoteContent(''); setNoteSharedWith([]); })}>
                     {t('cancel')}
@@ -496,7 +497,7 @@ const PrivateSpace = () => {
             onClick={() => closeModal('reminder', () => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); })}
           >
             <div className={cardClass('reminder')} style={CARD} onClick={e => e.stopPropagation()}>
-              <h3 style={TITLE}>⏰ {t('mySpaceNewReminder')}</h3>
+              <h3 style={{ ...TITLE, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="bell" size={20} /> {t('mySpaceNewReminder')}</h3>
               <form onSubmit={handleCreateReminder}>
                 <label style={LABEL}>{t('mySpaceReminderDate')}</label>
                 <input type="date" className="input" value={reminderDate}
@@ -509,7 +510,7 @@ const PrivateSpace = () => {
                   onChange={e => setReminderText(e.target.value)}
                   style={{ ...INPUT_EXTRA, marginBottom: 20, minHeight: 80, resize: 'vertical' }} />
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button type="submit" style={BTN_SAVE}>⏰ {t('save')}</button>
+                  <button type="submit" style={BTN_SAVE}><PastelIcon name="bell" size={16} /> {t('save')}</button>
                   <button type="button" style={BTN_CANCEL}
                     onClick={() => closeModal('reminder', () => { setShowReminderModal(false); setReminderDate(''); setReminderTime(''); setReminderText(''); })}>
                     {t('cancel')}
@@ -527,7 +528,7 @@ const PrivateSpace = () => {
             onClick={() => closeModal('birthday', () => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); })}
           >
             <div className={cardClass('birthday')} style={CARD} onClick={e => e.stopPropagation()}>
-              <h3 style={TITLE}>🎂 {t('mySpaceNewBirthday')}</h3>
+              <h3 style={{ ...TITLE, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="gift" size={20} /> {t('mySpaceNewBirthday')}</h3>
               <form onSubmit={handleCreateBirthday}>
                 <label style={LABEL}>{t('mySpaceFriendName')}</label>
                 <select className="input" value={birthdayFriendId}
@@ -542,7 +543,7 @@ const PrivateSpace = () => {
                   max={new Date().toISOString().split('T')[0]}
                   onChange={e => setBirthdayDate(e.target.value)} style={{ ...INPUT_EXTRA, marginBottom: 24 }} />
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button type="submit" style={BTN_SAVE}>🎂 {t('save')}</button>
+                  <button type="submit" style={BTN_SAVE}><PastelIcon name="gift" size={16} /> {t('save')}</button>
                   <button type="button" style={BTN_CANCEL}
                     onClick={() => closeModal('birthday', () => { setShowBirthdayModal(false); setBirthdayFriendId(''); setBirthdayDate(''); })}>
                     {t('cancel')}
@@ -569,7 +570,7 @@ const PrivateSpace = () => {
             width: 'min(360px, 88vw)', textAlign: 'center',
             boxShadow: '0 32px 80px rgba(0,0,0,0.7)'
           }}>
-            <div className="alarm-bell" style={{ fontSize: 52, marginBottom: 8 }}>🔔</div>
+            <div className="alarm-bell" style={{ color: '#FFB6C1', marginBottom: 8 }}><PastelIcon name="bell" size={52} /></div>
             <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#c4a3dc', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Reminder</p>
             <p style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: '#f5eeff', lineHeight: 1.35 }}>{activeAlarm.text}</p>
             <p style={{ margin: '0 0 28px', fontSize: 13, color: '#9b87bb' }}>{activeAlarm.date} · {activeAlarm.time}</p>
@@ -594,7 +595,7 @@ const PrivateSpace = () => {
                   background: 'rgba(255,255,255,0.06)', cursor: 'pointer',
                   color: '#d4b8f0', fontSize: 14, fontWeight: 600
                 }}
-              >💤 Snooze 5 min</button>
+              ><PastelIcon name="moon" size={16} /> Snooze 5 min</button>
               <button
                 onClick={() => setActiveAlarm(null)}
                 style={{
@@ -603,7 +604,7 @@ const PrivateSpace = () => {
                   color: 'white', fontSize: 14, fontWeight: 700,
                   boxShadow: '0 4px 16px rgba(221,160,221,0.4)'
                 }}
-              >✓ Dismiss</button>
+              ><PastelIcon name="check" size={16} /> Dismiss</button>
             </div>
           </div>
         </div>

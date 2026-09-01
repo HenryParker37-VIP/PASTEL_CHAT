@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
+import PastelIcon from './PastelIcon';
 
 const formatDuration = (ms) => {
   if (!ms) return '0:00';
@@ -21,13 +22,12 @@ const CtrlBtn = ({ icon, label, active, danger, onClick, disabled }) => (
         : active ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.45)',
       backdropFilter: 'blur(12px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 22,
       boxShadow: danger ? '0 6px 20px rgba(255,68,68,0.5)' : '0 2px 10px rgba(0,0,0,0.3)',
       transition: 'transform 0.15s'
     }}
       onMouseEnter={e => !disabled && (e.currentTarget.style.transform = 'scale(1.1)')}
       onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-    >{icon}</div>
+    ><PastelIcon name={icon} size={22} title={label} /></div>
     <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{label}</span>
   </button>
 );
@@ -122,7 +122,7 @@ const VideoCallScreen = () => {
             position: 'absolute', inset: 0, background: '#222',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 28, color: 'rgba(255,255,255,0.4)'
-          }}>📷</div>
+          }}><PastelIcon name="camera-off" size={28} title="Camera off" /></div>
         )}
       </div>
 
@@ -155,7 +155,7 @@ const VideoCallScreen = () => {
             }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-          >⧉</button>
+          ><PastelIcon name="picture-in-picture" size={18} /></button>
         )}
       </div>
 
@@ -167,11 +167,11 @@ const VideoCallScreen = () => {
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
         opacity: showControls ? 1 : 0, transition: 'opacity 0.3s'
       }}>
-        <CtrlBtn icon={isCameraOff ? '📷' : '📸'} label={isCameraOff ? 'Cam off' : 'Camera'} active={isCameraOff} onClick={toggleCamera} disabled={status === 'calling'} />
-        <CtrlBtn icon={isMuted ? '🔇' : '🎙️'}    label={isMuted ? 'Unmute' : 'Mute'}     active={isMuted}    onClick={toggleMute}   disabled={status === 'calling'} />
-        <CtrlBtn icon="📵" label="End" danger onClick={endCall} />
-        <CtrlBtn icon={isSpeaker ? '🔊' : '🔈'}   label={isSpeaker ? 'Speaker' : 'Earpiece'} active={isSpeaker} onClick={toggleSpeaker} disabled={status === 'calling'} />
-        <CtrlBtn icon="🔄" label="Flip" onClick={() => {}} disabled={status === 'calling'} />
+        <CtrlBtn icon={isCameraOff ? 'camera-off' : 'camera'} label={isCameraOff ? 'Cam off' : 'Camera'} active={isCameraOff} onClick={toggleCamera} disabled={status === 'calling'} />
+        <CtrlBtn icon={isMuted ? 'mic-off' : 'mic'} label={isMuted ? 'Unmute' : 'Mute'} active={isMuted} onClick={toggleMute} disabled={status === 'calling'} />
+        <CtrlBtn icon="end-call" label="End" danger onClick={endCall} />
+        <CtrlBtn icon={isSpeaker ? 'speaker' : 'speaker-low'} label={isSpeaker ? 'Speaker' : 'Earpiece'} active={isSpeaker} onClick={toggleSpeaker} disabled={status === 'calling'} />
+        <CtrlBtn icon="flip" label="Flip" onClick={() => {}} disabled={status === 'calling'} />
       </div>
     </div>
   );
