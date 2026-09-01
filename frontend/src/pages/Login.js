@@ -6,6 +6,7 @@ import { useLang } from '../i18n';
 import { signInWithMicrosoft } from '../services/microsoft-auth';
 import { AUTH_PROVIDERS } from '../services/authConfig';
 import TypewriterText from '../components/TypewriterText';
+import PastelIcon from '../components/PastelIcon';
 import AVATARS, {
   getAvatarUrl,
   getCharacterAvatarUrl,
@@ -51,8 +52,8 @@ const StickerAvatarModal = ({ currentUrl, onConfirm, onClose }) => {
     <div className="avatar-modal-overlay" onClick={onClose}>
       <div className="avatar-modal" onClick={e => e.stopPropagation()}>
         <div className="avatar-modal-header">
-          <span className="avatar-modal-title">🩷 Pick a Sticker Avatar</span>
-          <button type="button" className="avatar-modal-close" onClick={onClose}>✕</button>
+          <span className="avatar-modal-title"><PastelIcon name="gift" size={18} /> Pick a Sticker Avatar</span>
+          <button type="button" className="avatar-modal-close" onClick={onClose} aria-label="Close"><PastelIcon name="close" size={18} /></button>
         </div>
 
         {/* Preview */}
@@ -107,7 +108,7 @@ const StickerAvatarModal = ({ currentUrl, onConfirm, onClose }) => {
           style={{ width: '100%', marginTop: 16 }}
           onClick={() => { onConfirm(preview); onClose(); }}
         >
-          ✓ Use This Avatar
+          <><PastelIcon name="check" size={16} /> Use This Avatar</>
         </button>
       </div>
     </div>
@@ -183,8 +184,8 @@ const CharacterAvatarModal = ({ currentUrl, onConfirm, onClose }) => {
     <div className="avatar-modal-overlay" onClick={onClose}>
       <div className="avatar-modal" onClick={e => e.stopPropagation()}>
         <div className="avatar-modal-header">
-          <span className="avatar-modal-title">🎨 Design Your Character</span>
-          <button type="button" className="avatar-modal-close" onClick={onClose}>✕</button>
+          <span className="avatar-modal-title"><PastelIcon name="palette" size={18} /> Design Your Character</span>
+          <button type="button" className="avatar-modal-close" onClick={onClose} aria-label="Close"><PastelIcon name="close" size={18} /></button>
         </div>
 
         {/* Preview */}
@@ -214,7 +215,7 @@ const CharacterAvatarModal = ({ currentUrl, onConfirm, onClose }) => {
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
-              {opts.earrings ? '✓ On' : 'Off'}
+              {opts.earrings ? 'On' : 'Off'}
             </button>
           </div>
         </div>
@@ -225,7 +226,7 @@ const CharacterAvatarModal = ({ currentUrl, onConfirm, onClose }) => {
           style={{ width: '100%', marginTop: 16 }}
           onClick={() => { onConfirm(previewUrl); onClose(); }}
         >
-          ✓ Use This Character
+          <><PastelIcon name="check" size={16} /> Use This Character</>
         </button>
       </div>
     </div>
@@ -340,7 +341,7 @@ const Login = () => {
     return (
       <div className="center">
         <div className="login-card pop-in" style={{ textAlign: 'center' }}>
-          <div className="float" style={{ fontSize: 56, marginBottom: 8 }}>🎉</div>
+          <div className="float" style={{ marginBottom: 8 }}><PastelIcon name="gift" size={56} /></div>
           <h2 style={{ margin: '0 0 6px' }}>{t('loginWelcome', newName)}</h2>
 
           <div style={{
@@ -424,7 +425,7 @@ const Login = () => {
           </div>
 
           <div style={{ textAlign: 'center', marginBottom: 14 }}>
-            <div style={{ fontSize: 50 }} className="sticker-bounce">🌸</div>
+            <div className="sticker-bounce"><PastelIcon name="chat-friends" size={50} /></div>
             <h1 style={{ margin: '6px 0 4px', fontSize: 30 }}>
               <span style={{
                 background: 'linear-gradient(90deg, #FFB6C1, #DDA0DD, #ADD8E6)',
@@ -450,26 +451,26 @@ const Login = () => {
               border: '1.5px solid #C2D8F5', borderRadius: 12, padding: '10px 10px',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: 18, marginBottom: 3 }}>🔐</div>
+              <div style={{ marginBottom: 3 }}><PastelIcon name="lock" size={18} /></div>
               <div style={{ fontWeight: 800, fontSize: 12, color: '#4285F4', marginBottom: 4 }}>{t('loginGooglePremium')}</div>
               <div style={{ fontSize: 10, color: '#666', lineHeight: 1.5 }}>
-                ✅ {t('loginPersistentProfile')}<br />
-                ✅ {t('loginPhotoEncryption')}<br />
-                ✅ {t('loginNoCodeToSave')}<br />
-                ✅ {t('loginGoogleAvatar')}
+                {t('loginPersistentProfile')}<br />
+                {t('loginPhotoEncryption')}<br />
+                {t('loginNoCodeToSave')}<br />
+                {t('loginGoogleAvatar')}
               </div>
             </div>
             <div style={{
               background: '#FAFAFA', border: '1.5px solid #E8E8E8',
               borderRadius: 12, padding: '10px 10px', textAlign: 'center'
             }}>
-              <div style={{ fontSize: 18, marginBottom: 3 }}>👤</div>
+              <div style={{ marginBottom: 3 }}><PastelIcon name="profile-edit" size={18} /></div>
               <div style={{ fontWeight: 800, fontSize: 12, color: '#888', marginBottom: 4 }}>{t('loginStandard')}</div>
               <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.5 }}>
-                ✓ {t('loginAnonChat')}<br />
-                ✓ {t('loginCustomAvatar')}<br />
-                ✓ {t('loginAllFeatures')}<br />
-                ⚠️ {t('loginMustSaveCode')}
+                {t('loginAnonChat')}<br />
+                {t('loginCustomAvatar')}<br />
+                {t('loginAllFeatures')}<br />
+                {t('loginMustSaveCode')}
               </div>
             </div>
           </div>
@@ -549,7 +550,7 @@ const Login = () => {
                       placeholder="CuddlyBun42"
                       maxLength={20}
                     />
-                    <button type="button" className="btn btn-lavender" onClick={() => setName(randomCuteName())} title="Generate cute name">🎲</button>
+                    <button type="button" className="btn btn-lavender" onClick={() => setName(randomCuteName())} title="Generate cute name"><PastelIcon name="gift" size={18} /></button>
                   </div>
                 </label>
 
@@ -564,10 +565,10 @@ const Login = () => {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <button type="button" className="avatar-type-btn" onClick={() => setAvatarModal('sticker')}>
-                        🩷 Sticker Avatar
+                        <PastelIcon name="gift" size={16} /> Sticker Avatar
                       </button>
                       <button type="button" className="avatar-type-btn" onClick={() => setAvatarModal('character')}>
-                        🎨 Character Avatar
+                        <PastelIcon name="palette" size={16} /> Character Avatar
                       </button>
                     </div>
                   </div>
@@ -658,7 +659,7 @@ const Login = () => {
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-lavender" style={{ flex: 1, fontSize: 13 }}
-                      onClick={() => navigator.clipboard?.writeText(storedAccount.loginCode).catch(() => {})}>📋 {t('loginCopyCode').replace('📋 ', '')}</button>
+                      onClick={() => navigator.clipboard?.writeText(storedAccount.loginCode).catch(() => {})}><PastelIcon name="file" size={16} /> {t('loginCopyCode').replace('📋 ', '')}</button>
                     <button className="btn" style={{ flex: 1, fontSize: 13 }} disabled={busy} onClick={handleRecoverLogin}>
                       {busy ? t('loginChecking') : t('loginLogBackIn')}
                     </button>
@@ -696,4 +697,3 @@ const Login = () => {
 };
 
 export default Login;
-

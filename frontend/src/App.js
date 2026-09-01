@@ -35,6 +35,7 @@ import VoiceCallScreen from './components/VoiceCallScreen';
 import VideoCallScreen from './components/VideoCallScreen';
 import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
 import GlobalChecker from './components/GlobalChecker';
+import PastelIcon from './components/PastelIcon';
 
 // Rendered inside the Microsoft OAuth popup window — nothing else in the app runs here.
 //
@@ -69,7 +70,7 @@ const MsalPopupHandler = () => {
   if (errorMsg) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: '#888' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+        <PastelIcon name="alert" size={40} title="Sign-in error" style={{ marginBottom: 12 }} />
         <div style={{ textAlign: 'center', padding: '0 24px' }}>{errorMsg}</div>
         <button onClick={() => window.close()} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 20, border: '1px solid #ddd', cursor: 'pointer' }}>
           Close
@@ -80,7 +81,7 @@ const MsalPopupHandler = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-      <div style={{ fontSize: 50, marginBottom: 20 }}>🌸</div>
+      <PastelIcon name="chat-friends" size={50} style={{ marginBottom: 20 }} />
       <div style={{ fontSize: 18, color: '#888', marginBottom: 20 }}>Signing in…</div>
       <div style={{ width: 40, height: 40, border: '4px solid #DDD', borderTop: '4px solid #DDA0DD', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

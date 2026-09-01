@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import PastelIcon from './PastelIcon';
 
 const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
   const { socket } = useSocket();
@@ -61,7 +62,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
             color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer'
           }}
         >
-          📁 {isGoogleUser ? 'Share Photo (Premium)' : 'Share Photo'}
+          <PastelIcon name="file" size={16} /> {isGoogleUser ? 'Share Photo (Premium)' : 'Share Photo'}
         </button>
       ) : (
         <div style={{
@@ -96,7 +97,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
               borderRadius: 10, fontSize: 12, color: '#4A4A8A',
               display: 'flex', alignItems: 'center', gap: 6
             }}>
-              🔐 <strong>Google Premium:</strong> After sharing, you can hide/show this photo from the photo grid.
+              <PastelIcon name="lock" size={16} /> <strong>Google Premium:</strong> After sharing, you can hide/show this photo from the photo grid.
             </div>
           )}
 
@@ -120,7 +121,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
                 cursor: uploading ? 'default' : 'pointer'
               }}
             >
-              {uploading ? '✓ Shared!' : '📤 Share'}
+              {uploading ? 'Shared!' : <><PastelIcon name="send" size={16} /> Share</>}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
+import PastelIcon from './PastelIcon';
 
 const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
   const { user } = useAuth();
@@ -78,7 +79,7 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
         </div>
       ) : photos.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <p style={{ margin: 0, fontSize: '48px', marginBottom: '12px' }}>📸</p>
+          <PastelIcon name="image" size={48} style={{ marginBottom: 12 }} />
           <p style={{ margin: 0, color: '#888', fontWeight: 500 }}>{t('mySpaceNoPhotos')}</p>
         </div>
       ) : (
@@ -164,7 +165,7 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
             onClick={e => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--text)' }}>
-              📸 {t('mySpaceNewPhoto')}
+              <PastelIcon name="image" size={20} /> {t('mySpaceNewPhoto')}
             </h3>
 
             <form onSubmit={handleUpload}>
@@ -197,7 +198,7 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
                     }
                   }}
                 >
-                  <p style={{ margin: '0 0 8px', fontSize: '32px' }}>🖼️</p>
+                  <PastelIcon name="image" size={32} style={{ marginBottom: 8 }} />
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
                     Click to upload or drag & drop
                   </p>
@@ -299,7 +300,7 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
                   style={{ flex: 1 }}
                   disabled={!preview || uploading}
                 >
-                  {uploading ? '⏳ Uploading...' : '📤 Share'}
+                  {uploading ? 'Uploading...' : <><PastelIcon name="send" size={16} /> Share</>}
                 </button>
                 <button
                   type="button"

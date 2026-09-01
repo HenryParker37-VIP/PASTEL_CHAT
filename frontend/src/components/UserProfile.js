@@ -1,4 +1,5 @@
 import React from 'react';
+import PastelIcon from './PastelIcon';
 
 const UserProfile = ({ user, compact = false }) => {
   if (!user) return null;
@@ -27,7 +28,7 @@ const UserProfile = ({ user, compact = false }) => {
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: '#4A4A4A' }}>{user.name}</div>
           <div style={{ fontSize: 11, color: isGoogle ? '#4285F4' : '#999' }}>
-            {isGoogle ? '🔐 Google Verified' : '👤 Standard'}
+            {isGoogle ? <><PastelIcon name="lock" size={13} /> Google Verified</> : <><PastelIcon name="profile-edit" size={13} /> Standard</>}
           </div>
         </div>
       </div>
@@ -81,7 +82,7 @@ const UserProfile = ({ user, compact = false }) => {
           background: 'linear-gradient(135deg, #E8F4FD, #EDE7FF)',
           color: '#4285F4', fontSize: 12, fontWeight: 700
         }}>
-          🔐 Google Verified
+          <PastelIcon name="lock" size={14} /> Google Verified
         </span>
       ) : (
         <span style={{
@@ -89,7 +90,7 @@ const UserProfile = ({ user, compact = false }) => {
           padding: '4px 12px', borderRadius: 20,
           background: '#F5F5F5', color: '#999', fontSize: 12, fontWeight: 600
         }}>
-          👤 Standard Account
+          <PastelIcon name="profile-edit" size={14} /> Standard Account
         </span>
       )}
 
