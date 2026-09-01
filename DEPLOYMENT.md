@@ -106,7 +106,42 @@ vercel --prod
 
 ---
 
-## 4. Google OAuth — whitelist the new domain
+## 4. Production WebRTC TURN relay
+
+Pastel Chat fetches ICE servers from the authenticated backend at
+`/api/webrtc/ice-servers`. Do not add TURN credentials to Vercel or any
+`REACT_APP_*` variable: CRA embeds those values in public JavaScript.
+
+Configure the Render backend with a TURN provider that supports all three
+transport paths:
+
+```text
+TURN_URLS=turn:turn.example.com:3478,turn:turn.example.com:3478?transport=tcp,turns:turn.example.com:443
+TURN_USERNAME=<provider-issued-ephemeral-username>
+TURN_CREDENTIAL=<provider-issued-credential>
+```
+
+The endpoint returns STUN plus the configured TURN server only to an
+authenticated user. The browser uses `iceTransportPolicy: all`, so it tries
+direct P2P first and automatically selects a `relay` candidate when NAT,
+CGNAT, carrier networks, or firewalls prevent a direct path. ICE diagnostics
+log gathering, ICE/connection/signaling states, candidate types, candidate
+errors, and the selected candidate pair.
+
+Verify after Render redeploys:
+
+```bash
+curl -i https://pastel-chat.onrender.com/api/webrtc/ice-servers
+# 401 without a Pastel Chat bearer token is expected.
+```
+
+During a call on two genuinely different networks, browser logs must show a
+successful selected pair whose local or remote candidate type is `relay`.
+Test both voice and video with Wi-Fi versus 4G/5G and two separate Wi-Fi
+networks. Change networks during a call to verify the ICE restart offer and
+answer are exchanged.
+
+## 5. Google OAuth — whitelist the new domain
 
 In <https://console.cloud.google.com/apis/credentials>, edit your OAuth 2.0 client:
 

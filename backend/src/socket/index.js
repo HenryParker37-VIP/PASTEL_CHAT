@@ -42,6 +42,11 @@ async function sendPush(toUserId, payload) {
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
 
 const setupSocket = (io) => {
+  const emitToUser = (userId, event, payload) => {
+    io.sockets.sockets.forEach((client) => {
+      if (client.user && String(client.user._id) === String(userId)) client.emit(event, payload);
+    });
+  };
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -138,7 +143,7 @@ const setupSocket = (io) => {
     socket.on('call:invite', ({ to, callType }) => {
       if (!to) return;
       const type = callType === 'video' ? 'video' : 'voice';
-      io.emit(`call:incoming:${to}`, {
+      emitToUser(to, `call:incoming:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         callType: type
       });
@@ -156,35 +161,35 @@ const setupSocket = (io) => {
 
     socket.on('call:accept', ({ to }) => {
       if (!to) return;
-      io.emit(`call:accepted:${to}`, {
+      emitToUser(to, `call:accepted:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar }
       });
     });
 
     socket.on('call:reject', ({ to }) => {
       if (!to) return;
-      io.emit(`call:rejected:${to}`, { from: user._id });
+      emitToUser(to, `call:rejected:${to}`, { from: user._id });
     });
 
     socket.on('call:end', ({ to }) => {
       if (!to) return;
-      io.emit(`call:ended:${to}`, { from: user._id });
+      emitToUser(to, `call:ended:${to}`, { from: user._id });
     });
 
     // WebRTC handshake relay
-    socket.on('call:offer', ({ to, offer }) => {
+    socket.on('call:offer', ({ to, offer, iceRestart }) => {
       if (!to || !offer) return;
-      io.emit(`call:offer:${to}`, { from: user._id, offer });
+      emitToUser(to, `call:offer:${to}`, { from: user._id, offer, iceRestart: Boolean(iceRestart) });
     });
 
-    socket.on('call:answer', ({ to, answer }) => {
+    socket.on('call:answer', ({ to, answer, iceRestart }) => {
       if (!to || !answer) return;
-      io.emit(`call:answer:${to}`, { from: user._id, answer });
+      emitToUser(to, `call:answer:${to}`, { from: user._id, answer, iceRestart: Boolean(iceRestart) });
     });
 
     socket.on('call:ice', ({ to, candidate }) => {
       if (!to || !candidate) return;
-      io.emit(`call:ice:${to}`, { from: user._id, candidate });
+      emitToUser(to, `call:ice:${to}`, { from: user._id, candidate });
     });
 
     // Group message via socket

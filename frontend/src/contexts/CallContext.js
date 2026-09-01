@@ -1,34 +1,13 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
+import { getIceServers } from '../services/api';
 
 const CallContext = createContext(null);
 export const useCall = () => useContext(CallContext);
 
-const buildIceServers = () => {
-  const servers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-  ];
-  const turnUrl  = process.env.REACT_APP_TURN_URL;
-  const turnUser = process.env.REACT_APP_TURN_USERNAME;
-  const turnCred = process.env.REACT_APP_TURN_CREDENTIAL;
-  if (turnUrl && turnUser && turnCred) {
-    servers.push({ urls: turnUrl, username: turnUser, credential: turnCred });
-  } else {
-    servers.push(
-      { urls: 'turn:openrelay.metered.ca:80',                 username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443',                username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turns:openrelay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
-    );
-  }
-  return servers;
-};
-
 const ICE_CONFIG = {
-  iceServers: buildIceServers(),
+  iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }],
   iceCandidatePoolSize: 10,
   iceTransportPolicy: 'all',
   bundlePolicy: 'max-bundle',
@@ -42,6 +21,8 @@ export const CallProvider = ({ children }) => {
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeCall,   setActiveCall]   = useState(null);
   const [isPiP,        setIsPiP]        = useState(false);
+  const iceConfigRef       = useRef(ICE_CONFIG);
+  const iceConfigReadyRef  = useRef(Promise.resolve());
 
   const pcRef              = useRef(null);
   const localStreamRef     = useRef(null);
@@ -55,6 +36,24 @@ export const CallProvider = ({ children }) => {
   const pendingOfferRef    = useRef(null);
   const pendingIceRef      = useRef([]);
   const disconnectTimerRef = useRef(null);
+  const restartInFlightRef = useRef(false);
+
+  // Fetch short-lived/provider-managed TURN credentials only after auth.
+  useEffect(() => {
+    if (!socket || !user) return;
+    iceConfigReadyRef.current = getIceServers().then((iceServers) => {
+      const hasTurn = Array.isArray(iceServers) && iceServers.some((server) => {
+        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+        return urls.some((url) => String(url).startsWith('turn'));
+      });
+      if (!hasTurn) throw new Error('Backend returned no TURN server');
+      iceConfigRef.current = { ...ICE_CONFIG, iceServers };
+      console.info('[WebRTC] TURN configuration loaded from authenticated backend');
+    }).catch((err) => {
+      iceConfigRef.current = ICE_CONFIG;
+      console.error('[WebRTC] TURN configuration unavailable:', err.message);
+    });
+  }, [socket, user]);
 
   useEffect(() => { activeCallRef.current   = activeCall;  }, [activeCall]);
   useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
@@ -193,6 +192,7 @@ export const CallProvider = ({ children }) => {
     pendingOfferRef.current = null;
     pendingIceRef.current   = [];
     stopMedia();
+    restartInFlightRef.current = false;
     setActiveCall(null);
     setIncomingCall(null);
     setIsPiP(false);
@@ -201,10 +201,59 @@ export const CallProvider = ({ children }) => {
   // ── PeerConnection ───────────────────────────────────────────────────────────
 
   const createPC = useCallback((peerId) => {
-    const pc = new RTCPeerConnection(ICE_CONFIG);
+    const pc = new RTCPeerConnection(iceConfigRef.current);
+
+    const logSelectedPair = async () => {
+      try {
+        const stats = await pc.getStats();
+        let pair;
+        stats.forEach((report) => {
+          if (report.type === 'candidate-pair' && (report.selected || report.nominated) && report.state === 'succeeded') pair = report;
+        });
+        if (!pair) return;
+        const local = stats.get(pair.localCandidateId);
+        const remote = stats.get(pair.remoteCandidateId);
+        console.info('[WebRTC] selected ICE candidate pair', {
+          localType: local?.candidateType,
+          remoteType: remote?.candidateType,
+          localProtocol: local?.protocol,
+          remoteProtocol: remote?.protocol,
+          state: pair.state,
+        });
+      } catch (err) { console.warn('[WebRTC] stats unavailable:', err.message); }
+    };
+
+    const restartIce = () => {
+      if (restartInFlightRef.current || pc.signalingState === 'closed') return;
+      restartInFlightRef.current = true;
+      pc.createOffer({ iceRestart: true }).then(async (offer) => {
+        await pc.setLocalDescription(offer);
+        socket?.emit('call:offer', { to: peerId, offer, iceRestart: true });
+        console.info('[WebRTC] ICE restart offer sent');
+      }).catch((err) => console.error('[WebRTC] ICE restart failed:', err.message))
+        .finally(() => { restartInFlightRef.current = false; });
+    };
+
+    pc.onicegatheringstatechange = () => console.info('[WebRTC] ICE gathering state:', pc.iceGatheringState);
+    pc.onicecandidateerror = (event) => console.error('[WebRTC] ICE candidate error:', {
+      url: event.url, errorCode: event.errorCode, errorText: event.errorText,
+    });
+    pc.oniceconnectionstatechange = () => {
+      console.info('[WebRTC] ICE connection state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') logSelectedPair();
+      if (pc.iceConnectionState === 'disconnected' && activeCallRef.current?.isOfferer) {
+        clearTimeout(disconnectTimerRef.current);
+        disconnectTimerRef.current = setTimeout(restartIce, 3000);
+      }
+    };
+    pc.onsignalingstatechange = () => console.info('[WebRTC] signaling state:', pc.signalingState);
 
     pc.onicecandidate = ({ candidate }) => {
-      if (candidate && socket) socket.emit('call:ice', { to: peerId, candidate });
+      if (candidate && socket) {
+        const candidateType = candidate.candidate?.match(/ typ ([a-z]+)/)?.[1] || 'unknown';
+        console.info('[WebRTC] local ICE candidate:', candidateType);
+        socket.emit('call:ice', { to: peerId, candidate });
+      }
     };
 
     pc.ontrack = (event) => {
@@ -216,7 +265,7 @@ export const CallProvider = ({ children }) => {
 
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
-      console.log('[WebRTC] state:', state);
+      console.log('[WebRTC] connection state:', state);
 
       if (state === 'connected') {
         clearTimeout(disconnectTimerRef.current);
@@ -234,10 +283,10 @@ export const CallProvider = ({ children }) => {
       if (state === 'failed') {
         clearTimeout(disconnectTimerRef.current);
         if (pc.signalingState !== 'closed' && activeCallRef.current?.isOfferer) {
-          pc.restartIce();
+          restartIce();
           disconnectTimerRef.current = setTimeout(() => {
             if (pcRef.current?.connectionState === 'failed') cleanupCall();
-          }, 10000);
+          }, 20000);
         } else {
           cleanupCall();
         }
@@ -255,6 +304,7 @@ export const CallProvider = ({ children }) => {
   const startCall = useCallback(async (peer, callType) => {
     if (!socket || activeCallRef.current) return;
     try {
+      await iceConfigReadyRef.current;
       setActiveCall({ peer, callType, status: 'calling', isMuted: false, isSpeaker: true, startTime: null, isOfferer: true });
       socket.emit('call:invite', { to: peer._id, callType });
 
@@ -287,6 +337,7 @@ export const CallProvider = ({ children }) => {
     socket.emit('call:accept', { to: from._id });
 
     try {
+      await iceConfigReadyRef.current;
       const stream = await getMedia(callType);
       const pc     = createPC(from._id);
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -378,27 +429,36 @@ export const CallProvider = ({ children }) => {
     const onRejected = () => cleanupCall();
     const onEnded    = () => cleanupCall();
 
-    const onOffer = async ({ offer }) => {
+    const onOffer = async ({ offer, iceRestart }) => {
       if (!pcRef.current) { pendingOfferRef.current = offer; return; }
       const peerId = activeCallRef.current?.peer?._id || incomingCallRef.current?.from?._id;
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-      await flushPendingCandidates(pcRef.current);
-      const answer = await pcRef.current.createAnswer();
-      await pcRef.current.setLocalDescription(answer);
-      if (peerId) socket.emit('call:answer', { to: peerId, answer });
+      try {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+        await flushPendingCandidates(pcRef.current);
+        const answer = await pcRef.current.createAnswer();
+        await pcRef.current.setLocalDescription(answer);
+        if (peerId) socket.emit('call:answer', { to: peerId, answer, iceRestart: Boolean(iceRestart) });
+        console.info('[WebRTC] remote offer applied', iceRestart ? '(ICE restart)' : '');
+      } catch (err) { console.error('[WebRTC] remote offer failed:', err.message); }
     };
 
     const onAnswer = async ({ answer }) => {
       if (!pcRef.current) return;
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-      await flushPendingCandidates(pcRef.current);
+      try {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+        await flushPendingCandidates(pcRef.current);
+      } catch (err) { console.error('[WebRTC] remote answer failed:', err.message); }
     };
 
     const onIce = async ({ candidate }) => {
       if (!candidate) return;
       const pc = pcRef.current;
       if (!pc || !pc.remoteDescription) { pendingIceRef.current.push(candidate); return; }
-      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+      try {
+        const candidateType = candidate.candidate?.match(/ typ ([a-z]+)/)?.[1] || 'unknown';
+        console.info('[WebRTC] remote ICE candidate:', candidateType);
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) { console.warn('[WebRTC] add remote ICE candidate failed:', err.message); }
     };
 
     socket.on(`call:incoming:${uid}`, onIncoming);
