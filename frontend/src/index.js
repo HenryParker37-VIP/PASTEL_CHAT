@@ -1,14 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/globals.css';
+import { register as registerSW } from './serviceWorkerRegistration';
+import App from './App';
 
 // Apply saved theme before first render to avoid flash
 if (localStorage.getItem('pastelchat.theme') === 'dark') {
   document.body.classList.add('dark');
 }
-import { register as registerSW } from './serviceWorkerRegistration';
-import App from './App';
-
 const ErrorBoundary = class extends React.Component {
   constructor(props) {
     super(props);
