@@ -149,6 +149,14 @@ const Chat = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Keep the document itself stationary while iOS Safari resizes the chat
+  // shell around its software keyboard. The message list remains the only
+  // scrollable region.
+  useEffect(() => {
+    document.body.classList.add('chat-viewport-lock');
+    return () => document.body.classList.remove('chat-viewport-lock');
+  }, []);
+
   // Focus search input when opened
   useEffect(() => {
     if (searchOpen) {
@@ -223,13 +231,14 @@ const Chat = () => {
   return (
     <div style={{
       position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
+      top: 0, left: 0, right: 0,
+      height: 'var(--visual-height, 100dvh)',
       overflow: 'hidden',
       background: 'var(--cream)'
     }}>
       <Header />
 
-      {/* Content area positioned below the fixed header — never affected by keyboard */}
+      {/* The bounded shell shrinks to visualViewport.height when the keyboard opens. */}
       <div style={{
         position: 'absolute',
         top: 'calc(60px + env(safe-area-inset-top))',
