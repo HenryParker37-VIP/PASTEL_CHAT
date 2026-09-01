@@ -27,7 +27,6 @@ import SharedPhotos from './pages/SharedPhotos';
 import InstallGuide from './pages/InstallGuide';
 import Privacy from './pages/Privacy';
 import Admin from './pages/Admin';
-import Resume from './pages/Resume';
 import LoadingAnimation from './components/LoadingAnimation';
 import Signature from './components/Signature';
 import IncomingCallAlert from './components/IncomingCallAlert';
@@ -183,8 +182,8 @@ const AppRoutes = () => {
         />
       )}
       <Routes>
-        <Route path="/" element={<PageFrame><Resume /></PageFrame>} />
-        <Route path="/resume" element={<PageFrame><Resume /></PageFrame>} />
+        {/* Pastel Chat owns this deployment; portfolio pages must not be routable here. */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/login" element={user ? <Navigate to="/home" replace /> : <PageFrame><Login /></PageFrame>} />
         <Route path="/home" element={<ProtectedRoute><PageFrame><Home /></PageFrame></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><PageFrame><Profile /></PageFrame></ProtectedRoute>} />
@@ -196,11 +195,10 @@ const AppRoutes = () => {
         <Route path="/install" element={<ProtectedRoute><PageFrame><InstallGuide /></PageFrame></ProtectedRoute>} />
         <Route path="/privacy" element={<ProtectedRoute><PageFrame><Privacy /></PageFrame></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><PageFrame><Admin /></PageFrame></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/resume" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
       {/* Conversation screens reserve their entire bottom edge for the composer. */}
       {location.pathname !== '/' &&
-        location.pathname !== '/resume' &&
         !location.pathname.startsWith('/chat/') &&
         !location.pathname.startsWith('/group/') ? <Signature /> : null}
     </>
