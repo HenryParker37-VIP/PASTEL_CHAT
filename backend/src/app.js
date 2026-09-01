@@ -24,12 +24,21 @@ const { findUserByVerificationCode, updateUser } = require('./db/store');
 const app = express();
 const server = http.createServer(app);
 
-// Production-safe default. Local development must set CLIENT_URL explicitly
-// (the example env file documents the local value).
-const allowedOrigins = (process.env.CLIENT_URL || 'https://pastel-chat.vercel.app')
+// The frontend is deployed both on Vercel and alongside this Render web service.
+// Keep this an explicit production allowlist: OAuth POST requests carry an Origin
+// header even when the frontend and API share the Render host.
+const productionOrigins = [
+  'https://pastel-chat.vercel.app',
+  'https://pastel-chat.onrender.com',
+  process.env.RENDER_EXTERNAL_URL,
+];
+const allowedOrigins = (process.env.CLIENT_URL || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+for (const origin of productionOrigins) {
+  if (origin && !allowedOrigins.includes(origin)) allowedOrigins.push(origin);
+}
 
 function corsOrigin(origin, callback) {
   if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
