@@ -55,8 +55,21 @@ const GroupChat = () => {
   useEffect(() => { loadGroup(); fetchMessages(); }, [loadGroup, fetchMessages]);
 
   useEffect(() => {
+    const documentRoot = document.documentElement;
+    const resetDocumentScroll = () => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+
+    documentRoot.classList.add('chat-viewport-lock');
     document.body.classList.add('chat-viewport-lock');
-    return () => document.body.classList.remove('chat-viewport-lock');
+    window.addEventListener('scroll', resetDocumentScroll, { passive: true });
+    resetDocumentScroll();
+
+    return () => {
+      window.removeEventListener('scroll', resetDocumentScroll);
+      documentRoot.classList.remove('chat-viewport-lock');
+      document.body.classList.remove('chat-viewport-lock');
+    };
   }, []);
 
   // Socket
@@ -165,7 +178,7 @@ const GroupChat = () => {
   return (
     <div style={{
       position: 'fixed',
-      top: 0, left: 0, right: 0,
+      top: 'var(--visual-offset-top, 0px)', left: 0, right: 0,
       height: 'var(--visual-height, 100dvh)',
       overflow: 'hidden',
       background: 'var(--cream)'

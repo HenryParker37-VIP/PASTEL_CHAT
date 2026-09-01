@@ -1,4 +1,5 @@
 const asset = (pack, name) => `/stickers/openmoji/${pack}/${name}.png`;
+const pastelAsset = (name) => `/stickers/pastelchat/${name}.svg`;
 
 const sticker = (pack, id, name, nameVi, tags, emotion, intent, tone, intensity = 2) => ({
   id: `${pack}-${id}`,
@@ -17,7 +18,26 @@ const sticker = (pack, id, name, nameVi, tags, emotion, intent, tone, intensity 
   style: 'openmoji-local'
 });
 
+const pastelSticker = (id, name, nameVi, tags, emotion, intent, tone, intensity = 2) => ({
+  ...sticker('greetings', id, name, nameVi, tags, emotion, intent, tone, intensity),
+  asset: pastelAsset(id),
+  assetType: 'svg',
+  style: 'pastelchat-original'
+});
+
 export const LOCAL_STICKER_PACKS = [
+  {
+    id: 'greetings', name: 'Hello & Bye', nameVi: 'Chào & Tạm biệt', category: 'Greetings',
+    cover: pastelAsset('greeting-wave'), source: 'PastelChat',
+    stickers: [
+      pastelSticker('greeting-cute', 'Cute hello', 'Chào dễ thương', ['hello', 'hi', 'hey', 'xin chào', 'chào', 'chào nha', 'hello nha', 'hi bro'], ['joy'], ['greeting'], ['warm', 'cute'], 3),
+      pastelSticker('greeting-wave', 'Waving hello', 'Vẫy chào', ['hello', 'hi', 'hey', 'xin chào', 'chào', 'wave', 'hello nha', 'hi bro'], ['joy'], ['greeting'], ['warm', 'playful'], 3),
+      pastelSticker('greeting-energetic', 'Energetic hello', 'Chào thật vui', ['hello', 'hi', 'hey', 'xin chào', 'chào', 'chào nha', 'hello bro'], ['joy'], ['greeting'], ['warm', 'bright', 'playful'], 4),
+      pastelSticker('farewell-soft', 'Soft goodbye', 'Tạm biệt nhẹ nhàng', ['bye', 'bye bye', 'goodbye', 'good bye', 'tạm biệt', 'see you', 'see ya', 'bye nha'], ['calm'], ['farewell'], ['warm', 'tender'], 3),
+      pastelSticker('farewell-wave', 'Waving goodbye', 'Vẫy tạm biệt', ['bye', 'bye bye', 'goodbye', 'good bye', 'tạm biệt', 'see you', 'see ya', 'bye nha', 'see you nha'], ['calm'], ['farewell'], ['warm', 'playful'], 3),
+      pastelSticker('farewell-funny', 'Funny goodbye', 'Tạm biệt hài hước', ['bye', 'bye bye', 'goodbye', 'good bye', 'tạm biệt', 'see you', 'see ya', 'bye bye bro'], ['calm'], ['farewell'], ['warm', 'playful', 'funny'], 4)
+    ]
+  },
   {
     id: 'pastel', name: 'Pastel', nameVi: 'Pastel', category: 'Pastel',
     cover: asset('pastel', 'smiling-hearts'), source: 'OpenMoji',

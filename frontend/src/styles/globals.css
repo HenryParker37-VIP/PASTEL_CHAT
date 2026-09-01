@@ -18,6 +18,7 @@
   --keyboard-height: 0px;
   /* The actual visible viewport height, including iOS keyboard changes. */
   --visual-height: 100dvh;
+  --visual-offset-top: 0px;
   --sat: env(safe-area-inset-top,    0px);
   --sar: env(safe-area-inset-right,  0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -1267,9 +1268,13 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
 @media (max-width: 700px) {
   /* Only conversation routes apply this class. Keep document scrolling out of
      the keyboard interaction; MessageList owns vertical scrolling instead. */
-  body.chat-viewport-lock,
-  body.chat-viewport-lock #root {
+  html.chat-viewport-lock,
+  html.chat-viewport-lock body,
+  html.chat-viewport-lock body #root {
+    position: fixed;
+    inset: 0;
     height: var(--visual-height, 100dvh);
+    max-height: var(--visual-height, 100dvh);
     overflow: hidden;
     overscroll-behavior: none;
   }

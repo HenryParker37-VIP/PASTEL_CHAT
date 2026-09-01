@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Waving goodbye sticker">
+  <rect width="160" height="160" rx="42" fill="#E9F9F2"/>
+  <path d="M31 130c8-27 25-40 48-40s40 13 49 40" fill="#92CDB9"/>
+  <circle cx="76" cy="70" r="38" fill="#F6D0AC"/>
+  <path d="M39 63c7-25 22-38 39-38 18 0 32 12 36 32-18-8-51-7-75 6Z" fill="#4E806E"/>
+  <circle cx="64" cy="74" r="4" fill="#345346"/><circle cx="90" cy="74" r="4" fill="#345346"/>
+  <path d="M65 90c7 6 18 6 25 0" fill="none" stroke="#C46C81" stroke-width="4" stroke-linecap="round"/>
+  <path d="M107 99c15-18 24-33 31-28 7 6-1 18-13 28" fill="none" stroke="#F6D0AC" stroke-width="13" stroke-linecap="round"/>
+  <path d="M129 54c9 3 15 10 18 18M140 70l9 5M123 46l3-10" stroke="#63AA91" stroke-width="4" stroke-linecap="round"/>
+</svg>

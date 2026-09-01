@@ -15,7 +15,9 @@ const CONCEPTS = [
   { id: 'sadness', phrases: ['buồn quá', 'sad', 'tired', 'so tired', 'mệt quá'], emotion: 'sadness', tone: 'tender', intent: 'support', gif: 'comfort hug reaction' },
   { id: 'anger', phrases: ['tức', 'angry', 'mad', 'bực', 'vl'], emotion: 'anger', tone: 'dramatic', intent: 'commiserate', gif: 'angry reaction' },
   { id: 'praise', phrases: ['m giỏi quá', 'proud of you', 'you are great', 'giỏi quá', 'proud'], emotion: 'admiration', tone: 'warm', intent: 'praise', gif: 'proud celebration reaction' },
-  { id: 'food', phrases: ['đi ăn', 'eat', 'food', 'lunch', 'dinner'], emotion: 'joy', tone: 'playful', intent: 'invite', gif: 'food excited reaction' }
+  { id: 'food', phrases: ['đi ăn', 'eat', 'food', 'lunch', 'dinner'], emotion: 'joy', tone: 'playful', intent: 'invite', gif: 'food excited reaction' },
+  { id: 'greeting', phrases: ['xin chào', 'chào nha', 'chào', 'hello', 'hi', 'hey'], emotion: 'joy', tone: 'warm', intent: 'greeting', gif: 'cute hello wave' },
+  { id: 'farewell', phrases: ['tạm biệt', 'bye bye', 'good bye', 'goodbye', 'see you', 'see ya', 'bye'], emotion: 'calm', tone: 'warm', intent: 'farewell', gif: 'cute goodbye wave' }
 ];
 
 export const normalizeMessage = (value = '') => value.normalize('NFC').toLowerCase().replace(/[.,!?;:()[\]{}]/g, ' ').split(/\s+/).filter(Boolean).map(word => SLANG[word] || word).join(' ');
@@ -23,7 +25,12 @@ export const normalizeMessage = (value = '') => value.normalize('NFC').toLowerCa
 export const analyzeMessage = (value = '') => {
   const normalized = normalizeMessage(value);
   if (!normalized || !/[a-z\u00c0-\u024f\u1e00-\u1eff]/i.test(normalized)) return { normalized, concepts: [], signals: [] };
-  const concepts = CONCEPTS.filter(concept => concept.phrases.some(phrase => normalized.includes(normalizeMessage(phrase))));
+  const concepts = CONCEPTS.filter(concept => concept.phrases.some((phrase) => {
+    const normalizedPhrase = normalizeMessage(phrase);
+    return normalized.includes(normalizedPhrase) || (
+      normalized.length >= 4 && normalizedPhrase.startsWith(normalized)
+    );
+  }));
   const signals = [...new Set(concepts.flatMap(c => [c.id, c.emotion, c.intent, c.tone]))];
   return { normalized, concepts, signals };
 };
@@ -39,9 +46,10 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   const ranked = stickers.map(item => ({ item, score: score(item) })).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score);
   const chosen = [];
   const usedPacks = new Set();
+  const needsVisualVariants = analysis.concepts.some(({ intent }) => intent === 'greeting' || intent === 'farewell');
   for (const candidate of ranked) {
     if (chosen.length >= 5) break;
-    if (usedPacks.has(candidate.item.pack) && chosen.length < 3) continue;
+    if (!needsVisualVariants && usedPacks.has(candidate.item.pack) && chosen.length < 3) continue;
     chosen.push(candidate.item);
     usedPacks.add(candidate.item.pack);
   }

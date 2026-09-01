@@ -8,7 +8,9 @@ describe('smart sticker suggestions', () => {
     ['I miss you', 'affection'], ['I’m so tired', 'sadness'], ['good night', 'sleep'], ['I’m cooked', 'panic'],
     ['that was hilarious', 'joy'], ['I’m proud of you', 'praise'], ['sorry about that', 'apology'], ['let’s gooo', 'joy'],
     ['sorry nha', 'apology'], ['miss u quá', 'affection'], ['t so tired', 'sadness'], ['good night nha', 'sleep'],
-    ['mai thi and I’m cooked', 'panic'], ['omg xỉu', 'surprise'], ['cứu bro', 'panic'], ['love this quá', 'affection']
+    ['mai thi and I’m cooked', 'panic'], ['omg xỉu', 'surprise'], ['cứu bro', 'panic'], ['love this quá', 'affection'],
+    ['xin chào', 'greeting'], ['chào nha', 'greeting'], ['hello', 'greeting'], ['hi bro', 'greeting'], ['hello nha', 'greeting'],
+    ['tạm biệt', 'farewell'], ['bye bye', 'farewell'], ['see you', 'farewell'], ['bye nha', 'farewell'], ['see you nha', 'farewell']
   ])('detects the shared concept in %s', (message, concept) => {
     expect(analyzeMessage(message).concepts.map(item => item.id)).toContain(concept);
   });
@@ -26,5 +28,21 @@ describe('smart sticker suggestions', () => {
 
   test('does not suggest for meaningless characters', () => {
     expect(getSmartSuggestions('!!!', { stickers: LOCAL_STICKERS }).stickers).toEqual([]);
+  });
+
+  test.each([
+    ['hell', 'greeting'], ['xin ch', 'greeting'], ['goodb', 'farewell']
+  ])('recognizes meaningful partial %s', (message, concept) => {
+    expect(analyzeMessage(message).concepts.map(item => item.id)).toContain(concept);
+  });
+
+  test.each([
+    ['hello', 'greeting'], ['xin chào', 'greeting'], ['hello bro', 'greeting'],
+    ['bye bye', 'farewell'], ['see you', 'farewell'], ['bye nha', 'farewell']
+  ])('returns visible local sticker variants for %s', (message, intent) => {
+    const result = getSmartSuggestions(message, { stickers: LOCAL_STICKERS });
+    expect(result.stickers.slice(0, 3)).toHaveLength(3);
+    expect(result.stickers.slice(0, 3).every(sticker => sticker.intent.includes(intent))).toBe(true);
+    expect(result.stickers.slice(0, 3).every(sticker => sticker.asset.endsWith('.svg'))).toBe(true);
   });
 });

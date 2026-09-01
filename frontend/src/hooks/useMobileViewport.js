@@ -4,9 +4,9 @@ import { useEffect } from 'react';
  * Mirrors the visible viewport into CSS variables.
  *
  * iOS Safari keeps `position: fixed` relative to the layout viewport while
- * its keyboard is open. Chat screens use --visual-height so their bounded
- * shell follows the actual visible viewport instead of allowing the document
- * to be panned behind the keyboard.
+ * its keyboard is open and may shift visualViewport.offsetTop while it
+ * auto-focuses an input. Chat screens use both measurements so their bounded
+ * shell follows the actual visible viewport instead of drifting underneath it.
  */
 export function useMobileViewport() {
   useEffect(() => {
@@ -15,6 +15,7 @@ export function useMobileViewport() {
     if (!window.visualViewport) {
       root.style.setProperty('--keyboard-height', '0px');
       root.style.setProperty('--visual-height', `${window.innerHeight}px`);
+      root.style.setProperty('--visual-offset-top', '0px');
       return;
     }
 
@@ -24,6 +25,7 @@ export function useMobileViewport() {
       const kh = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
       root.style.setProperty('--keyboard-height', `${kh}px`);
       root.style.setProperty('--visual-height', `${Math.round(vv.height)}px`);
+      root.style.setProperty('--visual-offset-top', `${Math.max(0, Math.round(vv.offsetTop))}px`);
     };
 
     vv.addEventListener('resize', update);
@@ -37,6 +39,7 @@ export function useMobileViewport() {
       window.removeEventListener('resize', update);
       root.style.setProperty('--keyboard-height', '0px');
       root.style.removeProperty('--visual-height');
+      root.style.removeProperty('--visual-offset-top');
     };
   }, []);
 }

@@ -40,7 +40,8 @@ const Header = () => {
       height: 'calc(60px + env(safe-area-inset-top))',
       background: 'linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 50%, #ADD8E6 100%)',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      position: 'fixed',
+      // Header belongs to the bounded chat shell so it follows visualViewport.offsetTop.
+      position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
