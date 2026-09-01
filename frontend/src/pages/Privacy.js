@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useLang, LANGUAGES } from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
+import {
+  isPushSupported,
+  isIOS,
+  isStandalonePWA,
+  getNotificationPermission,
+  getExistingSubscription,
+  subscribeToPush,
+  unsubscribeFromPush,
+  sendTestNotification
+} from '../services/push';
 import PastelIcon from '../components/PastelIcon';
 
 const Privacy = () => {
@@ -15,21 +25,87 @@ const Privacy = () => {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notifyPref, setNotifyPref] = useState(() => {
-    return localStorage.getItem('pastelchat.notify') === '1';
-  });
+
+  // Push notification state
+  const [pushSupported, setPushSupported] = useState(true);
+  const [pushPermission, setPushPermission] = useState('default');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushStatusMsg, setPushStatusMsg] = useState({ type: '', text: '' });
+  const [iosNonStandalone, setIosNonStandalone] = useState(false);
+
+  const checkPushState = useCallback(async () => {
+    const supported = isPushSupported();
+    setPushSupported(supported);
+
+    if (isIOS() && !isStandalonePWA()) {
+      setIosNonStandalone(true);
+    } else {
+      setIosNonStandalone(false);
+    }
+
+    const perm = getNotificationPermission();
+    setPushPermission(perm);
+
+    if (supported && perm === 'granted') {
+      const sub = await getExistingSubscription();
+      setIsSubscribed(Boolean(sub));
+    } else {
+      setIsSubscribed(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!notifyPref) return;
-    if (typeof Notification === 'undefined') return;
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, [notifyPref]);
+    checkPushState();
+  }, [checkPushState]);
 
-  const toggleNotify = (val) => {
-    setNotifyPref(val);
-    localStorage.setItem('pastelchat.notify', val ? '1' : '0');
+  const handleEnablePush = async () => {
+    setPushBusy(true);
+    setPushStatusMsg({ type: '', text: '' });
+    try {
+      const result = await subscribeToPush();
+      if (result.success) {
+        setIsSubscribed(true);
+        setPushPermission('granted');
+        setPushStatusMsg({ type: 'success', text: t('privacyNotificationsEnabled') });
+      } else {
+        setPushPermission(result.permission || getNotificationPermission());
+        setPushStatusMsg({ type: 'error', text: result.error || 'Failed to enable notifications' });
+      }
+    } catch (err) {
+      setPushStatusMsg({ type: 'error', text: err.message || 'Error subscribing' });
+    } finally {
+      setPushBusy(false);
+      checkPushState();
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushBusy(true);
+    setPushStatusMsg({ type: '', text: '' });
+    try {
+      await unsubscribeFromPush();
+      setIsSubscribed(false);
+      setPushStatusMsg({ type: 'info', text: 'Notifications disabled on this device.' });
+    } catch (err) {
+      setPushStatusMsg({ type: 'error', text: err.message });
+    } finally {
+      setPushBusy(false);
+      checkPushState();
+    }
+  };
+
+  const handleTestPush = async () => {
+    setPushBusy(true);
+    setPushStatusMsg({ type: '', text: '' });
+    try {
+      await sendTestNotification();
+      setPushStatusMsg({ type: 'success', text: t('privacyNotificationsTestSuccess') });
+    } catch (err) {
+      setPushStatusMsg({ type: 'error', text: err.response?.data?.error || err.message || 'Failed to send test push' });
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -102,21 +178,139 @@ const Privacy = () => {
         </div>
       </div>
 
-      {/* ── Notifications ── */}
+      {/* ── Push Notifications ── */}
       <div className="card pop-in" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}><PastelIcon name="bell" size={20} /> {t('privacyNotifications')}</h3>
-        <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.65 }}>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <PastelIcon name="bell" size={20} /> {t('privacyNotifications')}
+        </h3>
+        <p style={{ fontSize: 14, color: 'var(--text)', opacity: 0.7, marginBottom: 16 }}>
           {t('privacyNotificationsDesc')}
         </p>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={notifyPref}
-            onChange={(e) => toggleNotify(e.target.checked)}
-            style={{ width: 18, height: 18 }}
-          />
-          <span>{t('privacyNotificationsEnable')}</span>
-        </label>
+
+        {/* iOS Non-Standalone Warning */}
+        {iosNonStandalone && (
+          <div style={{
+            background: 'linear-gradient(135deg, #FFF0F5, #EDE7FF)',
+            border: '1.5px solid #DDA0DD',
+            borderRadius: 14,
+            padding: '12px 16px',
+            marginBottom: 16,
+            fontSize: 13
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#9B59B6', marginBottom: 4 }}>
+              <PastelIcon name="home" size={16} /> iPhone / iPad Setup
+            </div>
+            <p style={{ margin: '0 0 10px', color: '#555', lineHeight: 1.4 }}>
+              {t('privacyNotificationsIosHint')}
+            </p>
+            <button
+              className="btn btn-lavender"
+              style={{ fontSize: 12, padding: '5px 14px' }}
+              onClick={() => navigate('/install')}
+            >
+              {t('privacyNotificationsIosGuide')}
+            </button>
+          </div>
+        )}
+
+        {/* Status display */}
+        {!pushSupported ? (
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'rgba(230,230,230,0.5)',
+            color: '#888',
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <PastelIcon name="alert" size={16} />
+            <span>{t('privacyNotificationsUnsupported')}</span>
+          </div>
+        ) : pushPermission === 'denied' ? (
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: 14,
+            background: 'rgba(255, 143, 163, 0.12)',
+            border: '1.5px solid #FF8FA3',
+            fontSize: 13,
+            color: '#D9534F'
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <PastelIcon name="alert" size={16} />
+              <span>{t('privacyNotificationsDenied')}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, opacity: 0.9, lineHeight: 1.4 }}>
+              {t('privacyNotificationsDeniedHint')}
+            </p>
+          </div>
+        ) : isSubscribed ? (
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'rgba(79, 168, 101, 0.12)',
+              border: '1.5px solid #4fa865',
+              color: '#2e7d32',
+              fontSize: 13,
+              fontWeight: 600,
+              marginBottom: 14
+            }}>
+              <PastelIcon name="check" size={16} />
+              <span>{t('privacyNotificationsEnabled')}</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                className="btn"
+                onClick={handleTestPush}
+                disabled={pushBusy}
+                style={{ fontSize: 13, padding: '7px 16px' }}
+              >
+                {pushBusy ? t('loading') : <><PastelIcon name="bell" size={15} /> {t('privacyNotificationsTestBtn')}</>}
+              </button>
+
+              <button
+                className="btn btn-ghost"
+                onClick={handleDisablePush}
+                disabled={pushBusy}
+                style={{ fontSize: 13, padding: '7px 16px' }}
+              >
+                {t('privacyNotificationsDisableBtn')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <button
+              className="btn"
+              onClick={handleEnablePush}
+              disabled={pushBusy}
+              style={{
+                fontSize: 14,
+                padding: '9px 20px',
+                background: 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
+                boxShadow: '0 4px 14px rgba(221,160,221,0.3)'
+              }}
+            >
+              {pushBusy ? t('loading') : <><PastelIcon name="bell" size={16} /> {t('privacyNotificationsEnableBtn')}</>}
+            </button>
+          </div>
+        )}
+
+        {pushStatusMsg.text && (
+          <p style={{
+            fontSize: 13,
+            margin: '12px 0 0',
+            color: pushStatusMsg.type === 'error' ? '#e57373' : pushStatusMsg.type === 'success' ? '#4fa865' : '#888'
+          }}>
+            {pushStatusMsg.text}
+          </p>
+        )}
       </div>
 
       {/* ── Replay tutorial ── */}

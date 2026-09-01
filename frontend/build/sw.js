@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 
@@ -80,7 +80,14 @@ self.addEventListener('fetch', (event) => {
 
 // ── Push notifications ─────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() ?? {};
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data = { body: event.data.text() };
+    }
+  }
 
   // ── Incoming call push ──
   if (data.type === 'incoming_call') {
@@ -111,14 +118,15 @@ self.addEventListener('push', (event) => {
     return;
   }
 
-  // ── Regular message / friend notification ──
-  const title   = data.title || 'Pastel Chat';
+  // ── Regular message / friend request / test notification ──
+  const title   = data.title || 'PastelChat';
+  const targetUrl = data.data?.url || data.url || '/';
   const options = {
-    body:     data.body || 'You have a new notification',
-    icon:     '/icons/icon-192x192.png',
-    badge:    '/icons/icon-72x72.png',
-    tag:      data.tag || 'message',
-    data:     { url: data.url || '/' },
+    body:     data.body || 'You have a new notification on PastelChat',
+    icon:     data.icon || '/icons/icon-192x192.png',
+    badge:    data.badge || '/icons/icon-72x72.png',
+    tag:      data.tag || (data.type ? `pastel-${data.type}` : 'pastel-notification'),
+    data:     data.data || { url: targetUrl, type: data.type },
     vibrate:  [200, 100, 200],
     renotify: true,
   };
@@ -166,12 +174,18 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // ── Regular notification click — open/focus app ──
+  // ── Regular notification click — open/focus app and deep-link ──
   const target = notifData.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      const existing = list.find(c => c.url === target && 'focus' in c);
-      if (existing) return existing.focus();
+      // Look for any existing PastelChat window
+      const existing = list.find(c => 'focus' in c);
+      if (existing) {
+        existing.focus();
+        existing.postMessage({ type: 'NAVIGATE', url: target });
+        return;
+      }
+      // If no window is open, open one to the target URL
       return clients.openWindow(target);
     })
   );

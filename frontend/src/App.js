@@ -160,6 +160,20 @@ const AppRoutes = () => {
   const [birthdayOverlay, setBirthdayOverlay] = useState(null);
   const location = useLocation();
 
+  const navigate = useNavigate();
+
+  // Listen for navigation messages from Service Worker notification clicks
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handleSwMessage = (event) => {
+      if (event.data?.type === 'NAVIGATE' && event.data?.url) {
+        navigate(event.data.url);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+  }, [navigate]);
+
   const handleBirthdayToday = useCallback(({ friendId, friendName, age }) => {
     setBirthdayOverlay({ friendName, age, isOwn: false });
   }, []);
