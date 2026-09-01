@@ -56,7 +56,7 @@ describe('smart sticker suggestions', () => {
     ['tức quá, angry', ['bunny_angry']],
     ['omg what shocked', ['bunny_shocked']],
     ['love you, iu quá', ['bunny_love']],
-    ['ok, được rồi', ['bunny_thumbsup']],
+    ['ok, được rồi', ['bunny_thumbsup', 'bunny_okayyy']],
     ["yay let's go", ['bunny_celebrate']]
   ])('surfaces Pastel Bunny for %s', (message, expectedIds) => {
     const ids = getSmartSuggestions(message, { stickers: LOCAL_STICKERS }).stickers.map(sticker => sticker.id);

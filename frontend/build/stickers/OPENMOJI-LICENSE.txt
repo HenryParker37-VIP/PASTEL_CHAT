@@ -1,0 +1,13 @@
+PastelChat local sticker assets
+
+The PNG artwork in this directory is sourced from OpenMoji:
+https://openmoji.org/
+https://github.com/hfg-gmuend/openmoji
+
+License: Creative Commons BY-SA 4.0 International.
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Attribution: OpenMoji – the open-source emoji and icon project.
+These files are bundled locally so sticker rendering does not depend on a
+third-party CDN at message-display time. The sticker metadata and picker
+integration are PastelChat code.
