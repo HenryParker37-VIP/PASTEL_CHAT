@@ -47,4 +47,9 @@ export const telegramApi = {
   sendTestNotification: () => api.post('/api/telegram/send-test-notification'),
 };
 
+export const getIceServers = async () => {
+  const { data } = await api.get('/api/webrtc/ice-servers');
+  return data.iceServers;
+};
+
 export default api;

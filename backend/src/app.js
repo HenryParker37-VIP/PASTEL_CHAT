@@ -17,20 +17,23 @@ const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
 const stickerRoutes = require('./routes/stickers');
 const telegramRoutes = require('./routes/telegram');
+const webrtcRoutes = require('./routes/webrtc');
 const setupSocket = require('./socket');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
 
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+// Production-safe default. Local development must set CLIENT_URL explicitly
+// (the example env file documents the local value).
+const allowedOrigins = (process.env.CLIENT_URL || 'https://pastel-chat.vercel.app')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
 function corsOrigin(origin, callback) {
-  // Allow all origins to prevent CORS errors across hosting platforms
-  callback(null, origin || '*');
+  if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
+  callback(new Error(`CORS origin not allowed: ${origin}`));
 }
 
 const io = new Server(server, {
@@ -77,6 +80,7 @@ app.use('/push', pushRoutes);
 app.use('/stickers', stickerRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/telegram', telegramRoutes);
+app.use('/api/webrtc', webrtcRoutes);
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
