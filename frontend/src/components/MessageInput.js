@@ -97,15 +97,15 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     }
   };
 
-  const handleGifSelect = async ({ type, url, preview, emoji, label, title, imageUrl, name }) => {
+  const handleGifSelect = async ({ type, url, preview, previewUrl, width, height, provider, sourceId, stickerId, emoji, label, imageUrl, name }) => {
     setShowGifPicker(false);
     setSending(true);
     try {
       if (type === 'sticker') {
         // Illustrated sticker — send as sticker media with imageUrl
-        await onSend(emoji, {
+        await onSend('', {
           type: 'sticker',
-          emoji,
+          stickerId,
           imageUrl,
           name: name || label || emoji,
         });
@@ -114,7 +114,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         await onSend(emoji, null);
       } else {
         // GIF — send as attachment with URL
-        await onSend('', { type: 'gif', url, preview, name: title || 'GIF' });
+        await onSend('', { type: 'gif', url, preview, previewUrl, width, height, provider, sourceId, name: name || 'GIF' });
       }
     } finally {
       setSending(false);

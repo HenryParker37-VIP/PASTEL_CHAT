@@ -70,7 +70,7 @@ router.post('/', authMiddleware, (req, res) => {
       if (media.type === 'sticker' && media.imageUrl) {
         validMedia = {
           type: 'sticker',
-          emoji: media.emoji ? String(media.emoji).slice(0, 10) : '📌',
+          stickerId: media.stickerId ? String(media.stickerId).slice(0, 100) : null,
           imageUrl: String(media.imageUrl).slice(0, 2000),
           name: media.name ? String(media.name).slice(0, 200) : 'Sticker'
         };
@@ -80,7 +80,12 @@ router.post('/', authMiddleware, (req, res) => {
         validMedia = {
           type: 'gif',
           url: String(media.url).slice(0, 2000),
-          preview: media.preview ? String(media.preview).slice(0, 2000) : null,
+          preview: (media.previewUrl || media.preview) ? String(media.previewUrl || media.preview).slice(0, 2000) : null,
+          previewUrl: (media.previewUrl || media.preview) ? String(media.previewUrl || media.preview).slice(0, 2000) : null,
+          width: Number.isFinite(Number(media.width)) ? Math.min(Math.max(Number(media.width), 1), 4096) : null,
+          height: Number.isFinite(Number(media.height)) ? Math.min(Math.max(Number(media.height), 1), 4096) : null,
+          provider: media.provider ? String(media.provider).slice(0, 40) : null,
+          sourceId: media.sourceId ? String(media.sourceId).slice(0, 100) : null,
           name: media.name ? String(media.name).slice(0, 200) : 'GIF',
           duration: media.duration || null
         };
