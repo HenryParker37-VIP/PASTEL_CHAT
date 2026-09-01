@@ -1,14 +1,12 @@
 import { useEffect } from 'react';
 
 /**
- * Tracks the on-screen keyboard height and writes --keyboard-height to <html>.
- * The chat layout no longer uses JS-driven height for its root container —
- * the root is position:fixed so it follows the visual viewport natively on
- * iOS Safari / PWA and Android Chrome (interactive-widget=resizes-content).
+ * Mirrors the visible viewport into CSS variables.
  *
- * --keyboard-height is kept as an informational var for any component that
- * needs it (e.g. bottom-anchored pickers), but is NOT used to resize the
- * main layout.
+ * iOS Safari keeps `position: fixed` relative to the layout viewport while
+ * its keyboard is open. Chat screens use --visual-height so their bounded
+ * shell follows the actual visible viewport instead of allowing the document
+ * to be panned behind the keyboard.
  */
 export function useMobileViewport() {
   useEffect(() => {
@@ -16,6 +14,7 @@ export function useMobileViewport() {
 
     if (!window.visualViewport) {
       root.style.setProperty('--keyboard-height', '0px');
+      root.style.setProperty('--visual-height', `${window.innerHeight}px`);
       return;
     }
 
@@ -24,16 +23,20 @@ export function useMobileViewport() {
     const update = () => {
       const kh = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
       root.style.setProperty('--keyboard-height', `${kh}px`);
+      root.style.setProperty('--visual-height', `${Math.round(vv.height)}px`);
     };
 
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
     update();
 
     return () => {
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
       root.style.setProperty('--keyboard-height', '0px');
+      root.style.removeProperty('--visual-height');
     };
   }, []);
 }

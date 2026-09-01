@@ -54,6 +54,11 @@ const GroupChat = () => {
 
   useEffect(() => { loadGroup(); fetchMessages(); }, [loadGroup, fetchMessages]);
 
+  useEffect(() => {
+    document.body.classList.add('chat-viewport-lock');
+    return () => document.body.classList.remove('chat-viewport-lock');
+  }, []);
+
   // Socket
   useEffect(() => {
     if (!socket || !user) return;
@@ -158,7 +163,13 @@ const GroupChat = () => {
   const isCreator = group.creatorId === user?._id;
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', background: 'var(--cream)' }}>
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0,
+      height: 'var(--visual-height, 100dvh)',
+      overflow: 'hidden',
+      background: 'var(--cream)'
+    }}>
       <Header />
 
       <div style={{
