@@ -1,11 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
 import PastelIcon from './PastelIcon';
 
 const IncomingCallAlert = () => {
   const { incomingCall, answerCall, rejectCall } = useCall();
-  const audioRef = useRef(null);
-
   useEffect(() => {
     if (!incomingCall) return;
     // Play a simple ring tone using Web Audio API

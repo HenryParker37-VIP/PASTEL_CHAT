@@ -4,7 +4,6 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
 import { signInWithMicrosoft } from '../services/microsoft-auth';
-import { AUTH_PROVIDERS } from '../services/authConfig';
 import TypewriterText from '../components/TypewriterText';
 import PastelIcon from '../components/PastelIcon';
 import AVATARS, {

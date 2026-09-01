@@ -251,7 +251,7 @@ const Profile = () => {
                   <div style={{ position: 'relative' }}>
                     <img
                       src={customPhoto}
-                      alt="Your photo"
+                      alt="Profile photo"
                       style={{ width: 90, height: 90, borderRadius: '50%', objectFit: 'cover', border: '3px solid #DDA0DD' }}
                     />
                     <button

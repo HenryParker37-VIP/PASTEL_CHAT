@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../services/api';
 import PastelIcon from './PastelIcon';
 
@@ -6,7 +6,6 @@ const TelegramSetup = ({ onClose, onConnected }) => {
   const [step, setStep] = useState('intro');
   const [telegramUsername, setTelegramUsername] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const pollRef = useRef(null);
@@ -32,14 +31,7 @@ const TelegramSetup = ({ onClose, onConnected }) => {
     listText: isDark ? '#b0b0b0' : '#333333'
   };
 
-  useEffect(() => {
-    checkTelegramStatus();
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
-  const checkTelegramStatus = async () => {
+  const checkTelegramStatus = useCallback(async () => {
     try {
       const { data } = await api.get('/api/telegram/status');
       if (data.connected && data.verified) {
@@ -49,7 +41,14 @@ const TelegramSetup = ({ onClose, onConnected }) => {
     } catch (e) {
       console.error('Failed to check Telegram status:', e.message);
     }
-  };
+  }, [preferences]);
+
+  useEffect(() => {
+    checkTelegramStatus();
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [checkTelegramStatus]);
 
   // Detect platform for install links
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -273,13 +272,6 @@ const TelegramSetup = ({ onClose, onConnected }) => {
                 marginBottom: 12
               }}>
                 {verificationCode}
-              </div>
-              <div style={{
-                fontSize: 12,
-                color: colors.secondaryText,
-                lineHeight: 1.5
-              }}>
-                {instructions}
               </div>
             </div>
 
