@@ -1847,6 +1847,16 @@ body.dark .sticker-pack-tab.active { background: #3A2D50; border-color: #C9A6E0;
 .gif-message-preview { opacity: .92; }
 .gif-message-loading, .gif-message-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: #8f7a92; font-size: 12px; background: #f0f0f0; }
 .gif-message-error button { border: 0; border-radius: 12px; padding: 5px 9px; background: #ead9f0; color: #65476c; cursor: pointer; }
+.smart-suggestion-bar { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 8px; border-top: 1px solid rgba(221,160,221,.18); background: rgba(255,255,255,.72); overflow: hidden; }
+.smart-suggestion-title { flex: 0 0 auto; color: #9a7d9f; font-size: 10px; font-weight: 700; }
+.smart-suggestion-items { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.smart-suggestion-items::-webkit-scrollbar { display: none; }
+.smart-suggestion-sticker { position: relative; min-width: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 10px; background: #f8f1fa; cursor: pointer; }
+.smart-suggestion-sticker:hover, .smart-suggestion-gif:hover { background: #eee0f3; }
+.smart-suggestion-gif { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; max-width: 150px; padding: 0 9px; border: 1px solid #ead9f0; border-radius: 18px; background: #faf6fc; color: #76557d; font-size: 10px; white-space: nowrap; cursor: pointer; }
+.smart-suggestion-gif span:first-child { font-weight: 800; letter-spacing: .4px; color: #b08abd; }
+body.dark .smart-suggestion-bar { background: rgba(45,32,66,.85); border-color: #4a3d6a; }
+body.dark .smart-suggestion-sticker, body.dark .smart-suggestion-gif { background: #3a2d50; border-color: #4a3d6a; color: #d7c4e2; }
 .sticker-emoji-btn {
   background: none;
   border: 1.5px solid transparent;
