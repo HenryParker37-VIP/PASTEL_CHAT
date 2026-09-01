@@ -27,7 +27,7 @@ const GlobalChecker = ({ onBirthdayToday }) => {
           const key = `reminded_${r._id}_${r.date}_${r.time}`;
           if (localStorage.getItem(key)) return;
           localStorage.setItem(key, '1');
-          push({ emoji: '⏰', title: 'Reminder!', body: r.text, duration: 8000 });
+            push({ icon: 'bell', title: 'Reminder!', body: r.text, duration: 8000 });
         });
       } catch { /* network errors are fine */ }
     };
@@ -87,7 +87,7 @@ const GlobalChecker = ({ onBirthdayToday }) => {
             if (!localStorage.getItem(key)) {
               localStorage.setItem(key, '1');
               push({
-                emoji: '🎂',
+                icon: 'gift',
                 title: `${bday.friendName}'s birthday in 7 days!`,
                 body: 'Get ready to wish them happy birthday 🎉',
                 duration: 7000
@@ -98,7 +98,7 @@ const GlobalChecker = ({ onBirthdayToday }) => {
             if (!localStorage.getItem(key)) {
               localStorage.setItem(key, '1');
               push({
-                emoji: '🎂',
+                icon: 'gift',
                 title: `${bday.friendName}'s birthday is TOMORROW!`,
                 body: "Don't forget to wish them! 🥳",
                 duration: 9000
