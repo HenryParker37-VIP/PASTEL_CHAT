@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import PastelIcon from '../components/PastelIcon';
+import { getPastelIdentity } from '../utils/pastelIdentity';
 
 const Friends = () => {
   const { user } = useAuth();
@@ -213,8 +214,8 @@ const Friends = () => {
 
       <div className="friend-list" style={{ marginBottom: 28 }}>
         {friends.map(f => (
-          <div key={f.friendId} className="friend-tile pop-in">
-            <img className="avatar" src={f.avatar} alt="" onClick={() => navigate(`/chat/${f.friendId}`)} />
+          <div key={f.friendId} className="friend-tile pop-in" style={{ boxShadow: `inset 3px 0 0 ${getPastelIdentity(f.friendId).accent}` }}>
+            <img className="avatar" src={f.avatar} alt="" style={{ border: `2px solid ${getPastelIdentity(f.friendId).accent}` }} onClick={() => navigate(`/chat/${f.friendId}`)} />
             <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate(`/chat/${f.friendId}`)}>
               {editingId === f.friendId ? (
                 <input
@@ -274,12 +275,13 @@ const Friends = () => {
           <div
             key={g._id}
             className="friend-tile pop-in"
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', boxShadow: `inset 3px 0 0 ${getPastelIdentity(g._id).accent}` }}
             onClick={() => navigate(`/group/${g._id}`)}
           >
             <div style={{
               width: 40, height: 40, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #DDA0DD, #ADD8E6)',
+              background: getPastelIdentity(g._id).soft,
+              color: getPastelIdentity(g._id).accent,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 20, flexShrink: 0
             }}><PastelIcon name="users" size={20} title="Group" /></div>

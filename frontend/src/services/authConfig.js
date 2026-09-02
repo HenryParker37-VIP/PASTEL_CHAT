@@ -18,7 +18,6 @@ export const AUTH_PROVIDERS = {
   // Future providers — add clientId env var and flip available: true to enable
   apple:    { available: false, name: 'Apple',    envKey: 'REACT_APP_APPLE_CLIENT_ID' },
   discord:  { available: false, name: 'Discord',  envKey: 'REACT_APP_DISCORD_CLIENT_ID' },
-  telegram: { available: false, name: 'Telegram', envKey: 'REACT_APP_TELEGRAM_BOT_ID' },
 };
 
 if (DEV) {

@@ -16,7 +16,8 @@ const store = {
   reminders: [],    // { _id, userId, date, time, text, createdAt }
   birthdays: [],    // { _id, userId, friendId, friendName, date (MM-DD), createdAt }
   sharedPhotos: [], // { _id, dataUrl, caption, uploadedBy: {_id,name,avatar}, createdAt }
-  pushSubscriptions: [] // { userId, subscriptions: [PushSubscription, ...] }
+  pushSubscriptions: [], // { userId, subscriptions: [PushSubscription, ...] }
+  notifications: [] // { _id, userId, type, title, body, from, data, read, createdAt }
 };
 
 function load() {
@@ -34,6 +35,7 @@ function load() {
       store.birthdays = loaded.birthdays || [];
       store.sharedPhotos = loaded.sharedPhotos || [];
       store.pushSubscriptions = loaded.pushSubscriptions || [];
+      store.notifications = loaded.notifications || [];
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
@@ -582,6 +584,51 @@ function getPushSubscriptions(userId) {
   return entry ? entry.subscriptions : [];
 }
 
+// ===== In-app notifications =====
+function createNotification({ userId, type, title, body, from = null, data = {} }) {
+  const notification = {
+    _id: genId(),
+    userId,
+    type,
+    title: String(title || 'Pastel Chat').slice(0, 160),
+    body: String(body || '').slice(0, 500),
+    from: from ? { _id: from._id, name: from.name, avatar: from.avatar || '' } : null,
+    data,
+    read: false,
+    createdAt: new Date().toISOString()
+  };
+  store.notifications.unshift(notification);
+  if (store.notifications.length > 1000) store.notifications.length = 1000;
+  persist();
+  return notification;
+}
+function getUserNotifications(userId, limit = 60) {
+  return store.notifications
+    .filter(n => n.userId === userId)
+    .slice(0, Math.min(Number(limit) || 60, 100));
+}
+function getUnreadNotificationCount(userId) {
+  return store.notifications.filter(n => n.userId === userId && !n.read).length;
+}
+function markNotificationRead(notificationId, userId) {
+  const notification = store.notifications.find(n => n._id === notificationId && n.userId === userId);
+  if (!notification) return null;
+  notification.read = true;
+  persist();
+  return notification;
+}
+function markAllNotificationsRead(userId) {
+  let count = 0;
+  store.notifications.forEach((notification) => {
+    if (notification.userId === userId && !notification.read) {
+      notification.read = true;
+      count += 1;
+    }
+  });
+  if (count) persist();
+  return count;
+}
+
 // ===== Feedback =====
 function createFeedback(userId, type, message) {
   const fb = {
@@ -614,5 +661,7 @@ module.exports = {
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
   addSharedPhoto, getSharedPhotos, togglePhotoEncryption,
   storePushSubscription, removePushSubscription, getPushSubscriptions,
+  createNotification, getUserNotifications, getUnreadNotificationCount,
+  markNotificationRead, markAllNotificationsRead,
   createFeedback
 };

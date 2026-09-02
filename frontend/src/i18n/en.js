@@ -170,6 +170,18 @@ const en = {
   installIos: 'iPhone & iPad',
   installAndroid: 'Android',
   installStep: (n) => `Step ${n}`,
+  installIosSteps: (url) => [
+    { step: '1', title: 'Open in Safari', desc: `Use Safari to open Pastel Chat at ${url}.` },
+    { step: '2', title: 'Tap Share', desc: 'Tap the Share icon (a square with an upward arrow).' },
+    { step: '3', title: 'Add to Home Screen', desc: 'Scroll down and tap “Add to Home Screen”.' },
+    { step: '4', title: 'Confirm', desc: 'Name the app “Pastel Chat”, then tap “Add”.' }
+  ],
+  installAndroidSteps: (url) => [
+    { step: '1', title: 'Open in Chrome', desc: `Use Chrome to open Pastel Chat at ${url}.` },
+    { step: '2', title: 'Open the menu', desc: 'Tap the menu button (three vertical dots).' },
+    { step: '3', title: 'Install the app', desc: 'Tap “Install app” or “Add to home screen”.' },
+    { step: '4', title: 'Done', desc: 'Pastel Chat will be added to your home screen.' }
+  ],
   installDone: 'Done! Open Pastel Chat from your home screen.',
 
   // Private space

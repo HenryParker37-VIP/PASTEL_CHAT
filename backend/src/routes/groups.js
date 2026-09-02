@@ -6,6 +6,7 @@ const {
   addGroupMember, removeGroupMember, updateGroup, getGroupConversation,
   createMessage, populateMessage, findUserById, findMessage, updateMessage, toggleReaction
 } = require('../db/store');
+const { notifyInApp } = require('../services/inAppNotifications');
 
 // GET /groups — list groups I belong to
 router.get('/', authMiddleware, (req, res) => {
@@ -24,10 +25,14 @@ router.post('/', authMiddleware, (req, res) => {
 
   const io = req.app.get('io');
   pub.members.forEach(m => {
-    io.emit(`notify:${m._id}`, {
+    notifyInApp(io, m._id, {
       type: 'group_created',
       group: pub,
       from: { _id: req.user._id, name: req.user.name }
+    }, {
+      title: 'Bạn đã được thêm vào nhóm',
+      body: `Nhóm “${pub.name}” đã được tạo.`,
+      data: { route: `/group/${pub._id}` }
     });
   });
   res.status(201).json(pub);
@@ -63,7 +68,11 @@ router.post('/:id/invite', authMiddleware, (req, res) => {
   const updated = addGroupMember(group._id, userId);
   const pub = groupPublic(updated);
   const io = req.app.get('io');
-  io.emit(`notify:${userId}`, { type: 'group_invited', group: pub, from: { _id: req.user._id, name: req.user.name } });
+  notifyInApp(io, userId, { type: 'group_invited', group: pub, from: { _id: req.user._id, name: req.user.name } }, {
+    title: 'Bạn được mời vào nhóm',
+    body: `${req.user.name} đã mời bạn vào nhóm “${pub.name}”.`,
+    data: { route: `/group/${pub._id}` }
+  });
   io.emit(`group:updated:${group._id}`, pub);
   res.json(pub);
 });
@@ -119,12 +128,16 @@ router.post('/:id/messages', authMiddleware, (req, res) => {
   group.members.forEach(memberId => {
     io.emit(`msg:group:${group._id}:${memberId}`, populated);
     if (memberId !== req.user._id) {
-      io.emit(`notify:${memberId}`, {
+      notifyInApp(io, memberId, {
         type: 'group_message',
         groupId: group._id,
         groupName: group.name,
         from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar },
         preview: (populated.content || '📎 Media').slice(0, 80)
+      }, {
+        title: group.name,
+        body: `${req.user.name}: ${(populated.content || 'Có tệp đính kèm').slice(0, 80)}`,
+        data: { route: `/group/${group._id}` }
       });
     }
   });

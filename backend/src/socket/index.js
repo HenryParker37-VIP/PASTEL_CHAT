@@ -10,13 +10,13 @@ const {
   addSharedPhoto,
   genId
 } = require('../db/store');
-const { notifyIncomingCall } = require('../integrations/notificationManager');
 const {
   sendMessagePush,
   sendPushToUser,
   setActiveChat,
   clearActiveChat
 } = require('../services/pushService');
+const { notifyInApp } = require('../services/inAppNotifications');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
 
@@ -106,11 +106,15 @@ const setupSocket = (io) => {
       const populated = populateMessage(msg);
       io.emit(`msg:${user._id}:${to}`, populated);
       io.emit(`msg:${to}:${user._id}`, populated);
-      io.emit(`notify:${to}`, {
+      notifyInApp(io, to, {
         type: 'new_message',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         preview: populated.content.slice(0, 80),
         messageId: populated._id
+      }, {
+        title: `Tin nhắn mới từ ${user.name}`,
+        body: populated.content.slice(0, 160) || 'Bạn nhận được một tệp đính kèm.',
+        data: { route: `/chat/${user._id}`, friendId: user._id, messageId: populated._id }
       });
       // Push notification for when recipient's app is closed/backgrounded
       sendMessagePush(to, user, validMedia || populated.content).catch(e =>
@@ -136,8 +140,6 @@ const setupSocket = (io) => {
         callerName:  user.name,
         callerAvatar: user.avatar,
       }, { senderId: user._id }).catch(() => {});
-      // Send Telegram notification (async, non-blocking)
-      notifyIncomingCall(to, { name: user.name, avatar: user.avatar }, type).catch(() => {});
     });
 
     socket.on('call:accept', ({ to }) => {
@@ -194,12 +196,16 @@ const setupSocket = (io) => {
       group.members.forEach(memberId => {
         io.emit(`msg:group:${groupId}:${memberId}`, populated);
         if (memberId !== user._id) {
-          io.emit(`notify:${memberId}`, {
+          notifyInApp(io, memberId, {
             type: 'group_message',
             groupId,
             groupName: group.name,
             from: { _id: user._id, name: user.name, avatar: user.avatar },
             preview: (populated.content || '📎 Media').slice(0, 80)
+          }, {
+            title: group.name,
+            body: `${user.name}: ${(populated.content || 'Có tệp đính kèm').slice(0, 80)}`,
+            data: { route: `/group/${groupId}` }
           });
         }
       });

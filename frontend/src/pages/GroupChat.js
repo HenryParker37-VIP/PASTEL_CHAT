@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
+import { getPastelIdentity } from '../utils/pastelIdentity';
 
 const isMobile = () => window.innerWidth <= 700;
 
@@ -166,11 +167,7 @@ const GroupChat = () => {
     setTimeout(() => setHighlightId(null), 2500);
   };
 
-  const groupAvatar = (name) => {
-    const colors = ['#FFB6C1', '#DDA0DD', '#ADD8E6', '#98FB98', '#FFDAB9'];
-    const idx = (name || '').charCodeAt(0) % colors.length;
-    return colors[idx];
-  };
+  const groupAvatar = (id) => getPastelIdentity(id);
 
   if (!group) return null;
   const isCreator = group.creatorId === user?._id;
@@ -203,9 +200,10 @@ const GroupChat = () => {
             <div
               style={{
                 width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                background: groupAvatar(group.name),
+                background: groupAvatar(group._id).soft,
+                color: groupAvatar(group._id).accent,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 16, color: 'white', cursor: 'pointer'
+                fontWeight: 700, fontSize: 16, cursor: 'pointer'
               }}
               onClick={() => setShowInfo(v => !v)}
               title={t('groupInfo')}
@@ -325,9 +323,10 @@ const GroupChat = () => {
             {/* Group avatar */}
             <div style={{ padding: '20px 16px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
               <div style={{
-                width: 64, height: 64, borderRadius: '50%', background: groupAvatar(group.name),
+                width: 64, height: 64, borderRadius: '50%', background: groupAvatar(group._id).soft,
+                color: groupAvatar(group._id).accent,
                 margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 28, color: 'white'
+                fontWeight: 700, fontSize: 28
               }}>
                 {group.name[0]?.toUpperCase()}
               </div>

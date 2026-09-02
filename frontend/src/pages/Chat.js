@@ -9,6 +9,7 @@ import OnlineUsers from '../components/OnlineUsers';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
+import { getPastelIdentity } from '../utils/pastelIdentity';
 
 const isMobile = () => window.innerWidth <= 700;
 
@@ -241,6 +242,8 @@ const Chat = () => {
     new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  const friendIdentity = getPastelIdentity(friendId);
+
   return (
     <div style={{
       position: 'fixed',
@@ -340,7 +343,7 @@ const Chat = () => {
                   <img
                     src={friend.avatar}
                     alt=""
-                    style={{ width: 32, height: 32, borderRadius: '50%', display: 'block' }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${friendIdentity.accent}` }}
                   />
                 </button>
                 <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
@@ -412,11 +415,11 @@ const Chat = () => {
           {/* Friend profile card (collapsible) */}
           {profileOpen && friend && (
             <div style={{
-              background: 'var(--card-bg)', borderBottom: '1px solid var(--border)',
+              background: friendIdentity.soft, borderBottom: `2px solid ${friendIdentity.accent}`,
               padding: '14px 16px', flexShrink: 0,
               display: 'flex', alignItems: 'center', gap: 14
             }}>
-              <img src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%' }} />
+              <img src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%', border: `3px solid ${friendIdentity.accent}` }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{friend.name}</div>
                 {friend.status && <div style={{ fontSize: 13, color: '#B08ABD', marginTop: 1 }}>{friend.status}</div>}

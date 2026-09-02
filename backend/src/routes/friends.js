@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { sendFriendRequestPush } = require('../services/pushService');
+const { notifyInApp } = require('../services/inAppNotifications');
 const {
   getFriends,
   addFriend,
@@ -38,9 +39,13 @@ router.post('/request', authMiddleware, (req, res) => {
 
   // Notify the target
   const io = req.app.get('io');
-  io.emit(`notify:${friendId}`, {
+  notifyInApp(io, friendId, {
     type: 'friend_requested',
     from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
+  }, {
+    title: 'Lời mời kết bạn mới',
+    body: `${req.user.name} muốn kết bạn với bạn.`,
+    data: { route: '/friends' }
   });
 
   // Send Web Push notification
@@ -69,9 +74,13 @@ router.post('/accept/:reqId', authMiddleware, (req, res) => {
 
   // Notify sender
   const io = req.app.get('io');
-  io.emit(`notify:${request.fromId}`, {
+  notifyInApp(io, request.fromId, {
     type: 'friend_accepted',
     from: { _id: B._id, name: B.name, avatar: B.avatar }
+  }, {
+    title: 'Lời mời kết bạn đã được chấp nhận',
+    body: `${B.name} đã trở thành bạn bè với bạn.`,
+    data: { route: '/friends' }
   });
 
   res.json({ success: true });
