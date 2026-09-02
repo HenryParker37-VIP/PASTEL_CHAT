@@ -335,6 +335,16 @@ if (!store.userStickerPacks) {
   persist();
 }
 
+// Migrate persisted installed-pack associations without touching messages or
+// any other user data. Legacy pack definitions remain archived above for
+// history/rollback, but cannot survive in the active installed list.
+const activePackSlugs = new Set(ACTIVE_PACKS.map(pack => pack.slug));
+const migratedUserStickerPacks = store.userStickerPacks.filter(entry => activePackSlugs.has(entry.packSlug));
+if (migratedUserStickerPacks.length !== store.userStickerPacks.length) {
+  store.userStickerPacks = migratedUserStickerPacks;
+  persist();
+}
+
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 const { authenticateToken } = require('../services/sessionAuth');
 
