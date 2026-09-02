@@ -1,4 +1,8 @@
-export const CURRENT_APP_VERSION = '1.1.0';
+import versionMeta from './version.json';
+import { BUILD_ID } from './buildMeta.generated';
+
+export const CURRENT_APP_VERSION = versionMeta.version;
+export const RUNNING_BUILD_ID = BUILD_ID;
 
 export const compareVersions = (a, b) => {
   const left = String(a || '').split('.').map(Number);
