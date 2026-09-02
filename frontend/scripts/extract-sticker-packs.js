@@ -5,15 +5,20 @@ const sharp = require('sharp');
 const root = path.resolve(__dirname, '..');
 const outputRoot = path.join(root, 'public', 'stickers', 'source-packs');
 const packs = [
-  { id: 'mini-bean-crew', source: 'Mini_Bean_Crew_Sticker_Pack.png', x: 8, y: 61, width: 484, height: 392 },
-  { id: 'pastel-bunny-final', source: 'Pastel_Bunny_Sticker_Pack.png', x: 8, y: 61, width: 489, height: 392 },
-  { id: 'mocha-kitty', source: 'Mocha_Kitty_Sticker_Pack.png', x: 8, y: 61, width: 484, height: 392 },
-  { id: 'dino-and-friends', source: 'Dino_and_Friends_Sticker_Pack.png', x: 9, y: 59, width: 497, height: 380 },
-  { id: 'cloud-pals', source: 'Cloud_Pals_Sticker_Pack.png', x: 7, y: 59, width: 521, height: 380 }
+  { id: 'mini-bean-crew', x: 8, y: 61, width: 484, height: 392 },
+  { id: 'pastel-bunny-final', x: 8, y: 61, width: 489, height: 392 },
+  { id: 'mocha-kitty', x: 8, y: 61, width: 484, height: 392 },
+  { id: 'dino-and-friends', x: 9, y: 59, width: 497, height: 380 },
+  { id: 'cloud-pals', x: 7, y: 59, width: 521, height: 380 },
+  { id: 'peach-fox-feelings', x: 28, y: 143, width: 1198, height: 1088 },
+  { id: 'cotton-lamb-socials', x: 28, y: 143, width: 1198, height: 1088 },
+  { id: 'jelly-blob-reactions', x: 28, y: 143, width: 1198, height: 1088 },
+  { id: 'pudding-puppy-daily-life', x: 28, y: 143, width: 1198, height: 1088 },
+  { id: 'cloud-bear-care', x: 28, y: 143, width: 1198, height: 1088 }
 ];
 
 async function extractPack(pack) {
-  const source = path.join('/Users/henryparker37/Downloads', pack.source);
+  const source = path.join(outputRoot, pack.id, 'cover.webp');
   const cellWidth = pack.width / 4;
   const cellHeight = pack.height / 4;
   const target = path.join(outputRoot, pack.id);
