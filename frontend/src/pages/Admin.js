@@ -11,6 +11,26 @@ const initialAnnouncement = { title: '', body: '', scope: 'test', pushEnabled: f
 const list = (value) => String(value || '').split(/\n|,/).map((item) => item.trim()).filter(Boolean);
 const formatDate = (value) => value ? new Date(value).toLocaleString() : '—';
 
+const AccessCodesPanel = ({ codes, label, setLabel, expiration, setExpiration, newCode, onCreate, onRevoke, l }) => (
+  <section className="admin-panel admin-access-codes">
+    <div className="admin-panel__heading"><div><span className="admin-eyebrow"><PastelIcon name="lock" size={15} /> {l('Access Codes', 'Mã truy cập')}</span><h2>{l('Demo Access', 'Quyền truy cập Demo')}</h2></div></div>
+    <div className="admin-access-codes__create">
+      <label>{l('Label / company', 'Nhãn / công ty')}<input value={label} onChange={(event) => setLabel(event.target.value)} maxLength="120" placeholder={l('Optional', 'Không bắt buộc')} /></label>
+      <label>{l('Expires', 'Hết hạn')}<select value={expiration} onChange={(event) => setExpiration(event.target.value)}><option value="1d">{l('1 day', '1 ngày')}</option><option value="7d">{l('7 days', '7 ngày')}</option><option value="30d">{l('30 days', '30 ngày')}</option><option value="never">{l('Never', 'Không bao giờ')}</option></select></label>
+      <button className="btn btn-blue" onClick={onCreate}>{l('Create Demo Code', 'Tạo mã Demo')}</button>
+    </div>
+    {newCode && <div className="admin-access-codes__new"><strong>{l('Copy this code now — it will not be shown again.', 'Hãy sao chép mã ngay — mã sẽ không hiển thị lại.')}</strong><code>{newCode}</code><button className="btn btn-ghost btn-small" onClick={() => navigator.clipboard?.writeText(newCode)}>{l('Copy', 'Sao chép')}</button></div>}
+    <div className="admin-access-codes__list">{codes.map((code) => <div className="admin-access-code" key={code._id}><div><strong>{code.maskedCode}</strong><small>{code.label || l('Demo access', 'Quyền truy cập Demo')} · {l('Expires', 'Hết hạn')} {code.expiresAt ? formatDate(code.expiresAt) : l('Never', 'Không bao giờ')}</small></div><span className={`tag tag--${code.status.toLowerCase()}`}>{code.status === 'Active' ? l('Active', 'Đang hoạt động') : code.status === 'Expired' ? l('Expired', 'Đã hết hạn') : l('Revoked', 'Đã thu hồi')}</span>{code.status === 'Active' && <button className="btn btn-ghost btn-small" onClick={() => onRevoke(code)}>{l('Revoke', 'Thu hồi')}</button>}</div>)}{!codes.length && <p className="admin-empty">{l('No demo codes yet.', 'Chưa có mã Demo nào.')}</p>}</div>
+  </section>
+);
+
+const DemoReleasePanel = ({ releases, l }) => (
+  <section className="admin-panel admin-demo-releases">
+    <div className="admin-panel__heading"><div><span className="admin-eyebrow"><PastelIcon name="sparkles" size={15} /> {l('What’s New', 'Có gì mới')}</span><h2>{l('Release history', 'Lịch sử phát hành')}</h2></div></div>
+    <div className="admin-demo-releases__list">{releases.map((release) => <article key={release._id || release.version}><div><strong>v{release.version}</strong><span>{release.title}</span></div><small>{formatDate(release.releasedAt)}</small><p>{release.summary || l('No summary provided.', 'Chưa có tóm tắt.')}</p></article>)}{!releases.length && <p className="admin-empty">{l('No releases yet.', 'Chưa có bản phát hành nào.')}</p>}</div>
+  </section>
+);
+
 const Admin = () => {
   const { logout, user } = useAuth();
   const { lang } = useLang();
@@ -29,9 +49,15 @@ const Admin = () => {
   const [release, setRelease] = useState(initialForm);
   const [releasePreview, setReleasePreview] = useState(null);
   const [announcement, setAnnouncement] = useState(initialAnnouncement);
+  const [accessCodes, setAccessCodes] = useState([]);
+  const [accessLabel, setAccessLabel] = useState('');
+  const [accessExpiration, setAccessExpiration] = useState('7d');
+  const [newAccessCode, setNewAccessCode] = useState('');
 
   const isVi = lang === 'vi';
   const l = (en, vi) => isVi ? vi : en;
+  const isDemo = data?.adminRole === 'DEMO';
+  const isOwner = data?.adminRole === 'OWNER';
   const reload = useCallback(async () => {
     if (!user || user.isAdmin !== true) return;
     setLoading(true); setError('');
@@ -49,11 +75,24 @@ const Admin = () => {
     return () => window.clearTimeout(timer);
   }, [navigate, query, reload, user]);
 
+  const loadAccessCodes = useCallback(async () => {
+    if (!isOwner) return;
+    try {
+      const response = await api.get('/admin/access-codes');
+      setAccessCodes(response.data.accessCodes || []);
+    } catch (err) {
+      push({ title: err.response?.data?.message || (isVi ? 'Không thể tải mã truy cập' : 'Could not load access codes'), tone: 'danger', icon: 'alert' });
+    }
+  }, [isOwner, isVi, push]);
+
+  useEffect(() => { loadAccessCodes(); }, [loadAccessCodes]);
+
   const act = async (request, success) => {
     try { await request(); push({ title: success, tone: 'success', icon: 'check' }); await reload(); }
     catch (err) { push({ title: err.response?.data?.message || l('Action failed', 'Thao tác thất bại'), tone: 'danger', icon: 'alert' }); }
   };
   const userAction = async (kind, target) => {
+    if (!isOwner) return;
     const isSuspend = kind === 'suspend';
     const accepted = await confirm({ title: isSuspend ? l('Suspend account?', 'Tạm khóa tài khoản?') : l('Force logout?', 'Đăng xuất bắt buộc?'), message: isSuspend ? l('This revokes active sessions and blocks sign-in until an admin unsuspends the account.', 'Thao tác này thu hồi phiên hiện tại và chặn đăng nhập cho đến khi quản trị viên mở khóa.') : l('All active sessions for this account will be revoked.', 'Tất cả phiên đang hoạt động của tài khoản sẽ bị thu hồi.'), tone: isSuspend ? 'danger' : 'default', confirmLabel: l('Continue', 'Tiếp tục') });
     if (!accepted) return;
@@ -61,23 +100,49 @@ const Admin = () => {
     setSelectedUser(null);
   };
   const updateTicket = async (ticket, status) => {
+    if (!isOwner) return;
     const isReport = ticket.kind === 'report';
     const accepted = await confirm({ title: l('Update workflow status?', 'Cập nhật trạng thái xử lý?'), message: l('This administrative action is recorded in the audit log.', 'Thao tác quản trị này sẽ được ghi vào nhật ký kiểm toán.'), confirmLabel: l('Update', 'Cập nhật') });
     if (accepted) await act(() => api.patch(`/admin/${isReport ? 'reports' : 'tickets'}/${ticket._id}`, { status }), l('Ticket updated', 'Đã cập nhật yêu cầu'));
   };
   const publishRelease = async () => {
-    if (!releasePreview) return;
+    if (!isOwner || !releasePreview) return;
     const accepted = await confirm({ title: l('Publish this release?', 'Xuất bản bản phát hành này?'), message: l('This saves the release and creates one deduplicated in-app notification per user. Push is sent only when explicitly enabled for an important release.', 'Bản phát hành sẽ được lưu và tạo một thông báo trong ứng dụng cho mỗi người dùng. Push chỉ gửi khi được bật rõ ràng cho bản phát hành quan trọng.'), confirmLabel: l('Publish release', 'Xuất bản'), icon: 'sparkles' });
     if (!accepted) return;
     await act(() => api.post('/admin/releases', { ...releasePreview, confirmed: true }), l('Release published', 'Đã xuất bản bản phát hành'));
     setRelease(initialForm); setReleasePreview(null);
   };
   const createAnnouncement = async () => {
+    if (!isOwner) return;
     if (!announcement.title.trim() || !announcement.body.trim()) return push({ title: l('Add a title and message first', 'Hãy thêm tiêu đề và nội dung'), tone: 'danger', icon: 'alert' });
     const needsConfirm = announcement.scope === 'all' || announcement.pushEnabled;
     if (needsConfirm && !(await confirm({ title: l('Send this announcement?', 'Gửi thông báo này?'), message: l('Review the recipient scope carefully. This action is recorded and cannot be recalled.', 'Hãy kiểm tra kỹ phạm vi người nhận. Thao tác này được ghi lại và không thể thu hồi.'), tone: 'danger', confirmLabel: l('Send announcement', 'Gửi thông báo') }))) return;
     await act(() => api.post('/admin/announcements', { ...announcement, confirmed: needsConfirm }), l('Announcement delivered', 'Đã gửi thông báo'));
     setAnnouncement(initialAnnouncement);
+  };
+  const createDemoCode = async () => {
+    if (!isOwner) return;
+    try {
+      const response = await api.post('/admin/access-codes', { label: accessLabel, expiration: accessExpiration });
+      setNewAccessCode(response.data.code || '');
+      setAccessLabel('');
+      await loadAccessCodes();
+      push({ title: l('Demo code created', 'Đã tạo mã Demo'), tone: 'success', icon: 'check' });
+    } catch (err) {
+      push({ title: err.response?.data?.message || l('Could not create demo code', 'Không thể tạo mã Demo'), tone: 'danger', icon: 'alert' });
+    }
+  };
+  const revokeDemoCode = async (code) => {
+    if (!isOwner || code.status === 'Revoked') return;
+    const accepted = await confirm({ title: l('Revoke this demo code?', 'Thu hồi mã Demo này?'), message: l('Any active sessions using this code will be revoked.', 'Mọi phiên đang dùng mã này sẽ bị thu hồi.'), tone: 'danger', confirmLabel: l('Revoke code', 'Thu hồi mã') });
+    if (!accepted) return;
+    try {
+      await api.post(`/admin/access-codes/${code._id}/revoke`);
+      await loadAccessCodes();
+      push({ title: l('Demo code revoked', 'Đã thu hồi mã Demo'), tone: 'success', icon: 'check' });
+    } catch (err) {
+      push({ title: err.response?.data?.message || l('Could not revoke demo code', 'Không thể thu hồi mã Demo'), tone: 'danger', icon: 'alert' });
+    }
   };
   const metrics = data?.metrics || {};
   const tickets = useMemo(() => data?.tickets || [], [data]);
@@ -89,10 +154,12 @@ const Admin = () => {
   if (error && !data) return <div className="center"><div className="card admin-error"><PastelIcon name="shield-heart" size={42} /><h2>{l('Admin access unavailable', 'Không thể truy cập quản trị')}</h2><p>{error}</p><button className="btn btn-blue" onClick={() => navigate('/home')}>{l('Return home', 'Về trang chủ')}</button></div></div>;
 
   return (
-    <main className="page-frame admin-hub">
+    <main className={`page-frame admin-hub ${isDemo ? 'admin-hub--demo' : ''}`}>
       <div className="container admin-hub__container">
+        {isOwner && <AccessCodesPanel codes={accessCodes} label={accessLabel} setLabel={setAccessLabel} expiration={accessExpiration} setExpiration={setAccessExpiration} newCode={newAccessCode} onCreate={createDemoCode} onRevoke={revokeDemoCode} l={l} />}
+        {isDemo && <DemoReleasePanel releases={data?.releases || []} l={l} />}
         <header className="admin-hub__header">
-          <div><span className="admin-eyebrow"><PastelIcon name="shield-heart" size={15} /> {l('Operations', 'Vận hành')}</span><h1>{l('Admin Hub', 'Trung tâm quản trị')}</h1><p>{l('Monitor PastelChat health and users', 'Theo dõi sức khỏe PastelChat và người dùng')}</p></div>
+          <div><span className="admin-eyebrow"><PastelIcon name="shield-heart" size={15} /> {l('Operations', 'Vận hành')}</span><h1>{l('Admin Hub', 'Trung tâm quản trị')}</h1><p>{l('Monitor PastelChat health and users', 'Theo dõi sức khỏe PastelChat và người dùng')}</p>{isDemo && <span className="admin-role-badge">👁 {l('Demo Mode · View only', 'Chế độ Demo · Chỉ xem')}</span>}</div>
           <button className="btn btn-ghost" onClick={logout}>{l('Log out admin', 'Đăng xuất quản trị')}</button>
         </header>
 

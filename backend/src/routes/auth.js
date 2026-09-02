@@ -13,7 +13,7 @@ const {
   generateLoginCode,
   userPublic,
   createAuditLog,
-  revokeSession
+  revokeSession, findAccessCodeByCode, markAccessCodeUsed, normalizeAccessCode
 } = require('../db/store');
 const authMiddleware = require('../middleware/auth');
 const rateLimit = require('../middleware/rateLimit');
@@ -28,6 +28,12 @@ function defaultAvatar(seed) {
   return `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${safe}&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50`;
 }
 function issueToken(user) { return createUserToken(user); }
+
+function authUserView(user, adminRole = null) {
+  const view = { ...userPublic(user) };
+  if (user.isAdmin === true) return { ...view, isAdmin: true, adminRole: adminRole || 'OWNER' };
+  return { ...view, loginCode: user.loginCode, isAdmin: false };
+}
 
 function sameSecret(left, right) {
   const a = Buffer.from(String(left || ''));
@@ -52,10 +58,7 @@ router.post('/register', rateLimit({ name: 'auth-register', max: 10 }), (req, re
       avatar: defaultAvatar(trimmed)
     });
 
-    res.json({
-      token: issueToken(user),
-      user: { ...userPublic(user), loginCode: user.loginCode, isAdmin: user.isAdmin === true }
-    });
+    res.json({ token: issueToken(user), user: authUserView(user) });
   } catch (error) {
     console.error('[Auth] Register error:', error.message);
     res.status(500).json({ message: 'Registration failed' });
@@ -75,18 +78,32 @@ router.post('/login', rateLimit({ name: 'auth-login', max: 12 }), (req, res) => 
 
     if (!code) return res.status(400).json({ message: 'Login code is required' });
 
-    const user = findUser({ loginCode: code });
-    if (!user) return res.status(401).json({ message: 'Invalid login code' });
-    if (user.isAdmin && (!process.env.ADMIN_LOGIN_CODE || !sameSecret(code, process.env.ADMIN_LOGIN_CODE.trim().toUpperCase()))) {
-      return res.status(401).json({ message: 'Invalid login code' });
+    const ownerCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
+    const demoCode = findAccessCodeByCode(code);
+    let user = null;
+    let adminRole = null;
+    let accessCodeId = null;
+    if (ownerCode && sameSecret(code, ownerCode)) {
+      user = findUser({ isAdmin: true });
+      adminRole = 'OWNER';
+    } else if (demoCode) {
+      user = findUser({ isAdmin: true });
+      adminRole = 'DEMO';
+      accessCodeId = demoCode._id;
+    } else {
+      user = findUser({ loginCode: code });
     }
+    if (!user || (user.isAdmin && !adminRole)) return res.status(401).json({ message: 'Invalid login code' });
     if (user.isSuspended) return res.status(403).json({ message: 'This account is suspended' });
 
-    if (user.isAdmin) createAuditLog({ adminId: user._id, action: 'admin_login', targetType: 'admin', targetId: user._id, metadata: { method: 'login_code' } });
+    if (adminRole) {
+      if (demoCode) markAccessCodeUsed(demoCode._id);
+      createAuditLog({ adminId: user._id, action: adminRole === 'DEMO' ? 'demo_login' : 'owner_login', targetType: 'admin', targetId: user._id, metadata: { method: 'login_code', role: adminRole } });
+    }
 
     res.json({
-      token: issueToken(user),
-      user: { ...userPublic(user), loginCode: user.loginCode, isAdmin: user.isAdmin === true }
+      token: createUserToken(user, { adminRole, accessCodeId }),
+      user: authUserView(user, adminRole)
     });
   } catch (error) {
     console.error('[Auth] Login error:', error.message);
@@ -127,7 +144,7 @@ router.post('/update-name', authMiddleware, (req, res) => {
 
 // GET /auth/me - Return current user (with login code for reminder)
 router.get('/me', authMiddleware, (req, res) => {
-  res.json({ ...userPublic(req.user), loginCode: req.user.loginCode, isAdmin: req.user.isAdmin === true });
+  res.json(authUserView(req.user, req.adminRole));
 });
 
 // POST /auth/google - Sign in or register via Google OAuth
@@ -180,7 +197,7 @@ router.post('/google', rateLimit({ name: 'auth-google', max: 10 }), async (req, 
 
     res.json({
       token: issueToken(user),
-      user: { ...userPublic(user), loginCode: user.loginCode },
+      user: authUserView(user),
       isNewUser: !user.googleId,
     });
   } catch (error) {
@@ -233,7 +250,7 @@ router.post('/microsoft', rateLimit({ name: 'auth-microsoft', max: 10 }), async 
 
     res.json({
       token: issueToken(user),
-      user: { ...userPublic(user), loginCode: user.loginCode },
+      user: authUserView(user),
     });
   } catch (error) {
     console.error('[OAuth] Microsoft login error:', error.message);

@@ -10,11 +10,11 @@ function assertAuthConfigured() {
   if (!JWT_SECRET) throw new Error('JWT_SECRET is not configured');
 }
 
-function issueToken(user, createSession) {
+function issueToken(user, createSession, sessionOptions = {}) {
   assertAuthConfigured();
   const sessionId = crypto.randomBytes(18).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-  createSession({ _id: sessionId, userId: user._id, expiresAt });
+  createSession({ _id: sessionId, userId: user._id, expiresAt, ...sessionOptions });
   return jwt.sign(
     { userId: user._id, sid: sessionId, ver: Number(user.authVersion || 0) },
     JWT_SECRET,

@@ -3,17 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const requireAdmin = require('../middleware/admin');
+const requireOwner = requireAdmin.requireOwner;
 const rateLimit = require('../middleware/rateLimit');
 const {
   store, findUserById, getActiveSessionCount, updateUser, revokeUserSessions,
   createAuditLog, updateReport, createAnnouncement, createNotification, getStorageStatus,
-  getReleases
+  getReleases, createAccessCode, generateDemoAccessCode, accessCodeView, revokeAccessCode, revokeAccessCodeSessions
 } = require('../db/store');
 const { sendPushToUser, getPushLanguage } = require('../services/pushService');
 const { appVersion, buildId } = require('../version');
 
 const adminWriteLimit = rateLimit({ name: 'admin-write', windowMs: 5 * 60_000, max: 60 });
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DEMO_EXPIRATIONS = { '1d': DAY_MS, '7d': 7 * DAY_MS, '30d': 30 * DAY_MS, never: null };
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const isoDate = (date) => new Date(date).toISOString().slice(0, 10);
 const safeDate = (value) => value ? new Date(value).toISOString() : null;
@@ -133,8 +135,37 @@ router.get('/dashboard', requireAdmin, (req, res) => {
   res.json({
     metrics: metricCounts(), version: appVersion, buildId, users, pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) },
     tickets, health: health(), analytics: analytics(), releases: getReleases().slice(0, 12),
-    announcements: store.announcements.slice(0, 12), auditLogs: store.auditLogs.slice(0, 100)
+    announcements: store.announcements.slice(0, 12), auditLogs: store.auditLogs.slice(0, 100),
+    adminRole: req.adminRole, readOnly: req.adminRole === 'DEMO'
   });
+});
+
+router.get('/access-codes', requireOwner, (req, res) => {
+  return res.json({ accessCodes: store.accessCodes.map(accessCodeView) });
+});
+
+router.post('/access-codes', requireOwner, adminWriteLimit, (req, res) => {
+  const expiration = String(req.body?.expiration || '7d');
+  if (!Object.prototype.hasOwnProperty.call(DEMO_EXPIRATIONS, expiration)) return res.status(400).json({ message: 'A valid expiration is required' });
+  const code = generateDemoAccessCode();
+  const duration = DEMO_EXPIRATIONS[expiration];
+  const record = createAccessCode({
+    code,
+    label: req.body?.label,
+    expiresAt: duration ? new Date(Date.now() + duration).toISOString() : null,
+    createdBy: req.user._id
+  });
+  createAuditLog({ adminId: req.user._id, action: 'demo_code_created', targetType: 'access_code', targetId: record._id, metadata: { label: record.label, expiration } });
+  return res.status(201).json({ code, accessCode: accessCodeView(record) });
+});
+
+router.post('/access-codes/:id/revoke', requireOwner, adminWriteLimit, (req, res) => {
+  const record = store.accessCodes.find((item) => item._id === req.params.id);
+  if (!record) return res.status(404).json({ message: 'Access code not found' });
+  revokeAccessCode(record._id);
+  const sessionsRevoked = revokeAccessCodeSessions(record._id);
+  createAuditLog({ adminId: req.user._id, action: 'demo_code_revoked', targetType: 'access_code', targetId: record._id, metadata: { sessionsRevoked } });
+  return res.json({ accessCode: accessCodeView(record), sessionsRevoked });
 });
 
 router.get('/users/:id', requireAdmin, (req, res) => {
@@ -143,7 +174,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
   return res.json({ user: adminUserView(user) });
 });
 
-router.post('/users/:id/suspend', requireAdmin, adminWriteLimit, (req, res) => {
+router.post('/users/:id/suspend', requireOwner, adminWriteLimit, (req, res) => {
   const user = findUserById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
   if (user._id === req.user._id || user.isAdmin) return res.status(403).json({ message: 'This account cannot be suspended here' });
@@ -154,7 +185,7 @@ router.post('/users/:id/suspend', requireAdmin, adminWriteLimit, (req, res) => {
   return res.json({ user: adminUserView(user), sessionsRevoked: revoked });
 });
 
-router.post('/users/:id/unsuspend', requireAdmin, adminWriteLimit, (req, res) => {
+router.post('/users/:id/unsuspend', requireOwner, adminWriteLimit, (req, res) => {
   const user = findUserById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
   updateUser(user._id, { isSuspended: false, suspensionReason: '' });
@@ -162,7 +193,7 @@ router.post('/users/:id/unsuspend', requireAdmin, adminWriteLimit, (req, res) =>
   return res.json({ user: adminUserView(user) });
 });
 
-router.post('/users/:id/force-logout', requireAdmin, adminWriteLimit, (req, res) => {
+router.post('/users/:id/force-logout', requireOwner, adminWriteLimit, (req, res) => {
   const user = findUserById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
   const revoked = revokeUserSessions(user._id);
@@ -171,7 +202,7 @@ router.post('/users/:id/force-logout', requireAdmin, adminWriteLimit, (req, res)
   return res.json({ user: adminUserView(user), sessionsRevoked: revoked });
 });
 
-router.patch('/tickets/:id', requireAdmin, adminWriteLimit, (req, res) => {
+router.patch('/tickets/:id', requireOwner, adminWriteLimit, (req, res) => {
   const ticket = store.feedback.find((item) => item._id === req.params.id);
   if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
   const allowedStatuses = ['Open', 'Reviewing', 'In Progress', 'Resolved', 'Closed'];
@@ -186,7 +217,7 @@ router.patch('/tickets/:id', requireAdmin, adminWriteLimit, (req, res) => {
   return res.json({ ticket: ticketView(ticket, ticket.type || 'feedback') });
 });
 
-router.patch('/reports/:id', requireAdmin, adminWriteLimit, (req, res) => {
+router.patch('/reports/:id', requireOwner, adminWriteLimit, (req, res) => {
   const current = store.reports.find((item) => item._id === req.params.id);
   if (!current) return res.status(404).json({ message: 'Report not found' });
   const allowedStatuses = ['Open', 'Reviewing', 'Resolved', 'Dismissed'];
@@ -199,7 +230,7 @@ router.patch('/reports/:id', requireAdmin, adminWriteLimit, (req, res) => {
   return res.json({ report: ticketView(report, 'report') });
 });
 
-router.post('/announcements', requireAdmin, adminWriteLimit, async (req, res) => {
+router.post('/announcements', requireOwner, adminWriteLimit, async (req, res) => {
   const title = String(req.body?.title || '').trim().slice(0, 160);
   const body = String(req.body?.body || '').trim().slice(0, 2000);
   const scope = String(req.body?.scope || 'test');

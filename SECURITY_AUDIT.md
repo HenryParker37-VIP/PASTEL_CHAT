@@ -8,8 +8,9 @@ This was a controlled local audit using named test accounts and isolated local s
 
 | Area | Result | Evidence / control |
 | --- | --- | --- |
-| Admin dashboard and writes | Fixed | Server-side `requireAdmin`; ordinary user dashboard and release attempts return 403. |
-| Admin login authority | Fixed locally; deployment prerequisite | Hardcoded master code removed. Production requires `ADMIN_LOGIN_CODE` in Render. |
+| Admin dashboard and writes | Fixed | Server-side `requireAdmin` permits read-only OWNER/DEMO access; all write routes use owner-only authorization. Ordinary users and DEMO sessions return 403 for writes. |
+| Admin login authority | Fixed locally; deployment prerequisite | Owner code is validated server-side from `ADMIN_LOGIN_CODE`; demo codes are HMAC-hashed in durable state and never returned after creation. |
+| Admin role integrity | Fixed | Role is resolved from the persisted session, not client state or request payloads. Revoking a demo code revokes its active sessions. |
 | JWT/session integrity | Fixed | HS256 allowlist, issuer/audience, expiry, session record, auth version, revocation. |
 | Logout / force logout / suspension | Fixed | Session revocation and auth-version invalidation; audit entries. |
 | Private-space ownership | Fixed | Note, reminder, and birthday mutations require the owning user. |
@@ -26,6 +27,6 @@ This was a controlled local audit using named test accounts and isolated local s
 
 ## Regression evidence
 
-`backend/test/security.test.js` passes 9 controlled checks covering privilege escalation, tampered JWT, ownership enforcement, conversation access, report moderation, release idempotency, and force logout. Existing backend tests also remain green.
+`backend/test/security.test.js` covers owner login, demo login/read access, demo write denial, client/JWT role tampering, demo-code expiration/revocation, active-session revocation, privilege escalation, ownership enforcement, conversation access, report moderation, release idempotency, and force logout. Existing backend tests also remain green.
 
-Remaining deployment prerequisite: configure `ADMIN_LOGIN_CODE` in Render before deploying this revision. The variable is intentionally not generated, printed, or committed by the application.
+`DEMO_LOGIN_CODE` is optional. If configured, it bootstraps one initial demo code (such as a code chosen by the operator); otherwise the Owner creates demo codes in Admin Hub. Neither code is generated, printed, or committed by the application.

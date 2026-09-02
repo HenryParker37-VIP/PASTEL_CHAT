@@ -10,6 +10,7 @@ const authMiddleware = (req, res, next) => {
     req.user = result.user;
     req.session = result.session;
     req.auth = result.decoded;
+    req.adminRole = result.adminRole;
     return next();
   } catch (error) {
     if (error.message === 'JWT_SECRET is not configured') return res.status(503).json({ message: 'Authentication is unavailable' });
