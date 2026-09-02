@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
 import AvatarCustomizer from '../components/AvatarCustomizer';
 import PastelIcon from '../components/PastelIcon';
+import { useToast } from '../components/Toast';
 import { PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 
 const isCustomPhoto = (url) => url && url.startsWith('data:');
@@ -52,6 +53,7 @@ const STATUS_PRESETS = [
 const Profile = () => {
   const { user, updateName, updateProfile, checkName } = useAuth();
   const { t } = useLang();
+  const { push } = useToast();
   const navigate = useNavigate();
   const [name, setName] = useState(user?.name || '');
   // avatarUrl holds the full resolved URL regardless of mode
@@ -69,7 +71,7 @@ const Profile = () => {
   const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+    if (!file.type.startsWith('image/')) { push({ icon: 'alert', title: t('feedbackInvalidImage'), tone: 'warning' }); return; }
     try {
       const dataUrl = await resizeToSquare(file);
       setCustomPhoto(dataUrl);
@@ -112,7 +114,10 @@ const Profile = () => {
     }
 
     setBusy(false);
-    if (ok) setSaveStatus('Saved!');
+    if (ok) {
+      setSaveStatus(t('profileSaved'));
+      push({ icon: 'check', title: t('feedbackSaved'), tone: 'success' });
+    }
   };
 
   const pickPreset = (preset) => {

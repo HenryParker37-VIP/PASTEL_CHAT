@@ -4,6 +4,8 @@ import api from '../services/api';
 import GifMessage from './GifMessage';
 import StickerDisplay from './StickerDisplay';
 import PastelIcon from './PastelIcon';
+import { useConfirm, useToast } from './Toast';
+import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity } from '../utils/pastelIdentity';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
@@ -27,6 +29,9 @@ function formatBytes(bytes) {
 
 const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, highlight, conversationIdentity }) => {
   const { user } = useAuth();
+  const { t } = useLang();
+  const { push } = useToast();
+  const { confirm } = useConfirm();
   const [busy, setBusy] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -46,13 +51,15 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
   const hasReactions = Object.keys(reactions).length > 0;
 
   const handleRecall = async () => {
-    if (!window.confirm('Recall this message?')) return;
+    const accepted = await confirm({ title: t('chatRecall'), message: t('chatRecallConfirm'), confirmLabel: t('chatRecall'), tone: 'danger', icon: 'trash' });
+    if (!accepted) return;
     setBusy(true);
     try {
       await api.delete(`/messages/${message._id}`);
       onRecall?.(message._id);
+      push({ icon: 'check', title: t('feedbackMessageRecalled'), tone: 'success' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to recall');
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), body: err.response?.data?.message, tone: 'error' });
     } finally { setBusy(false); }
   };
 
@@ -61,8 +68,9 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
     try {
       const { data } = await api.post(`/messages/${message._id}/pin`);
       onPin?.(data);
+      push({ icon: 'pin', title: t('feedbackMessagePinned'), tone: 'success' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Pin failed');
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), body: err.response?.data?.message, tone: 'error' });
     } finally { setBusy(false); }
   };
 

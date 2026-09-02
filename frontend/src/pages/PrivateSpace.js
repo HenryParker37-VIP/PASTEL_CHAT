@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLang } from '../i18n';
 import NoteCard from '../components/NoteCard';
 import PastelIcon from '../components/PastelIcon';
+import { useConfirm, useToast } from '../components/Toast';
 
 // Synthesise a soft multi-tone bell chime via Web Audio API
 const playBell = () => {
@@ -31,6 +32,8 @@ const PrivateSpace = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLang();
+  const { confirm } = useConfirm();
+  const { push } = useToast();
   const [tab, setTab] = useState('notes');
   const [notes, setNotes] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -129,12 +132,15 @@ const PrivateSpace = () => {
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (!window.confirm(t('mySpaceDeleteConfirm'))) return;
+    const accepted = await confirm({ title: t('mySpaceDelete'), message: t('mySpaceDeleteConfirm'), confirmLabel: t('mySpaceDelete'), tone: 'danger', icon: 'trash' });
+    if (!accepted) return;
     try {
       await api.delete(`/private-space/notes/${noteId}`);
       setNotes(prev => prev.filter(n => n._id !== noteId));
+      push({ icon: 'check', title: t('feedbackDeleted'), tone: 'success' });
     } catch (e) {
       console.error('Failed to delete note:', e);
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     }
   };
 
@@ -157,12 +163,15 @@ const PrivateSpace = () => {
   };
 
   const handleDeleteReminder = async (reminderId) => {
-    if (!window.confirm(t('mySpaceDeleteConfirm'))) return;
+    const accepted = await confirm({ title: t('mySpaceDelete'), message: t('mySpaceDeleteConfirm'), confirmLabel: t('mySpaceDelete'), tone: 'danger', icon: 'trash' });
+    if (!accepted) return;
     try {
       await api.delete(`/private-space/reminders/${reminderId}`);
       setReminders(prev => prev.filter(r => r._id !== reminderId));
+      push({ icon: 'check', title: t('feedbackDeleted'), tone: 'success' });
     } catch (e) {
       console.error('Failed to delete reminder:', e);
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     }
   };
 
@@ -182,12 +191,15 @@ const PrivateSpace = () => {
   };
 
   const handleDeleteBirthday = async (birthdayId) => {
-    if (!window.confirm(t('mySpaceDeleteConfirm'))) return;
+    const accepted = await confirm({ title: t('mySpaceDelete'), message: t('mySpaceDeleteConfirm'), confirmLabel: t('mySpaceDelete'), tone: 'danger', icon: 'trash' });
+    if (!accepted) return;
     try {
       await api.delete(`/private-space/birthdays/${birthdayId}`);
       setBirthdays(prev => prev.filter(b => b._id !== birthdayId));
+      push({ icon: 'check', title: t('feedbackDeleted'), tone: 'success' });
     } catch (e) {
       console.error('Failed to delete birthday:', e);
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     }
   };
 

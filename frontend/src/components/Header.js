@@ -4,11 +4,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import NotificationButton from './NotificationButton';
 import PastelIcon from './PastelIcon';
+import { useConfirm } from './Toast';
+import { useLang } from '../i18n';
 
 const Header = () => {
   const { user, logout } = useAuth();
   const { onlineUsers, connected } = useSocket();
   const navigate = useNavigate();
+  const { t } = useLang();
+  const { confirm } = useConfirm();
   const [now, setNow] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
 
@@ -29,6 +33,18 @@ const Header = () => {
 
   const initials = (name) =>
     name ? name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+
+  const handleLogout = async () => {
+    setShowMenu(false);
+    const accepted = await confirm({
+      title: t('signOut'),
+      message: t('feedbackSignOutConfirm'),
+      confirmLabel: t('signOut'),
+      tone: 'danger',
+      icon: 'lock'
+    });
+    if (accepted) logout();
+  };
 
   return (
     <header style={{
@@ -175,7 +191,7 @@ const Header = () => {
             </div>
             <NotificationButton compact />
             <button
-              onClick={() => { setShowMenu(false); logout(); }}
+              onClick={handleLogout}
               style={{
                 width: '100%', padding: '12px 16px',
                 background: 'none', border: 'none',
@@ -187,7 +203,7 @@ const Header = () => {
               onMouseEnter={e => e.currentTarget.style.background = '#FFF5F5'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              Sign out
+              {t('signOut')}
             </button>
           </div>
         )}

@@ -3,6 +3,8 @@ import { useSocket } from '../contexts/SocketContext';
 import GifStickerPicker from './GifStickerPicker';
 import SmartSuggestionBar from './SmartSuggestionBar';
 import PastelIcon from './PastelIcon';
+import { useToast } from './Toast';
+import { useLang } from '../i18n';
 
 const EMOJI_LIST = ['😀','😂','🥰','😍','🤩','😎','🥳','🤗','😊','😉',
   '❤️','💕','💖','💗','🌸','🌺','✨','🌟','💫','⭐',
@@ -31,6 +33,8 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const fileInputRef = useRef(null);
   const typingTimerRef = useRef(null);
   const { socket } = useSocket();
+  const { push } = useToast();
+  const { t } = useLang();
 
   useEffect(() => {
     if (replyingTo) textareaRef.current?.focus();
@@ -63,7 +67,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
-      alert('File too large. Max 8 MB.');
+      push({ icon: 'alert', title: t('feedbackFileTooLarge'), body: t('chatFileTooLarge'), tone: 'warning' });
       return;
     }
     const isImage = file.type.startsWith('image/');
@@ -100,6 +104,9 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.focus();
       }
+      push({ icon: 'check', title: t('feedbackMessageSent'), tone: 'success' });
+    } catch {
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     } finally {
       setSending(false);
     }
@@ -131,6 +138,9 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         // GIF — send as attachment with URL
         await onSend('', { type: 'gif', url, preview, previewUrl, width, height, provider, sourceId, name: name || 'GIF' });
       }
+      push({ icon: 'check', title: t('feedbackMessageSent'), tone: 'success' });
+    } catch {
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     } finally {
       setSending(false);
     }

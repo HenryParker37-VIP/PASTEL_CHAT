@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import PastelIcon from '../components/PastelIcon';
+import { useConfirm, useToast } from '../components/Toast';
 import { getPastelIdentity } from '../utils/pastelIdentity';
 
 const Friends = () => {
@@ -12,6 +13,8 @@ const Friends = () => {
   const { onlineUsers, socket } = useSocket();
   const navigate = useNavigate();
   const { t } = useLang();
+  const { push } = useToast();
+  const { confirm } = useConfirm();
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -85,7 +88,7 @@ const Friends = () => {
     try {
       await api.post('/friends/request', { friendId: targetId });
       setResults(r => r.filter(u => u._id !== targetId));
-      alert('Friend request sent!');
+      push({ icon: 'users', title: t('feedbackFriendRequestSent'), tone: 'success' });
     } catch (err) {
       setError(err.response?.data?.message || 'Could not send request');
     } finally {
@@ -98,8 +101,10 @@ const Friends = () => {
       await api.post(`/friends/accept/${reqId}`);
       loadRequests();
       loadFriends();
+      push({ icon: 'check', title: t('feedbackFriendRequestAccepted'), tone: 'success' });
     } catch {
-      setError('Accept failed');
+      setError(t('feedbackSomethingWrong'));
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     }
   };
 
@@ -107,15 +112,23 @@ const Friends = () => {
     try {
       await api.post(`/friends/decline/${reqId}`);
       loadRequests();
+      push({ icon: 'check', title: t('feedbackFriendRequestDeclined'), tone: 'info' });
     } catch {
-      setError('Decline failed');
+      setError(t('feedbackSomethingWrong'));
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     }
   };
 
   const handleRemove = async (friendId) => {
-    if (!window.confirm(t('friendsRemove'))) return;
-    await api.delete(`/friends/${friendId}`);
-    loadFriends();
+    const accepted = await confirm({ title: t('friendsRemoveTitle'), message: t('friendsRemove'), confirmLabel: t('friendsRemove'), tone: 'danger', icon: 'trash' });
+    if (!accepted) return;
+    try {
+      await api.delete(`/friends/${friendId}`);
+      loadFriends();
+      push({ icon: 'check', title: t('feedbackFriendRemoved'), tone: 'success' });
+    } catch {
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
+    }
   };
 
   const saveNickname = async (friendId) => {

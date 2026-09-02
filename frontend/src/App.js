@@ -14,8 +14,8 @@ import { broadcastResponseToMainFrame } from '@azure/msal-browser/redirect-bridg
 import { SocketProvider, useSocket } from './contexts/SocketContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { CallProvider, useCall } from './contexts/CallContext';
-import { ToastProvider, useToast } from './components/Toast';
-import { LangProvider } from './i18n';
+import { ToastProvider, ConfirmProvider, useToast } from './components/Toast';
+import { LangProvider, useLang } from './i18n';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -95,19 +95,20 @@ const GlobalSocketListener = ({ onHappyBirthday }) => {
   const { socket } = useSocket();
   const { user } = useAuth();
   const { push } = useToast();
+  const { t } = useLang();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!socket || !user) return;
     const handler = (payload) => {
       if (payload.type === 'friend_requested') {
-        push({ icon: 'users', title: 'New friend request!', body: `${payload.from?.name} wants to be friends.` });
+        push({ icon: 'users', title: t('notificationsFriendRequest'), body: t('notificationsFriendRequestBody', payload.from?.name) });
       }
       if (payload.type === 'friend_accepted') {
-        push({ icon: 'check', title: 'Request accepted!', body: `You are now friends with ${payload.from?.name}.` });
+        push({ icon: 'check', title: t('notificationsFriendAccepted'), body: t('notificationsFriendAcceptedBody', payload.from?.name) });
       }
       if (payload.type === 'new_message') {
-        push({ icon: 'chat-friends', title: `New message from ${payload.from?.name}`, body: payload.preview });
+        push({ icon: 'chat-friends', title: t('notificationsNewMessage', payload.from?.name), body: payload.preview });
       }
       if (payload.type === 'group_message') {
         push({
@@ -125,7 +126,7 @@ const GlobalSocketListener = ({ onHappyBirthday }) => {
     };
     socket.on(`notify:${user._id}`, handler);
     return () => socket.off(`notify:${user._id}`, handler);
-  }, [socket, user, push, navigate, onHappyBirthday]);
+  }, [socket, user, push, navigate, onHappyBirthday, t]);
 
   return null;
 };
@@ -278,15 +279,17 @@ const App = () => {
         <AppUpdateNotice />
         <AuthProvider>
           <ToastProvider>
-            <SocketProvider>
-              <NotificationsProvider>
-                <CallProvider>
-                  <Router>
-                    <AppRoutes />
-                  </Router>
-                </CallProvider>
-              </NotificationsProvider>
-            </SocketProvider>
+            <ConfirmProvider>
+              <SocketProvider>
+                <NotificationsProvider>
+                  <CallProvider>
+                    <Router>
+                      <AppRoutes />
+                    </Router>
+                  </CallProvider>
+                </NotificationsProvider>
+              </SocketProvider>
+            </ConfirmProvider>
           </ToastProvider>
         </AuthProvider>
       </LangProvider>

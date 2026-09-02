@@ -147,10 +147,12 @@ input, textarea {
 .slide-in-right { animation: slide-in-right 0.35s cubic-bezier(.2,.8,.2,1); }
 
 @keyframes toast-in {
-  from { transform: translateX(120%); opacity: 0; }
+  from { transform: translateX(24px) translateY(-6px); opacity: 0; }
   to   { transform: translateX(0); opacity: 1; }
 }
-.toast-in { animation: toast-in 0.4s cubic-bezier(.2,.8,.2,1); }
+.toast-in { animation: toast-in 0.24s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes toast-out { to { transform: translateX(16px); opacity: 0; } }
+.toast-out { animation: toast-out 0.16s ease-in both; }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
@@ -894,19 +896,56 @@ input, textarea {
   pointer-events: none;
 }
 .toast {
-  background: white;
-  padding: 12px 18px;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  border-left: 4px solid var(--pink);
-  max-width: 300px;
+  background: #FFF8F3;
+  padding: 12px 14px;
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(88, 55, 86, 0.16);
+  border: 1px solid rgba(155, 122, 194, 0.2);
+  max-width: min(340px, calc(100vw - 32px));
   pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 10px;
 }
+.toast--success { background: #EEFAF2; border-color: rgba(74, 152, 96, 0.24); color: #245C36; }
+.toast--error { background: #FFF0F3; border-color: rgba(200, 117, 117, 0.28); color: #7D3741; }
+.toast--info { background: #F6F0FF; border-color: rgba(155, 122, 194, 0.25); color: #50366C; }
+.toast--warning { background: #FFF8E8; border-color: rgba(196, 144, 56, 0.25); color: #6B4B11; }
 .toast .toast-title { font-weight: 700; font-size: 14px; margin: 0; }
-.toast .toast-body  { font-size: 13px; margin: 2px 0 0; color: #666; }
+.toast .toast-body  { font-size: 13px; margin: 2px 0 0; color: currentColor; opacity: 0.8; }
+
+.feedback-backdrop {
+  position: fixed; inset: 0; z-index: 11000; padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(51, 38, 67, 0.35); backdrop-filter: blur(4px);
+  animation: backdropIn 0.2s ease both;
+}
+.feedback-backdrop--out { animation: backdropOut 0.18s ease both; }
+.feedback-modal {
+  width: min(400px, 100%); padding: 24px; border-radius: 24px;
+  background: #FFFDF9; border: 1px solid rgba(221, 160, 221, 0.32);
+  box-shadow: 0 22px 54px rgba(64, 40, 76, 0.25);
+  animation: modalIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.feedback-modal--out { animation: modalOut 0.18s ease-in both; }
+.feedback-modal__icon { width: 44px; height: 44px; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; background: #F4EAFE; color: #8A62A8; margin-bottom: 14px; }
+.feedback-modal--danger .feedback-modal__icon { background: #FFF0F3; color: #B95F6E; }
+.feedback-modal__content h2 { margin: 0; color: var(--text); font-size: 19px; line-height: 1.25; }
+.feedback-modal__content p { margin: 8px 0 0; color: var(--subtext); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.feedback-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.feedback-modal__confirm { min-height: 42px; padding-inline: 16px; background: #B88AD1; color: #fff; }
+.feedback-modal__confirm--danger { background: #D77A88; }
+.feedback-modal__confirm:focus-visible, .feedback-modal__actions .btn:focus-visible { outline: 3px solid rgba(138, 98, 168, 0.32); outline-offset: 2px; }
+@media (max-width: 480px) {
+  .toast-stack { top: calc(12px + env(safe-area-inset-top)); right: 12px; left: 12px; }
+  .toast { max-width: none; }
+  .feedback-modal { padding: 22px 18px 18px; border-radius: 22px; }
+  .feedback-modal__actions { flex-direction: column-reverse; }
+  .feedback-modal__actions .btn { width: 100%; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-in, .toast-out, .feedback-backdrop, .feedback-backdrop--out, .feedback-modal, .feedback-modal--out { animation-duration: 0.01ms !important; }
+}
 
 /* ---------- Media preview in input ---------- */
 

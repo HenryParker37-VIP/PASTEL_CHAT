@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import PastelIcon from './PastelIcon';
+import { useToast } from './Toast';
 
 const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
   const { user } = useAuth();
   const { t } = useLang();
+  const { push } = useToast();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -19,7 +20,7 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
+      push({ icon: 'alert', title: t('feedbackPhotoTooLarge'), tone: 'warning' });
       return;
     }
 
@@ -49,9 +50,10 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
       setPreview(null);
       setSharedWith([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      push({ icon: 'check', title: t('feedbackPhotoUploaded'), tone: 'success' });
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload photo');
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     } finally {
       setUploading(false);
     }
@@ -101,7 +103,7 @@ const PhotoFeed = ({ photos, friends, onUpload, loading }) => {
             >
               <img
                 src={photo.imageUrl}
-                alt="Shared photo"
+                alt="Shared memory"
                 style={{
                   width: '100%',
                   height: '100%',

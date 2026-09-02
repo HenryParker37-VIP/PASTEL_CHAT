@@ -1,9 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import PastelIcon from './PastelIcon';
+import { useToast } from './Toast';
+import { useLang } from '../i18n';
 
 const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
   const { socket } = useSocket();
+  const { push } = useToast();
+  const { t } = useLang();
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [caption, setCaption] = useState('');
@@ -22,7 +26,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
     if (!preview || !socket || uploading) return;
     const sizeBytes = Math.round((preview.length * 3) / 4);
     if (sizeBytes > 5 * 1024 * 1024) {
-      alert('Photo is too large (max 5 MB). Please choose a smaller image.');
+      push({ icon: 'alert', title: t('feedbackPhotoTooLarge'), tone: 'warning' });
       return;
     }
     setUploading(true);
@@ -32,6 +36,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
       setPreview(null);
       setCaption('');
       if (onPhotoShared) onPhotoShared();
+      push({ icon: 'check', title: t('feedbackPhotoUploaded'), tone: 'success' });
     }, 800);
   };
 
