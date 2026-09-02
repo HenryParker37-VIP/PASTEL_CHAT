@@ -14,6 +14,14 @@
   --border: #EEE0D8;
   --subtext: #888888;
   --search-bg: #F7F0FA;
+  /* Shared PastelChat home identity; responsive rules reuse these values. */
+  --home-tile-profile: linear-gradient(135deg, #FFB6C1 0%, #FF8FA3 100%);
+  --home-tile-chat: linear-gradient(135deg, #ADD8E6 0%, #7EC8E3 100%);
+  --home-tile-groups: linear-gradient(135deg, #B0E0E6 0%, #7DC9C9 100%);
+  --home-tile-photos: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  --home-tile-myspace: linear-gradient(135deg, #DDA0DD 0%, #C07BC0 100%);
+  --home-tile-privacy: linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 100%);
+  --home-header-gradient: linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 50%, #ADD8E6 100%);
   /* Set by MobileViewportFix — keyboard height on iOS/Android */
   --keyboard-height: 0px;
   /* The actual visible viewport height, including iOS keyboard changes. */
@@ -347,8 +355,27 @@ input, textarea {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.home-desktop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: var(--home-header-gradient);
+  box-shadow: 0 8px 22px rgba(180, 150, 180, 0.14);
+}
+.home-desktop-header p { color: rgba(255,255,255,0.88); }
+.home-desktop-header p:first-child { color: #fff; }
+.home-desktop-header .btn-ghost {
+  color: #fff;
+  border-color: rgba(255,255,255,0.62);
+  background: rgba(255,255,255,0.18);
+}
+.home-desktop-header .btn-ghost:hover { background: rgba(255,255,255,0.3); }
+
 .home-tile {
-  background: white;
+  background: var(--home-tile-gradient, var(--home-tile-profile));
   border-radius: var(--radius);
   padding: 28px 22px;
   text-align: center;
@@ -357,7 +384,13 @@ input, textarea {
   transition: transform 0.25s, box-shadow 0.25s;
   border: 3px solid transparent;
 }
-.home-tile:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: 0 10px 30px rgba(180,150,180,0.25); border-color: var(--soft-pink); }
+.home-tile--profile, .home-mobile-tile--profile { --home-tile-gradient: var(--home-tile-profile); }
+.home-tile--chat, .home-mobile-tile--chat { --home-tile-gradient: var(--home-tile-chat); }
+.home-tile--groups, .home-mobile-tile--groups { --home-tile-gradient: var(--home-tile-groups); }
+.home-tile--photos, .home-mobile-tile--photos { --home-tile-gradient: var(--home-tile-photos); }
+.home-tile--myspace, .home-mobile-tile--myspace { --home-tile-gradient: var(--home-tile-myspace); }
+.home-tile--privacy, .home-mobile-tile--privacy { --home-tile-gradient: var(--home-tile-privacy); }
+.home-tile:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: 0 10px 30px rgba(180,150,180,0.25); border-color: rgba(255,255,255,0.75); }
 .home-tile-icon {
   width: 80px;
   height: 80px;
@@ -371,8 +404,8 @@ input, textarea {
   background: linear-gradient(145deg, #FFF5FA, #F3EDFF);
   box-shadow: inset 0 0 0 1px rgba(203, 152, 193, 0.22);
 }
-.home-tile h3 { margin: 0 0 8px; font-size: 20px; }
-.home-tile p  { margin: 0; color: #777; font-size: 14px; }
+.home-tile h3 { margin: 0 0 8px; font-size: 20px; color: #fff; text-shadow: 0 1px 4px rgba(70,40,80,0.18); }
+.home-tile p  { margin: 0; color: rgba(255,255,255,0.9); font-size: 14px; text-shadow: 0 1px 3px rgba(70,40,80,0.18); }
 
 /* ---------- Login ---------- */
 
@@ -1253,6 +1286,7 @@ input, textarea {
   justify-content: center;
   gap: 8px;
   padding: 22px 12px 18px;
+  background: var(--home-tile-gradient, var(--home-tile-profile));
   border-radius: 24px;
   border: none;
   cursor: pointer;
@@ -1453,7 +1487,6 @@ body.dark {
 }
 
 body.dark .card,
-body.dark .home-tile,
 body.dark .login-card,
 body.dark .msg-toolbar,
 body.dark .reaction-picker,
@@ -1548,8 +1581,8 @@ body.dark .emoji-picker {
 body.dark .reply-bar { background: rgba(221,160,221,0.08); }
 body.dark .reply-bar-text { color: #9A8ABE; }
 
-body.dark .home-tile p { color: #9A8ABE; }
-body.dark .home-tile:hover { border-color: #4A3868; }
+body.dark .home-tile p { color: rgba(255,255,255,0.9); }
+body.dark .home-tile:hover { border-color: rgba(255,255,255,0.78); }
 
 body.dark .reply-preview { background: rgba(255,255,255,0.08); }
 body.dark .msg-bubble-v2.theirs .reply-preview { background: rgba(255,182,193,0.08); }
