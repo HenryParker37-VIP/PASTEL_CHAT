@@ -65,7 +65,7 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   }).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
   const chosen = [];
   const packCounts = new Map();
-  const curated = { greeting: 'pastel-bunny-final-01', affection: 'pastel-bunny-final-03', sleep: 'pastel-bunny-final-12', joy: 'pastel-bunny-final-16', sadness: 'pastel-bunny-final-09', surprise: 'pastel-bunny-final-15', approval: 'pastel-bunny-final-06' };
+  const curated = { greeting: 'tiny-duck-chaos-10', affection: 'sheepy-sweet-love-04', sleep: 'bunny-english-vibes-06', joy: 'bunny-english-vibes-01', sadness: 'cloud-bear-care-new-01', surprise: 'tiny-duck-chaos-16', approval: 'tiny-duck-chaos-09' };
   for (const concept of analysis.concepts) {
     const item = stickers.find(candidate => candidate.id === curated[concept.id]);
     if (item && ranked.some(candidate => candidate.item.id === item.id) && !chosen.includes(item)) {
@@ -74,7 +74,7 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
     }
   }
   const celebratoryBunny = analysis.concepts.some(concept => concept.id === 'joy') && /\b(yay|let'?s go|gooo)\b/i.test(analysis.normalized)
-    ? stickers.find(item => item.id === 'pastel-bunny-final-05') : null;
+    ? stickers.find(item => item.id === 'bunny-english-vibes-02') : null;
   if (celebratoryBunny) {
     chosen.push(celebratoryBunny);
     packCounts.set(celebratoryBunny.pack, 1);
