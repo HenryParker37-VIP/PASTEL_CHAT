@@ -4,7 +4,7 @@ import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 import PastelIcon from './PastelIcon';
 
-const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId }) => {
+const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId, conversationIdentity }) => {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -82,6 +82,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
             onRecall={onRecall}
             onReaction={onReaction}
             highlight={highlightId === item.id}
+            conversationIdentity={conversationIdentity}
           />
         );
       })}

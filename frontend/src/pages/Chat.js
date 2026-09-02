@@ -9,7 +9,7 @@ import OnlineUsers from '../components/OnlineUsers';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
-import { getPastelIdentity } from '../utils/pastelIdentity';
+import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 
 const isMobile = () => window.innerWidth <= 700;
 
@@ -26,7 +26,29 @@ const Chat = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile());
+  const [chatColor, setChatColor] = useState(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const typingRef = useRef({});
+  const colorPickerRef = useRef(null);
+
+  const chatColorStorageKey = user?._id && friendId ? `pastel-chat-color:${user._id}:${friendId}` : null;
+
+  useEffect(() => {
+    if (!chatColorStorageKey) {
+      setChatColor(null);
+      return;
+    }
+    setChatColor(localStorage.getItem(chatColorStorageKey) || null);
+  }, [chatColorStorageKey]);
+
+  useEffect(() => {
+    if (!colorPickerOpen) return undefined;
+    const handlePointerDown = (event) => {
+      if (!colorPickerRef.current?.contains(event.target)) setColorPickerOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [colorPickerOpen]);
 
   // Search state
   const [profileOpen, setProfileOpen] = useState(false);
@@ -242,7 +264,19 @@ const Chat = () => {
     new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const friendIdentity = getPastelIdentity(friendId);
+  const friendIdentity = getPastelColor(chatColor) || getPastelColor(friend?.chatColor) || getPastelIdentity(friendId);
+
+  const selectChatColor = (colorId) => {
+    setChatColor(colorId);
+    if (chatColorStorageKey) localStorage.setItem(chatColorStorageKey, colorId);
+    setColorPickerOpen(false);
+  };
+
+  const resetChatColor = () => {
+    setChatColor(null);
+    if (chatColorStorageKey) localStorage.removeItem(chatColorStorageKey);
+    setColorPickerOpen(false);
+  };
 
   return (
     <div style={{
@@ -360,7 +394,7 @@ const Chat = () => {
                 </div>
 
                 {/* Action buttons */}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                <div ref={colorPickerRef} style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', position: 'relative' }}>
                   {/* Search toggle */}
                   <button
                     onClick={() => setSearchOpen(v => !v)}
@@ -407,6 +441,56 @@ const Chat = () => {
                     onMouseEnter={e => !activeCall && (e.currentTarget.style.transform = 'scale(1.1)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
                   ><PastelIcon name="video" size={17} /></button>
+                  <button
+                    type="button"
+                    onClick={() => setColorPickerOpen(v => !v)}
+                    title="Change chat color"
+                    aria-label="Change chat color"
+                    aria-expanded={colorPickerOpen}
+                    style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: friendIdentity.soft,
+                      color: friendIdentity.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: 'none', cursor: 'pointer',
+                      boxShadow: `0 2px 6px ${friendIdentity.accent}44`,
+                      transition: 'transform 0.15s, background 0.2s'
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                  ><PastelIcon name="palette" size={17} /></button>
+
+                  {colorPickerOpen && (
+                    <div role="dialog" aria-label="Choose chat color" style={{
+                      position: 'absolute', top: 42, right: 0, zIndex: 30,
+                      width: 224, padding: 12, borderRadius: 16,
+                      background: 'var(--card-bg)', border: '1px solid var(--border)',
+                      boxShadow: '0 10px 28px rgba(80,50,70,0.18)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Chat color</span>
+                        <button type="button" onClick={resetChatColor} style={{ border: 0, background: 'none', color: 'var(--subtext)', fontSize: 11, cursor: 'pointer', padding: 2 }}>Auto</button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 9 }}>
+                        {PASTEL_IDENTITY_PALETTE.map((color) => (
+                          <button
+                            key={color.id}
+                            type="button"
+                            title={color.label}
+                            aria-label={color.label}
+                            aria-pressed={chatColor === color.id}
+                            onClick={() => selectChatColor(color.id)}
+                            style={{
+                              width: 28, height: 28, borderRadius: '50%', background: color.bubble,
+                              border: chatColor === color.id ? `3px solid ${color.accent}` : '2px solid transparent',
+                              boxShadow: chatColor === color.id ? `0 0 0 3px ${color.soft}` : '0 1px 4px rgba(80,50,70,0.14)',
+                              cursor: 'pointer', padding: 0
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -544,6 +628,7 @@ const Chat = () => {
             onRecall={handleRecall}
             onReaction={handleReaction}
             highlightId={highlightId}
+            conversationIdentity={friendIdentity}
           />
 
           <MessageInput

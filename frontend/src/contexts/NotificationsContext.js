@@ -14,6 +14,15 @@ const notificationCopy = (payload) => {
   return null;
 };
 
+const notificationRoute = (payload) => {
+  if (payload.data?.route) return payload.data.route;
+  if (payload.route) return payload.route;
+  if (payload.type === 'new_message' && payload.from?._id) return `/chat/${payload.from._id}`;
+  if (payload.type === 'friend_requested' || payload.type === 'friend_accepted' || payload.type === 'friend_request') return '/friends';
+  if ((payload.type === 'group_message' || payload.type === 'group_created' || payload.type === 'group_invited') && payload.groupId) return `/group/${payload.groupId}`;
+  return null;
+};
+
 export const NotificationsProvider = ({ children }) => {
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -50,7 +59,7 @@ export const NotificationsProvider = ({ children }) => {
         title: copy.title,
         body: copy.body,
         from: payload.from || null,
-        data: { ...payload },
+        data: { ...payload, route: notificationRoute(payload) },
         read: false,
         createdAt: new Date().toISOString()
       };

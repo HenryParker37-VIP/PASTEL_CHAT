@@ -77,7 +77,10 @@ const Notifications = () => {
 
   const openNotification = async (item) => {
     await markRead(item._id);
-    const route = item.data?.route;
+    const route = item.data?.route
+      || (item.type === 'new_message' && item.from?._id ? `/chat/${item.from._id}` : null)
+      || (['friend_requested', 'friend_accepted', 'friend_request'].includes(item.type) ? '/friends' : null)
+      || ((['group_message', 'group_created', 'group_invited'].includes(item.type) && (item.data?.groupId || item.groupId)) ? `/group/${item.data?.groupId || item.groupId}` : null);
     if (route) navigate(route);
   };
 
@@ -146,7 +149,7 @@ const Notifications = () => {
                   display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
                   border: 'none', borderRadius: 14,
                   background: item.read ? 'var(--card-bg)' : identity.soft,
-                  boxShadow: `inset 3px 0 0 ${identity.accent}, 0 3px 12px rgba(180, 150, 180, 0.08)`, textAlign: 'left', cursor: item.data?.route ? 'pointer' : 'default',
+                  boxShadow: `inset 3px 0 0 ${identity.accent}, 0 3px 12px rgba(180, 150, 180, 0.08)`, textAlign: 'left', cursor: 'pointer',
                   color: 'var(--text)'
                 }}
               >
