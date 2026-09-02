@@ -307,13 +307,17 @@ const ARCHIVED_LEGACY_SEED_PACKS = [
 // the API manifest aligned so old emoji packs cannot reappear through a direct
 // API call or the new-user defaults path.
 const ACTIVE_PACKS = [
-  ['bunny-english-vibes', 'Bunny English Vibes', 'English-first bunny reactions for everyday feelings.', ['bunny', 'english', 'feelings']],
-  ['cloud-bear-care-new', 'Cloud Bear Care', 'Soft English care messages for comfort and encouragement.', ['bear', 'care', 'support']],
-  ['peach-kitty-mood', 'Peach Kitty Mood', 'Peachy kitty moods for work, reactions, and affection.', ['kitty', 'moods', 'cozy']],
-  ['tiny-duck-chaos', 'Tiny Duck Chaos', 'Bright little duck reactions for playful chat moments.', ['duck', 'fun', 'reactions']],
-  ['sheepy-sweet-love', 'Sheepy Sweet Love', 'Warm sheepy messages for closeness and care.', ['sheep', 'love', 'cozy']],
-].map(([slug, name, description, tags], packIndex) => ({
-  slug, name, nameVi: name, description, tags, order: packIndex + 1,
+  ['pastel-daily-feelings', 'Pastel Daily Feelings', 'Cảm Xúc Hằng Ngày', ['feelings', 'moods', 'daily']],
+  ['pastel-sleepy-chill', 'Pastel Sleepy & Chill', 'Ngủ Nghỉ & Thư Giãn', ['sleep', 'chill', 'cozy']],
+  ['pastel-love-affection', 'Pastel Love & Affection', 'Yêu Thương & Tình Cảm', ['love', 'affection', 'hearts']],
+  ['pastel-study-work', 'Pastel Study & Work', 'Học Hành & Công Việc', ['study', 'work', 'motivation']],
+  ['pastel-thanks-sorry', 'Pastel Thanks & Sorry', 'Cảm Ơn & Xin Lỗi', ['thanks', 'sorry', 'care']],
+  ['pastel-foodie-moments', 'Pastel Foodie Moments', 'Đồ Ăn & Thức Uống', ['food', 'drinks', 'hungry']],
+  ['pastel-fun-lifestyle', 'Pastel Fun & Lifestyle', 'Đi Chơi & Cuộc Sống', ['fun', 'lifestyle', 'outings']],
+  ['pastel-cute-animals', 'Pastel Cute Animals', 'Động Vật Siêu Cute', ['animals', 'cute', 'friends']],
+  ['pastel-ultimate-reactions', 'Pastel Ultimate Reactions', 'Reaction Siêu Đỉnh', ['reactions', 'shock', 'fun']],
+].map(([slug, name, nameVi, description, tags], packIndex) => ({
+  slug, name, nameVi, description, tags, order: packIndex + 1,
   cover: `/stickers/source-packs/${slug}/cover.png`,
   stickers: Array.from({ length: 16 }, (_, index) => {
     const number = String(index + 1).padStart(2, '0');

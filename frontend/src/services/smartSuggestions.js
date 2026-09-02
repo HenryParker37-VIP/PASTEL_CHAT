@@ -13,7 +13,7 @@ const CONCEPTS = [
   ['sadness', ['buồn quá', 'sad', 'tired', 'so tired', 'mệt quá', 'bored', 'so bored', 'crying', ...SMART_SUGGESTION_TRIGGERS.crying, ...SMART_SUGGESTION_TRIGGERS.sadness, ...SMART_SUGGESTION_TRIGGERS.tired], 'sadness', 'sadness', 'comfort hug reaction'],
   ['anger', ['tức', 'angry', 'mad', 'bực', 'giận', 'vl'], 'anger', 'anger', 'angry reaction'],
   ['praise', ['m giỏi quá', 'proud of you', 'you are great', 'giỏi quá', 'proud', 'vỗ tay'], 'admiration', 'praise', 'proud celebration reaction'],
-  ['food', ['đi ăn', 'eat', 'food', 'lunch', 'dinner'], 'joy', 'food', 'food excited reaction'],
+  ['food', ['đi ăn', 'eat', 'food', 'lunch', 'dinner', 'pizza', 'burger', 'fries', 'cake', 'coffee', 'snack'], 'joy', 'food', 'food excited reaction'],
   ['greeting', ['xin chào', 'chào nha', 'chào', 'hello', 'hi', 'hey', 'good morning', 'welcome', 'welcome back'], 'joy', 'greeting', 'cute hello wave'],
   ['farewell', ['tạm biệt', 'bye bye', 'good bye', 'goodbye', 'see you', 'see ya', 'take care', 'bye'], 'calm', 'farewell', 'cute goodbye wave'],
   ['approval', ['ok', 'okay', 'good', 'nice', 'no problem', 'được', 'chuẩn', ...SMART_SUGGESTION_TRIGGERS.approval], 'approval', 'approval', 'thumbs up reaction'],
@@ -65,7 +65,7 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   }).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
   const chosen = [];
   const packCounts = new Map();
-  const curated = { greeting: 'tiny-duck-chaos-10', affection: 'sheepy-sweet-love-04', sleep: 'bunny-english-vibes-06', joy: 'bunny-english-vibes-01', sadness: 'cloud-bear-care-new-01', surprise: 'tiny-duck-chaos-16', approval: 'tiny-duck-chaos-09' };
+  const curated = { greeting: 'pastel-fun-lifestyle-01', affection: 'pastel-love-affection-08', sleep: 'pastel-sleepy-chill-03', joy: 'pastel-fun-lifestyle-03', sadness: 'pastel-daily-feelings-01', surprise: 'pastel-ultimate-reactions-03', approval: 'pastel-daily-feelings-16' };
   for (const concept of analysis.concepts) {
     const item = stickers.find(candidate => candidate.id === curated[concept.id]);
     if (item && ranked.some(candidate => candidate.item.id === item.id) && !chosen.includes(item)) {
@@ -74,7 +74,7 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
     }
   }
   const celebratoryBunny = analysis.concepts.some(concept => concept.id === 'joy') && /\b(yay|let'?s go|gooo)\b/i.test(analysis.normalized)
-    ? stickers.find(item => item.id === 'bunny-english-vibes-02') : null;
+    ? stickers.find(item => item.id === 'pastel-fun-lifestyle-03') : null;
   if (celebratoryBunny) {
     chosen.push(celebratoryBunny);
     packCounts.set(celebratoryBunny.pack, 1);
