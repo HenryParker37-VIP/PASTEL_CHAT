@@ -375,6 +375,11 @@ input, textarea {
 }
 .home-desktop-header .btn-ghost:hover { background: rgba(255,255,255,0.3); }
 
+.home-tile-entry {
+  min-width: 0;
+  height: 100%;
+}
+
 .home-tile {
   background: var(--home-tile-gradient, var(--home-tile-profile));
   border-radius: var(--radius);
@@ -384,6 +389,7 @@ input, textarea {
   cursor: pointer;
   transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.24s ease, border-color 0.24s ease;
   border: 3px solid transparent;
+  height: 100%;
   transform-origin: center center;
   backface-visibility: hidden;
 }
@@ -408,7 +414,6 @@ input, textarea {
 
 @media (hover: hover) and (pointer: fine) {
   .home-tile:hover {
-    animation: none;
     transform: translateY(-6px) scale(1.015) rotateX(1.5deg) rotateY(-1.5deg);
     box-shadow: 0 14px 34px rgba(180,150,180,0.28), 0 4px 10px rgba(180,150,180,0.12);
     border-color: rgba(255,255,255,0.75);
