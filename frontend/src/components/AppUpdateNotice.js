@@ -5,7 +5,7 @@ import api from '../services/api';
 import { CURRENT_APP_VERSION, compareVersions } from '../releaseVersion';
 
 const AppUpdateNotice = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [registration, setRegistration] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [latestRelease, setLatestRelease] = useState(null);
@@ -23,7 +23,7 @@ const AppUpdateNotice = () => {
   if (!registration) return null;
 
   const hasReleaseUpdate = latestRelease && compareVersions(latestRelease.version, CURRENT_APP_VERSION) > 0;
-  const summaryItems = latestRelease ? [...(latestRelease.features || []), ...(latestRelease.fixes || [])].slice(0, 3) : [];
+  const summaryItems = latestRelease ? [...(lang === 'vi' ? (latestRelease.featuresVi || latestRelease.features || []) : (latestRelease.features || [])), ...(lang === 'vi' ? (latestRelease.fixesVi || latestRelease.fixes || []) : (latestRelease.fixes || []))].slice(0, 3) : [];
 
   const refreshApp = () => {
     if (refreshing) return;
