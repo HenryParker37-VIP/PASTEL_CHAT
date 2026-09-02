@@ -94,7 +94,9 @@ const setupSocket = (io) => {
         if (!original || ![original.senderId, original.receiverId].includes(user._id) || ![original.senderId, original.receiverId].includes(to)) return;
       }
       let validMedia = null;
-      if (media && media.dataUrl && media.name) {
+      if (media?.type === 'sticker' && media?.imageUrl) {
+        validMedia = { type: 'sticker', stickerId: media.stickerId ? String(media.stickerId).slice(0, 100) : null, imageUrl: String(media.imageUrl).slice(0, 2000), name: media.name ? String(media.name).slice(0, 200) : 'Sticker' };
+      } else if (media && media.dataUrl && media.name) {
         const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
         if (sizeBytes <= 8 * 1024 * 1024) {
           validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sizeBytes };
@@ -185,7 +187,9 @@ const setupSocket = (io) => {
       if (!group || !group.members.includes(user._id)) return;
       if ((!content || !content.trim()) && !media) return;
       let validMedia = null;
-      if (media?.dataUrl && media?.name) {
+      if (media?.type === 'sticker' && media?.imageUrl) {
+        validMedia = { type: 'sticker', stickerId: media.stickerId ? String(media.stickerId).slice(0, 100) : null, imageUrl: String(media.imageUrl).slice(0, 2000), name: media.name ? String(media.name).slice(0, 200) : 'Sticker' };
+      } else if (media?.dataUrl && media?.name) {
         const sz = Math.round((media.dataUrl.length * 3) / 4);
         if (sz <= 8 * 1024 * 1024) validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sz };
       }
