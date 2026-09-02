@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const jwt = require('jsonwebtoken');
 const { findUserById, store, persist, genId } = require('../db/store');
 
 // ── Helper function to convert emoji to OpenMoji CDN URL ────────────────────
@@ -313,14 +312,13 @@ if (!store.userStickerPacks) {
 }
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
-const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
+const { authenticateToken } = require('../services/sessionAuth');
 
 function getUser(req) {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return null;
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return findUserById(decoded.userId || decoded.id);
+    return authenticateToken(token)?.user || null;
   } catch { return null; }
 }
 

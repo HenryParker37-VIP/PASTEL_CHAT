@@ -6,11 +6,12 @@ import { LOCAL_STICKER_PACKS, LOCAL_STICKERS } from '../data/stickerPacks';
 import { getRecentStickerIds, getFavoriteStickerIds, recordRecentSticker, toggleFavoriteSticker } from '../services/stickerPreferences';
 import { getSmartSuggestions } from '../services/smartSuggestions';
 
-const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || 'UdbjLjW3ybC1o4BljzlKM3zijH4VA9vj';
+const GIPHY_KEY = process.env.REACT_APP_GIPHY_API_KEY || '';
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
 const LIMIT = 20;
 
 async function fetchGiphy(endpoint, params = {}, signal) {
+  if (!GIPHY_KEY) throw new Error('GIF service is not configured');
   const url = new URL(`${GIPHY_BASE}${endpoint}`);
   url.searchParams.set('api_key', GIPHY_KEY); url.searchParams.set('limit', LIMIT); url.searchParams.set('rating', 'pg');
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));

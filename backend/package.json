@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "test": "node test/pushService.test.js && node test/pushRoutes.test.js && node test/release.test.js && node test/version.test.js"
+    "test": "node test/pushService.test.js && node test/pushRoutes.test.js && node test/release.test.js && node test/version.test.js && node test/security.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

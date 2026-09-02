@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const fetch = require('node-fetch');
 const {
@@ -11,26 +11,32 @@ const {
   createUser,
   updateUser,
   generateLoginCode,
-  userPublic
+  userPublic,
+  createAuditLog,
+  revokeSession
 } = require('../db/store');
 const authMiddleware = require('../middleware/auth');
+const rateLimit = require('../middleware/rateLimit');
+const { createUserToken } = require('../services/sessionAuth');
 
 // Public client ID — not a secret, safe to hardcode. Must match frontend REACT_APP_GOOGLE_CLIENT_ID.
 const GOOGLE_CLIENT_ID = '803433790062-2dmhg2du471q65q2biheuli604b31vgv.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
-
 function defaultAvatar(seed) {
   const safe = encodeURIComponent((seed || 'guest').toLowerCase().trim());
   return `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${safe}&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50`;
 }
-function issueToken(user) {
-  return jwt.sign({ userId: user._id, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
+function issueToken(user) { return createUserToken(user); }
+
+function sameSecret(left, right) {
+  const a = Buffer.from(String(left || ''));
+  const b = Buffer.from(String(right || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 // POST /auth/register - Create new user, return unique login code + JWT
-router.post('/register', (req, res) => {
+router.post('/register', rateLimit({ name: 'auth-register', max: 10 }), (req, res) => {
   try {
     const { name } = req.body;
     const trimmed = (name || '').trim();
@@ -48,7 +54,7 @@ router.post('/register', (req, res) => {
 
     res.json({
       token: issueToken(user),
-      user: { ...userPublic(user), loginCode: user.loginCode }
+      user: { ...userPublic(user), loginCode: user.loginCode, isAdmin: user.isAdmin === true }
     });
   } catch (error) {
     console.error('[Auth] Register error:', error.message);
@@ -57,7 +63,7 @@ router.post('/register', (req, res) => {
 });
 
 // POST /auth/login - Login with code
-router.post('/login', (req, res) => {
+router.post('/login', rateLimit({ name: 'auth-login', max: 12 }), (req, res) => {
   try {
     const { loginCode } = req.body;
     let code = (loginCode || '').trim().toUpperCase();
@@ -69,35 +75,29 @@ router.post('/login', (req, res) => {
 
     if (!code) return res.status(400).json({ message: 'Login code is required' });
 
-    // Check for admin bypass code
-    if (code === 'ADMN-0307') {
-      // Create or return admin user
-      let adminUser = findUser({ loginCode: 'ADMN-0307' });
-      if (!adminUser) {
-        adminUser = createUser({
-          name: 'Admin',
-          loginCode: 'ADMN-0307',
-          isAdmin: true,
-          avatar: defaultAvatar('Admin')
-        });
-      }
-      return res.json({
-        token: issueToken(adminUser),
-        user: { ...userPublic(adminUser), loginCode: adminUser.loginCode, isAdmin: true }
-      });
-    }
-
     const user = findUser({ loginCode: code });
     if (!user) return res.status(401).json({ message: 'Invalid login code' });
+    if (user.isAdmin && (!process.env.ADMIN_LOGIN_CODE || !sameSecret(code, process.env.ADMIN_LOGIN_CODE.trim().toUpperCase()))) {
+      return res.status(401).json({ message: 'Invalid login code' });
+    }
+    if (user.isSuspended) return res.status(403).json({ message: 'This account is suspended' });
+
+    if (user.isAdmin) createAuditLog({ adminId: user._id, action: 'admin_login', targetType: 'admin', targetId: user._id, metadata: { method: 'login_code' } });
 
     res.json({
       token: issueToken(user),
-      user: { ...userPublic(user), loginCode: user.loginCode }
+      user: { ...userPublic(user), loginCode: user.loginCode, isAdmin: user.isAdmin === true }
     });
   } catch (error) {
     console.error('[Auth] Login error:', error.message);
     res.status(500).json({ message: 'Login failed' });
   }
+});
+
+router.post('/logout', authMiddleware, (req, res) => {
+  revokeSession(req.session._id);
+  updateUser(req.user._id, { isOnline: false, lastSeen: new Date().toISOString() });
+  res.json({ ok: true });
 });
 
 // GET /auth/check-name?name=xxx - Check if nickname is available
@@ -127,22 +127,19 @@ router.post('/update-name', authMiddleware, (req, res) => {
 
 // GET /auth/me - Return current user (with login code for reminder)
 router.get('/me', authMiddleware, (req, res) => {
-  res.json({ ...userPublic(req.user), loginCode: req.user.loginCode });
+  res.json({ ...userPublic(req.user), loginCode: req.user.loginCode, isAdmin: req.user.isAdmin === true });
 });
 
 // POST /auth/google - Sign in or register via Google OAuth
-router.post('/google', async (req, res) => {
+router.post('/google', rateLimit({ name: 'auth-google', max: 10 }), async (req, res) => {
   try {
     const { token } = req.body;
-    console.log('[OAuth] /auth/google called, token length:', token?.length ?? 'MISSING');
-    console.log('[OAuth] Using GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID?.slice(0, 20) + '...');
     if (!token) return res.status(400).json({ message: 'Google token required' });
 
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     });
-    console.log('[OAuth] Token verified OK');
     const payload = ticket.getPayload();
     const googleId = payload.sub;
     const googleEmail = payload.email;
@@ -179,6 +176,8 @@ router.post('/google', async (req, res) => {
       }
     }
 
+    if (user.isSuspended) return res.status(403).json({ message: 'This account is suspended' });
+
     res.json({
       token: issueToken(user),
       user: { ...userPublic(user), loginCode: user.loginCode },
@@ -186,12 +185,12 @@ router.post('/google', async (req, res) => {
     });
   } catch (error) {
     console.error('[OAuth] Google login error:', error.message);
-    res.status(401).json({ message: 'Google authentication failed', detail: error.message });
+    res.status(401).json({ message: 'Google authentication failed' });
   }
 });
 
 // POST /auth/microsoft - Sign in or register via Microsoft OAuth
-router.post('/microsoft', async (req, res) => {
+router.post('/microsoft', rateLimit({ name: 'auth-microsoft', max: 10 }), async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return res.status(400).json({ message: 'Microsoft token required' });
@@ -230,13 +229,15 @@ router.post('/microsoft', async (req, res) => {
       user = updateUser(user._id, { microsoftId, loginMethod: 'microsoft' });
     }
 
+    if (user.isSuspended) return res.status(403).json({ message: 'This account is suspended' });
+
     res.json({
       token: issueToken(user),
       user: { ...userPublic(user), loginCode: user.loginCode },
     });
   } catch (error) {
     console.error('[OAuth] Microsoft login error:', error.message);
-    res.status(401).json({ message: 'Microsoft authentication failed', detail: error.message });
+    res.status(401).json({ message: 'Microsoft authentication failed' });
   }
 });
 

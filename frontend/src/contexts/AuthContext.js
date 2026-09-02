@@ -171,9 +171,8 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Cannot reach the server. Check your connection.' };
       }
       const msg = err.response?.data?.message || 'Google sign-in failed. Please try again.';
-      const detail = err.response?.data?.detail;
-      console.error('[Auth] Google error:', msg, detail || '');
-      return { success: false, error: detail ? `${msg}: ${detail}` : msg };
+      console.error('[Auth] Google error:', msg);
+      return { success: false, error: msg };
     }
   };
 
@@ -188,13 +187,13 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Cannot reach the server. Check your connection.' };
       }
       const msg = err.response?.data?.message || 'Microsoft sign-in failed. Please try again.';
-      const detail = err.response?.data?.detail;
-      console.error('[Auth] Microsoft error:', msg, detail || '');
-      return { success: false, error: detail ? `${msg}: ${detail}` : msg };
+      console.error('[Auth] Microsoft error:', msg);
+      return { success: false, error: msg };
     }
   };
 
   const logout = () => {
+    api.post('/auth/logout').catch(() => {});
     unsubscribeFromPush().catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');

@@ -21,11 +21,16 @@ const adminReleaseRoutes = require('./routes/admin-releases');
 const stickerRoutes = require('./routes/stickers');
 const webrtcRoutes = require('./routes/webrtc');
 const setupSocket = require('./socket');
+const securityHeaders = require('./middleware/security');
+const rateLimit = require('./middleware/rateLimit');
+const { assertAuthConfigured } = require('./config/auth');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
 const { appVersion, buildId, deployedAt } = require('./version');
 
 const app = express();
 const server = http.createServer(app);
+app.set('trust proxy', 1);
+if (process.env.NODE_ENV === 'production') assertAuthConfigured();
 
 // The frontend is deployed both on Vercel and alongside this Render web service.
 // Keep this an explicit production allowlist: OAuth POST requests carry an Origin
@@ -44,8 +49,8 @@ for (const origin of productionOrigins) {
 }
 
 function corsOrigin(origin, callback) {
-  if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
-  callback(new Error(`CORS origin not allowed: ${origin}`));
+  if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+  callback(new Error('CORS origin not allowed'));
 }
 
 const io = new Server(server, {
@@ -53,7 +58,8 @@ const io = new Server(server, {
 });
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
+app.use(securityHeaders);
+app.use(express.json({ limit: '10mb', parameterLimit: 1000 }));
 app.set('io', io);
 
 // Serve frontend static files
@@ -82,13 +88,13 @@ if (frontendBuildPath) {
 
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
-app.use('/friends', friendRoutes);
-app.use('/messages', messageRoutes);
-app.use('/groups', groupRoutes);
-app.use('/private-space', privateSpaceRoutes);
+app.use('/friends', rateLimit({ name: 'friends', windowMs: 60_000, max: 120 }), friendRoutes);
+app.use('/messages', rateLimit({ name: 'messages', windowMs: 60_000, max: 180 }), messageRoutes);
+app.use('/groups', rateLimit({ name: 'groups', windowMs: 60_000, max: 120 }), groupRoutes);
+app.use('/private-space', rateLimit({ name: 'private-space', windowMs: 60_000, max: 120 }), privateSpaceRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/admin', adminRoutes);
-app.use('/push', pushRoutes);
+app.use('/push', rateLimit({ name: 'push', windowMs: 60_000, max: 60 }), pushRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/releases', releaseRoutes);
 app.use('/admin/releases', adminReleaseRoutes);
@@ -106,6 +112,14 @@ app.get('/api/version', (_, res) => {
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
   res.json({ version: appVersion, buildId, deployedAt });
+});
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error.type === 'entity.parse.failed') return res.status(400).json({ message: 'Invalid request body' });
+  if (error.message === 'CORS origin not allowed') return res.status(403).json({ message: 'Origin not allowed' });
+  console.error('[Server] Request error:', error.message);
+  return res.status(500).json({ message: 'Request failed' });
 });
 
 // Fallback to index.html for client-side routing

@@ -28,7 +28,11 @@ const store = {
   sharedPhotos: [], // { _id, dataUrl, caption, uploadedBy: {_id,name,avatar}, createdAt }
   pushSubscriptions: [], // { userId, subscriptions: [PushSubscription, ...] }
   notifications: [], // { _id, userId, type, title, body, from, data, read, createdAt }
-  releases: [] // { _id, version, title, summary, features, fixes, improvements, releasedAt, important, pushEnabled }
+  releases: [], // { _id, version, title, summary, features, fixes, improvements, releasedAt, important, pushEnabled }
+  sessions: [], // { _id, userId, createdAt, lastUsedAt, expiresAt, revokedAt }
+  reports: [], // { _id, reporterId, reportedUserId, entityType, entityId, category, description, evidence, status, adminNotes, resolution, createdAt, updatedAt }
+  announcements: [], // { _id, title, body, scope, pushEnabled, createdBy, createdAt }
+  auditLogs: [] // append-only administrative/security events
 };
 
 function load() {
@@ -48,18 +52,31 @@ function load() {
       store.pushSubscriptions = loaded.pushSubscriptions || [];
       store.notifications = loaded.notifications || [];
       store.releases = loaded.releases || [];
+      store.sessions = loaded.sessions || [];
+      store.reports = loaded.reports || [];
+      store.announcements = loaded.announcements || [];
+      store.auditLogs = loaded.auditLogs || [];
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
     }
     
-    // Automatically bootstrap the Admin user (idempotent)
-    if (!store.users.find(u => u.loginCode === 'ADMN-0307')) {
+    // Bootstrap or migrate the admin identity only when an operator explicitly
+    // supplies ADMIN_LOGIN_CODE. Never keep a master login code in source.
+    const configuredAdminCode = String(process.env.ADMIN_LOGIN_CODE || '').trim().toUpperCase();
+    const configuredAdmin = configuredAdminCode && store.users.find(u => u.isAdmin === true);
+    if (configuredAdmin) {
+      if (configuredAdmin.loginCode !== configuredAdminCode) {
+        configuredAdmin.loginCode = configuredAdminCode;
+        persist();
+      }
+    } else if (configuredAdminCode && !store.users.find(u => u.isAdmin === true)) {
       store.users.push({
         _id: genId(),
         name: 'Admin',
-        loginCode: 'ADMN-0307',
+        loginCode: configuredAdminCode,
         isAdmin: true,
+        authVersion: 0,
         isOnline: false,
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
@@ -68,7 +85,9 @@ function load() {
         chatColor: null
       });
       persist();
-      console.log('[DB] Bootstrapped default Admin user (ADMN-0307)');
+      console.log('[DB] Bootstrapped configured Admin user');
+    } else if (!store.users.find(u => u.isAdmin === true)) {
+      console.warn('[DB] ADMIN_LOGIN_CODE is not configured; admin login is disabled.');
     }
   } catch (e) {
     console.error('[DB] Failed to load, starting fresh:', e.message);
@@ -77,6 +96,7 @@ function load() {
 
 let saveTimer;
 function persist() {
+  if (process.env.PASTELCHAT_DISABLE_PERSIST === '1') return;
   if (!mongoConfigured) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -143,7 +163,6 @@ function generateLoginCode() {
     let code = '';
     for (let i = 0; i < 8; i++) code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
     const formatted = code.slice(0, 4) + '-' + code.slice(4);
-    if (formatted === 'ADMN-0307') continue; // Prevent admin collision
     if (!store.users.find((u) => u.loginCode === formatted)) return formatted;
   }
   throw new Error('Could not generate unique code');
@@ -184,6 +203,9 @@ function createUser(doc) {
     bio: '',
     status: '',
     loginMethod: 'code',
+    isSuspended: false,
+    authVersion: 0,
+    isTestAccount: false,
     isGoogleVerified: false,
     ...doc
   };
@@ -196,6 +218,72 @@ function updateUser(id, updates) {
   if (user) { Object.assign(user, updates); persist(); }
   return user;
 }
+
+// ===== Sessions =====
+function createSession({ _id, userId, expiresAt }) {
+  const now = new Date().toISOString();
+  const session = { _id, userId, createdAt: now, lastUsedAt: now, expiresAt, revokedAt: null };
+  store.sessions.push(session);
+  persist();
+  return session;
+}
+function findSession(id) { return store.sessions.find((session) => session._id === id); }
+function touchSession(id) {
+  const session = findSession(id);
+  if (session) { session.lastUsedAt = new Date().toISOString(); persist(); }
+  return session;
+}
+function revokeSession(id) {
+  const session = findSession(id);
+  if (session && !session.revokedAt) { session.revokedAt = new Date().toISOString(); persist(); }
+  return session;
+}
+function revokeUserSessions(userId) {
+  const now = new Date().toISOString();
+  let count = 0;
+  store.sessions.forEach((session) => {
+    if (session.userId === userId && !session.revokedAt) { session.revokedAt = now; count += 1; }
+  });
+  if (count) persist();
+  return count;
+}
+function getActiveSessionCount(userId) {
+  return store.sessions.filter((session) => session.userId === userId && !session.revokedAt && new Date(session.expiresAt) > new Date()).length;
+}
+
+// ===== Admin reports/audit =====
+function createReport(input) {
+  const report = {
+    _id: genId(), reporterId: input.reporterId, reportedUserId: input.reportedUserId || null,
+    entityType: String(input.entityType || 'user').slice(0, 40), entityId: input.entityId || null,
+    category: String(input.category || 'other').slice(0, 60), description: String(input.description || '').slice(0, 2000),
+    evidence: input.evidence && typeof input.evidence === 'object' ? { ...input.evidence } : null,
+    status: 'Open', adminNotes: '', resolution: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  };
+  store.reports.unshift(report); persist(); return report;
+}
+function updateReport(id, updates) {
+  const report = store.reports.find((item) => item._id === id);
+  if (!report) return null;
+  Object.assign(report, updates, { updatedAt: new Date().toISOString() }); persist(); return report;
+}
+function createAuditLog(input) {
+  const log = {
+    _id: genId(), adminId: input.adminId || null, action: String(input.action || 'unknown').slice(0, 80),
+    targetType: String(input.targetType || '').slice(0, 40), targetId: input.targetId || null,
+    metadata: input.metadata && typeof input.metadata === 'object' ? JSON.parse(JSON.stringify(input.metadata)) : {},
+    createdAt: new Date().toISOString()
+  };
+  store.auditLogs.unshift(log); if (store.auditLogs.length > 5000) store.auditLogs.length = 5000; persist(); return log;
+}
+function createAnnouncement(input) {
+  const announcement = {
+    _id: genId(), title: String(input.title || '').trim().slice(0, 160), body: String(input.body || '').trim().slice(0, 2000),
+    scope: String(input.scope || 'test'), pushEnabled: Boolean(input.pushEnabled), createdBy: input.createdBy, createdAt: new Date().toISOString()
+  };
+  store.announcements.unshift(announcement); persist(); return announcement;
+}
+function getStorageStatus() { return { configured: mongoConfigured, connected: mongoConnected }; }
 function searchUsers(query, exceptId) {
   if (!query || !query.trim()) return [];
   const q = query.trim().toLowerCase();
@@ -796,6 +884,7 @@ function createFeedback(userId, type, message) {
     userId,
     type,
     message: (message || '').slice(0, 2000),
+    status: 'Open', priority: 'Normal', adminNotes: '', response: '', assignedAdminId: null,
     createdAt: new Date().toISOString()
   };
   store.feedback.push(fb);
@@ -817,6 +906,8 @@ module.exports = {
   store, persist, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
   createUser, updateUser, searchUsers, getOnlineUsers, userPublic,
+  createSession, findSession, touchSession, revokeSession, revokeUserSessions, getActiveSessionCount,
+  createReport, updateReport, createAuditLog, createAnnouncement, getStorageStatus,
   getFriends, findFriendship, addFriend, updateFriend, removeFriend,
   createRequest, findRequest, findRequestById, removeRequest, getRequests,
   findMessage, createMessage, updateMessage, populateMessage, toggleReaction,

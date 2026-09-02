@@ -1,9 +1,21 @@
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/offline.html'];
 const NEVER_CACHE   = ['/api/version', '/api/', '/socket.io/', 'chrome-extension'];
+
+function safeAppUrl(value) {
+  try {
+    const raw = String(value || '/');
+    const parsed = new URL(raw, self.location.origin);
+    if (parsed.origin !== self.location.origin || parsed.pathname.startsWith('//') || parsed.pathname.startsWith('/api/')) return '/';
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const raw = String(value || '/');
+    return raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+  }
+}
 
 // ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -119,7 +131,7 @@ self.addEventListener('push', (event) => {
 
   // ── Regular message / friend request / test notification ──
   const title   = data.title || 'Pastel Chat';
-  const targetUrl = data.data?.url || data.data?.route || data.url || data.route || '/';
+  const targetUrl = safeAppUrl(data.data?.url || data.data?.route || data.url || data.route || '/');
   const options = {
     body:     data.body || 'You have a new notification on PastelChat',
     icon:     data.icon || '/icons/icon-192x192.png',
@@ -174,7 +186,7 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   // ── Regular notification click — open/focus app and deep-link ──
-  const target = notifData.url || '/';
+  const target = safeAppUrl(notifData.url || '/');
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       // Look for any existing PastelChat window
