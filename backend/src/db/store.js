@@ -2,8 +2,17 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
+const MONGODB_URI = process.env.MONGODB_URI;
+const durableStateSchema = new mongoose.Schema({
+  key: { type: String, unique: true, required: true },
+  data: { type: mongoose.Schema.Types.Mixed, required: true }
+}, { collection: 'pastelchat_state', timestamps: true });
+const DurableState = mongoose.models.PastelChatState || mongoose.model('PastelChatState', durableStateSchema);
+let mongoConnected = false;
+let durableSaveTimer;
 
 const store = {
   users: [],        // { _id, name, loginCode, avatar, chatBackground, chatColor, createdAt, isOnline, lastSeen }
@@ -73,6 +82,47 @@ function persist() {
       console.error('[DB] Save error:', e.message);
     }
   }, 50);
+
+  if (mongoConnected) {
+    clearTimeout(durableSaveTimer);
+    durableSaveTimer = setTimeout(() => {
+      writeDurableSnapshot().catch((e) => console.error('[DB] Durable save error:', e.message));
+    }, 100);
+  }
+}
+
+async function writeDurableSnapshot() {
+  if (!mongoConnected) return;
+  await DurableState.findOneAndUpdate(
+    { key: 'primary' },
+    { key: 'primary', data: store },
+    { upsert: true, setDefaultsOnInsert: true }
+  ).exec();
+}
+
+async function hydrateFromDurableStore() {
+  if (!MONGODB_URI) {
+    console.warn('[DB] MONGODB_URI is not configured; local db.json is ephemeral on Render.');
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+    mongoConnected = true;
+    const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
+    if (snapshot?.data) {
+      Object.keys(store).forEach((key) => {
+        if (Array.isArray(snapshot.data[key])) store[key] = snapshot.data[key];
+      });
+      console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
+    } else {
+      await writeDurableSnapshot();
+      console.log('[DB] Initialized durable MongoDB state from local store');
+    }
+  } catch (e) {
+    mongoConnected = false;
+    console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
+  }
 }
 
 function genId() { return crypto.randomBytes(12).toString('hex'); }
@@ -652,9 +702,10 @@ function createFeedback(userId, type, message) {
 }
 
 load();
+const ready = hydrateFromDurableStore();
 
 module.exports = {
-  store, persist, genId, generateLoginCode,
+  store, persist, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
   createUser, updateUser, searchUsers, getOnlineUsers, userPublic,
   getFriends, findFriendship, addFriend, updateFriend, removeFriend,

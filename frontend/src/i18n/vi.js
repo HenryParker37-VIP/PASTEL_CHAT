@@ -63,6 +63,10 @@ const vi = {
   profileChatColorDesc: 'Chọn một màu pastel dịu cho tin nhắn của bạn.',
   profileChatColorAuto: 'Tự động chọn màu pastel',
   profileChatColorSaved: 'Đã lưu màu chat.',
+  appUpdateTitle: 'PastelChat đã được cập nhật',
+  appUpdateMessage: 'Phiên bản mới đã sẵn sàng. Hãy làm mới trang để cập nhật.',
+  appUpdateRefresh: 'Làm mới',
+  appUpdateRefreshing: 'Đang làm mới...',
 
   // Login
   loginTitle: 'Pastel Chat',

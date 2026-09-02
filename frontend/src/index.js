@@ -56,12 +56,6 @@ const isElectron = window.electron?.isElectron || process.env.REACT_APP_IS_ELECT
 if (!isElectron) {
   registerSW({
     onSuccess: () => console.log('Pastel Chat is ready to work offline.'),
-    onUpdate: (reg) => {
-      const worker = reg.waiting;
-      if (worker) {
-        worker.postMessage({ type: 'SKIP_WAITING' });
-        window.location.reload();
-      }
-    },
+    onUpdate: (reg) => window.dispatchEvent(new CustomEvent('pastelchat:update-available', { detail: { registration: reg } })),
   });
 }

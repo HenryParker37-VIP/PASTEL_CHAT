@@ -4,7 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-require('./db/store');
+const storeDb = require('./db/store');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -90,7 +90,11 @@ app.use('/notifications', notificationRoutes);
 app.use('/stickers', stickerRoutes);
 app.use('/api/webrtc', webrtcRoutes);
 
-app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
+app.get('/health', (_, res) => res.json({
+  status: 'ok',
+  storage: storeDb.isDurableStorageEnabled() ? 'mongodb' : 'local-ephemeral',
+  timestamp: new Date()
+}));
 
 // Fallback to index.html for client-side routing
 app.get('*', (req, res) => {
@@ -256,8 +260,13 @@ const startTelegramPolling = () => {
 };
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => {
-  console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);
+storeDb.ready.then(() => {
+  server.listen(PORT, () => {
+    console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);
+  });
+}).catch((error) => {
+  console.error('[PastelChat] Store initialization failed:', error.message);
+  process.exitCode = 1;
 });
 
 module.exports = { app, server };

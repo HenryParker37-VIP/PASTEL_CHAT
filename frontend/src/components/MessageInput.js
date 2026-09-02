@@ -18,7 +18,10 @@ function formatBytes(bytes) {
 }
 
 const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
-  const [text, setText] = useState('');
+  const draftKey = to ? `pastelchat.draft:${to}` : null;
+  const [text, setText] = useState(() => {
+    try { return draftKey ? localStorage.getItem(draftKey) || '' : ''; } catch { return ''; }
+  });
   const [showEmoji, setShowEmoji] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [suggestedGifQuery, setSuggestedGifQuery] = useState('');
@@ -33,13 +36,22 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     if (replyingTo) textareaRef.current?.focus();
   }, [replyingTo]);
 
+  useEffect(() => {
+    try { setText(draftKey ? localStorage.getItem(draftKey) || '' : ''); } catch { setText(''); }
+  }, [draftKey]);
+
   const emitTyping = useCallback((isTyping) => {
     if (!to) return;
     socket?.emit('user_typing', { to, isTyping });
   }, [socket, to]);
 
   const handleChange = (e) => {
-    setText(e.target.value);
+    const nextText = e.target.value;
+    setText(nextText);
+    try {
+      if (draftKey && nextText) localStorage.setItem(draftKey, nextText);
+      else if (draftKey) localStorage.removeItem(draftKey);
+    } catch { /* private mode or storage unavailable */ }
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
     emitTyping(true);
@@ -82,6 +94,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         : null;
       await onSend(content, mediaPayload);
       setText('');
+      try { if (draftKey) localStorage.removeItem(draftKey); } catch { /* private mode */ }
       setMedia(null);
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
