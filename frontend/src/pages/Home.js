@@ -139,7 +139,9 @@ const Home = () => {
               style={{ animationDelay: `${i * 0.06}s` }}
               onClick={() => navigate(tile.path)}
             >
-              <img className="home-mobile-tile-icon" src={tile.icon} alt="" width="64" height="64" draggable="false" />
+              <span className="home-mobile-tile-icon-wrap">
+                <img className="home-mobile-tile-icon" src={tile.icon} alt="" width="64" height="64" style={{ '--home-icon-delay': `${-i * 0.45}s` }} draggable="false" />
+              </span>
               <span className="home-mobile-label">{t(tile.labelKey)}</span>
             </button>
           ))}
@@ -173,7 +175,7 @@ const Home = () => {
                 cursor: 'pointer'
               }}>
                 <PastelIcon name="home" size={15} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{t('addToHomeScreen')}</span>
               </div>
             </div>
           </div>
@@ -194,7 +196,7 @@ const Home = () => {
                 cursor: 'pointer'
               }}>
                 <PastelIcon name="home" size={15} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{t('addToHomeScreen')}</span>
               </div>
             </div>
           </div>
@@ -248,7 +250,9 @@ const Home = () => {
             style={{ animationDelay: `${0.05 + i * 0.05}s` }}
             onClick={() => navigate(tile.path)}
           >
-            <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" draggable="false" />
+            <span className="home-tile-icon-wrap">
+              <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" style={{ '--home-icon-delay': `${-i * 0.45}s` }} draggable="false" />
+            </span>
             <h3>{t(tile.labelKey)}</h3>
             <p>{t(tile.descKey)}</p>
           </div>
@@ -291,7 +295,7 @@ const Home = () => {
               }}
             >
               <PastelIcon name="home" size={15} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{t('addToHomeScreen')}</span>
             </div>
           </div>
         </div>
@@ -321,7 +325,7 @@ const Home = () => {
               }}
             >
               <PastelIcon name="home" size={15} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Add to home screen</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{t('addToHomeScreen')}</span>
             </div>
           </div>
         </div>
