@@ -28,7 +28,9 @@ function enrichSticker(sticker) {
 }
 
 // ── In-memory sticker data (no MongoDB needed) ────────────────────────────────
-const SEED_PACKS = [
+// Retained as a rollback archive for legacy API compatibility. It is never
+// returned by the active sticker endpoints below.
+const ARCHIVED_LEGACY_SEED_PACKS = [
   {
     slug: 'love-hearts', name: 'Love & Hearts', nameVi: 'Tình Yêu & Trái Tim',
     description: 'Express your love with hearts and romantic stickers',
@@ -301,9 +303,31 @@ const SEED_PACKS = [
   },
 ];
 
-// Build pack lookup maps at startup
+// The current first-party catalog is served by the frontend asset system. Keep
+// the API manifest aligned so old emoji packs cannot reappear through a direct
+// API call or the new-user defaults path.
+const ACTIVE_PACKS = [
+  ['bunny-english-vibes', 'Bunny English Vibes', 'English-first bunny reactions for everyday feelings.', ['bunny', 'english', 'feelings']],
+  ['cloud-bear-care-new', 'Cloud Bear Care', 'Soft English care messages for comfort and encouragement.', ['bear', 'care', 'support']],
+  ['peach-kitty-mood', 'Peach Kitty Mood', 'Peachy kitty moods for work, reactions, and affection.', ['kitty', 'moods', 'cozy']],
+  ['tiny-duck-chaos', 'Tiny Duck Chaos', 'Bright little duck reactions for playful chat moments.', ['duck', 'fun', 'reactions']],
+  ['sheepy-sweet-love', 'Sheepy Sweet Love', 'Warm sheepy messages for closeness and care.', ['sheep', 'love', 'cozy']],
+].map(([slug, name, description, tags], packIndex) => ({
+  slug, name, nameVi: name, description, tags, order: packIndex + 1,
+  cover: `/stickers/source-packs/${slug}/cover.png`,
+  stickers: Array.from({ length: 16 }, (_, index) => {
+    const number = String(index + 1).padStart(2, '0');
+    return {
+      imageUrl: `/stickers/source-packs/${slug}/${number}.png`,
+      label: `${name} ${number}`,
+      labelVi: `${name} ${number}`
+    };
+  })
+}));
+
+// Build pack lookup maps at startup from active packs only.
 const PACKS_BY_SLUG = {};
-SEED_PACKS.forEach(p => { PACKS_BY_SLUG[p.slug] = p; });
+ACTIVE_PACKS.forEach(p => { PACKS_BY_SLUG[p.slug] = p; });
 
 // ── Ensure store has sticker fields ──────────────────────────────────────────
 if (!store.userStickerPacks) {
@@ -416,7 +440,7 @@ router.get('/my-packs', (req, res) => {
 
   // Auto-add first 3 packs for brand-new users
   if (userEntries.length === 0) {
-    const defaults = SEED_PACKS.slice(0, 3);
+    const defaults = ACTIVE_PACKS.slice(0, 3);
     defaults.forEach(p => {
       store.userStickerPacks.push({ userId: user._id, packSlug: p.slug, addedAt: new Date().toISOString() });
     });

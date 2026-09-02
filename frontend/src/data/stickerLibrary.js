@@ -1,5 +1,6 @@
-// Active sticker catalog. Artwork is sourced from the ten user-provided
-// contact sheets and kept separate from the existing legacy catalog.
+// Sticker catalog. The legacy entries remain below as a rollback archive, but
+// only the five current first-party packs are exported through the active
+// registries used by Store, Picker, search, and suggestions.
 export const STICKER_CATEGORIES = [
   'Love', 'Happy', 'Laugh', 'Cute', 'Sad', 'Cry', 'Angry', 'Annoyed', 'Shocked', 'Confused', 'Shy', 'Embarrassed', 'Sorry', 'Thank You', 'Hug', 'Miss You', 'Sleep', 'Tired', 'Good Morning', 'Good Night', 'Study', 'Work', 'Celebrate', 'Clap', 'Wow', 'OMG', 'LOL', 'Support', 'Comfort', 'Motivation', 'Food', 'Busy', 'Waiting', 'Okay', 'No', 'Yes', 'Hello', 'Bye', 'Thinking', 'Bored', 'Sick', 'Gaming', 'Music', 'Heartbreak', 'Friendship', 'Birthday', 'Special Moments', 'Jealous', 'Nervous', 'Proud', 'Excited', 'Awkward', 'Facepalm', 'Please', 'Begging', 'Hungry', 'Coffee', 'Rainy Day', 'Cozy', 'Working Late', 'Finished', 'Panic', 'Chill', 'Flirty', 'Good Luck'
 ].map(label => ({ id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label, labelVi: label }));
@@ -24,7 +25,7 @@ const sticker = (pack, number, label, labelVi, categories, en, vi, primaryIntent
 
 const pack = (id, name, nameVi, description, coverColor, rows, assetExtension = 'webp') => {
   const descriptor = { id, name, nameVi, description, coverColor, assetExtension };
-  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.${assetExtension}`, packId: id, characterId: id, featured: id === 'pastel-bunny-final', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
+  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.${assetExtension}`, packId: id, characterId: id, featured: id === 'bunny-english-vibes', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
 };
 
 const EN = {
@@ -129,7 +130,7 @@ const cloudRows = [
   row('Good night~', 'Ngủ ngon~', ['Good Night', 'Sleep'], 'tired'), row('What??', 'Hảa??', ['Shocked', 'Confused'], 'shock'), row('Cute!', 'Cutee!', ['Cute', 'Love'], 'cute'), row('Love you~', 'Iu lắm~', ['Love', 'Flirty'], 'love')
 ];
 
-export const ACTIVE_STICKER_PACKS = [
+const ALL_STICKER_PACKS = [
   pack('pastel-bunny-final', 'Pastel Bunny', 'Pastel Bunny', 'The original Pastel Bunny sheet, now in a clean 16-sticker pack.', '#FCE2EA', bunnyRows),
   pack('mini-bean-crew', 'Mini Bean Crew', 'Mini Bean Crew', 'Friendly, expressive bean reactions for everyday chats.', '#E4F4FC', beanRows),
   pack('mocha-kitty', 'Mocha Kitty', 'Mocha Kitty', 'Cozy kitty moods for work, study, coffee, and love.', '#EEE8FB', kittyRows),
@@ -147,6 +148,19 @@ export const ACTIVE_STICKER_PACKS = [
   pack('sheepy-sweet-love', 'Sheepy Sweet Love', 'Sheepy Sweet Love', 'Warm sheepy messages for closeness and care.', '#F2E6F5', sheepyRows, 'png')
 ];
 
+export const ACTIVE_STICKER_PACK_IDS = [
+  'bunny-english-vibes',
+  'cloud-bear-care-new',
+  'peach-kitty-mood',
+  'tiny-duck-chaos',
+  'sheepy-sweet-love'
+];
+
+const ACTIVE_PACK_ID_SET = new Set(ACTIVE_STICKER_PACK_IDS);
+export const ARCHIVED_STICKER_PACKS = ALL_STICKER_PACKS
+  .filter(packItem => !ACTIVE_PACK_ID_SET.has(packItem.id))
+  .map(packItem => ({ ...packItem, active: false, deprecated: true }));
+export const ACTIVE_STICKER_PACKS = ALL_STICKER_PACKS.filter(packItem => ACTIVE_PACK_ID_SET.has(packItem.id));
 export const LOCAL_STICKER_PACKS = ACTIVE_STICKER_PACKS;
 export const LOCAL_STICKERS = ACTIVE_STICKER_PACKS.flatMap(packItem => packItem.stickers);
 export const STICKER_BY_ID = Object.fromEntries(LOCAL_STICKERS.map(item => [item.id, item]));
