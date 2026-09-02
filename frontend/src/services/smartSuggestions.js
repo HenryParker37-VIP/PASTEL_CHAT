@@ -81,6 +81,13 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
     if (chosen.length >= 5 || chosen.some(candidate => candidate.id === item.id)) break;
     chosen.push(item); usedPacks.add(item.pack); packCounts.set(item.pack, (packCounts.get(item.pack) || 0) + 1);
   }
+  if (needsVisualVariants) {
+    const visualIntent = analysis.concepts.find(concept => concept.intent === 'greeting' || concept.intent === 'farewell')?.intent;
+    for (const item of stickers) {
+      if (chosen.length >= 3 || item.intent?.includes(visualIntent) === false || chosen.some(candidate => candidate.id === item.id)) continue;
+      if (item.intent?.includes(visualIntent)) chosen.push(item);
+    }
+  }
   for (const candidate of ranked) {
     if (chosen.length >= 5) break;
     const packCount = packCounts.get(candidate.item.pack) || 0;
@@ -93,6 +100,10 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   for (const item of stickers) {
     if (chosen.length >= 5) break;
     if (!usedPacks.has(item.pack)) { chosen.push(item); usedPacks.add(item.pack); }
+  }
+  for (const item of stickers) {
+    if (chosen.length >= 5) break;
+    if (!chosen.some(candidate => candidate.id === item.id)) chosen.push(item);
   }
   const gifQueries = [...new Set(analysis.concepts.map(concept => concept.gif))].slice(0, 2);
   return { ...analysis, stickers: chosen, gifQueries };
