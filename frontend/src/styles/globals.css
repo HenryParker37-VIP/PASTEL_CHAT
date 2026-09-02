@@ -2345,19 +2345,13 @@ body.dark .sticker-emoji-btn:hover { background: #3A2D50; border-color: #C9A6E0;
 .sticker-store-shortcut:hover { background: #F7EFF8; color: #B080CC; }
 
 /* PastelChat sticker library refresh: scroll belongs to one panel, not nested cards. */
-.sticker-vector-frame { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; background: #fff8f4; border-radius: 12px; overflow: hidden; }
-.pastel-sticker-art { display: block; }
 .sticker-library-nav { display: flex; gap: 6px; padding: 8px 12px 3px; overflow-x: auto; scrollbar-width: none; }
 .sticker-library-nav::-webkit-scrollbar { display: none; }
 .sticker-library-nav button { flex: 0 0 auto; min-height: 34px; padding: 0 12px; border: 1px solid #ead9ef; border-radius: 999px; background: #fffafd; color: #806b86; font-size: 11px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 .sticker-library-nav button.active { background: #ead9f0; color: #5d4163; border-color: #cdaed8; }
 .sticker-character-strip { display: flex; gap: 8px; padding: 7px 12px; overflow-x: auto; scrollbar-width: thin; }
 .sticker-character-strip button { min-width: 68px; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; color: #755e7d; font-size: 9px; cursor: pointer; }
-.sticker-character-strip button:hover .sticker-vector-frame { transform: translateY(-2px); }
-.sticker-character-strip .sticker-vector-frame { transition: transform .16s ease; }
 .sticker-emoji-btn { touch-action: manipulation; }
-.sticker-emoji-btn .sticker-vector-frame { transition: transform .16s ease; }
-.sticker-emoji-btn:hover .sticker-vector-frame { transform: translateY(-2px) scale(1.04); }
 .sticker-emoji-btn:focus-visible, .sticker-library-nav button:focus-visible, .sticker-character-strip button:focus-visible, .store-pack-open:focus-visible, .store-install-btn:focus-visible { outline: 2px solid #b08abd; outline-offset: 2px; }
 .sticker-store { min-height: 0; }
 .store-hero { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 12px; padding: 16px; border: 1px solid #f0dce7; border-radius: 18px; background: linear-gradient(135deg, #fff5f4, #f5effd); color: #614c68; }
@@ -2390,7 +2384,6 @@ body.dark .sticker-emoji-btn:hover { background: #3A2D50; border-color: #C9A6E0;
   .store-pack-cover { min-height: 92px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sticker-character-strip .sticker-vector-frame, .sticker-emoji-btn .sticker-vector-frame { transition: none; }
 }
 
 /* Loading skeletons */
