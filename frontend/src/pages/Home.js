@@ -16,7 +16,7 @@ const TILES = [
     labelKey: 'homeChangeName',
     descKey: 'homeChangeNameDesc',
     path: '/profile',
-    grad: 'linear-gradient(135deg, #FFB6C1 0%, #FF8FA3 100%)',
+    tone: 'profile',
   },
   {
     icon: '/images/home-icons/chat-friends.png',
@@ -24,7 +24,7 @@ const TILES = [
     labelKey: 'homeChatFriends',
     descKey: 'homeChatFriendsDesc',
     path: '/friends',
-    grad: 'linear-gradient(135deg, #ADD8E6 0%, #7EC8E3 100%)',
+    tone: 'chat',
   },
   {
     icon: '/images/home-icons/group-chats.png',
@@ -32,7 +32,7 @@ const TILES = [
     labelKey: 'homeGroups',
     descKey: 'homeGroupsDesc',
     path: '/friends',
-    grad: 'linear-gradient(135deg, #B0E0E6 0%, #7DC9C9 100%)',
+    tone: 'groups',
   },
   {
     icon: '/images/home-icons/shared-photos.png',
@@ -40,7 +40,7 @@ const TILES = [
     labelKey: 'homeSharedPhotos',
     descKey: 'homeSharedPhotosDesc',
     path: '/shared-photos',
-    grad: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+    tone: 'photos',
   },
   {
     icon: '/images/home-icons/private-space.png',
@@ -48,7 +48,7 @@ const TILES = [
     labelKey: 'homeMySpace',
     descKey: 'homeMySpaceDesc',
     path: '/my-space',
-    grad: 'linear-gradient(135deg, #DDA0DD 0%, #C07BC0 100%)',
+    tone: 'myspace',
   },
   {
     icon: '/images/home-icons/privacy-support.png',
@@ -56,7 +56,7 @@ const TILES = [
     labelKey: 'homePrivacy',
     descKey: 'homePrivacyDesc',
     path: '/privacy',
-    grad: 'linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 100%)',
+    tone: 'privacy',
   },
 ];
 
@@ -135,8 +135,8 @@ const Home = () => {
           {TILES.map((tile, i) => (
             <button
               key={tile.key}
-              className="home-mobile-tile pop-in"
-              style={{ animationDelay: `${i * 0.06}s`, background: tile.grad }}
+              className={`home-mobile-tile home-mobile-tile--${tile.tone} pop-in`}
+              style={{ animationDelay: `${i * 0.06}s` }}
               onClick={() => navigate(tile.path)}
             >
               <img className="home-mobile-tile-icon" src={tile.icon} alt="" width="64" height="64" draggable="false" />
@@ -213,12 +213,12 @@ const Home = () => {
   // ── Desktop layout ────────────────────────────────────────────
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div className="home-desktop-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img className="avatar sticker-wiggle" src={user?.avatar} alt="" />
           <div>
             <p style={{ margin: 0, fontWeight: 700 }}>{user?.name}</p>
-            <p style={{ margin: 0, fontSize: 12, color: '#888' }}>
+            <p style={{ margin: 0, fontSize: 12 }}>
               <span style={{
                 display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
                 background: connected ? '#7bd389' : '#ccc', marginRight: 6
@@ -244,7 +244,7 @@ const Home = () => {
         {TILES.map((tile, i) => (
           <div
             key={tile.key}
-            className="home-tile pop-in"
+            className={`home-tile home-tile--${tile.tone} pop-in`}
             style={{ animationDelay: `${0.05 + i * 0.05}s` }}
             onClick={() => navigate(tile.path)}
           >
