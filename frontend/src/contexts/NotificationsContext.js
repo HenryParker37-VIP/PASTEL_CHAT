@@ -2,15 +2,17 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 import api from '../services/api';
+import { useLang } from '../i18n';
 
 const NotificationsContext = createContext(null);
 
-const notificationCopy = (payload) => {
-  if (payload.type === 'friend_requested') return { title: 'Lời mời kết bạn mới', body: `${payload.from?.name || 'Một người bạn'} muốn kết bạn với bạn.` };
-  if (payload.type === 'friend_accepted') return { title: 'Lời mời kết bạn đã được chấp nhận', body: `${payload.from?.name || 'Bạn của bạn'} đã trở thành bạn bè với bạn.` };
-  if (payload.type === 'new_message') return { title: `Tin nhắn mới từ ${payload.from?.name || 'bạn bè'}`, body: payload.preview || 'Bạn nhận được một tin nhắn mới.' };
-  if (payload.type === 'group_message') return { title: payload.groupName || 'Tin nhắn nhóm', body: `${payload.from?.name || 'Bạn bè'}: ${payload.preview || 'Có tin nhắn mới.'}` };
-  if (payload.type === 'group_created' || payload.type === 'group_invited') return { title: 'Bạn được mời vào nhóm', body: `Bạn đã được thêm vào nhóm “${payload.group?.name || 'mới'}”.` };
+const notificationCopy = (payload, t) => {
+  if (payload.type === 'friend_requested') return { title: t('notificationsFriendRequest'), body: t('notificationsFriendRequestBody', payload.from?.name || 'a friend') };
+  if (payload.type === 'friend_accepted') return { title: t('notificationsFriendAccepted'), body: t('notificationsFriendAcceptedBody', payload.from?.name || 'a friend') };
+  if (payload.type === 'new_message') return { title: t('notificationsNewMessage', payload.from?.name), body: payload.preview || t('notificationsNewMessage', '') };
+  if (payload.type === 'group_message') return { title: payload.groupName || t('notificationsGroupMessage'), body: `${payload.from?.name || t('you')}: ${payload.preview || ''}` };
+  if (payload.type === 'group_created' || payload.type === 'group_invited') return { title: t('notificationsGroupAdded'), body: payload.body || '' };
+  if (payload.type === 'release_published') return { title: t('releaseNotificationTitle'), body: t('releaseNotificationBody', payload.releaseVersion || payload.data?.releaseVersion) };
   return null;
 };
 
@@ -20,12 +22,14 @@ const notificationRoute = (payload) => {
   if (payload.type === 'new_message' && payload.from?._id) return `/chat/${payload.from._id}`;
   if (payload.type === 'friend_requested' || payload.type === 'friend_accepted' || payload.type === 'friend_request') return '/friends';
   if ((payload.type === 'group_message' || payload.type === 'group_created' || payload.type === 'group_invited') && payload.groupId) return `/group/${payload.groupId}`;
+  if (payload.type === 'release_published' && (payload.releaseVersion || payload.data?.releaseVersion)) return `/whats-new/${encodeURIComponent(payload.releaseVersion || payload.data.releaseVersion)}`;
   return null;
 };
 
 export const NotificationsProvider = ({ children }) => {
   const { user } = useAuth();
   const { socket } = useSocket();
+  const { t } = useLang();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +55,7 @@ export const NotificationsProvider = ({ children }) => {
   useEffect(() => {
     if (!socket || !user) return undefined;
     const handleNotification = (payload) => {
-      const copy = notificationCopy(payload);
+      const copy = notificationCopy(payload, t);
       if (!copy) return;
       const notification = {
         _id: payload.notificationId || `live-${Date.now()}`,
@@ -67,7 +71,7 @@ export const NotificationsProvider = ({ children }) => {
     };
     socket.on(`notify:${user._id}`, handleNotification);
     return () => socket.off(`notify:${user._id}`, handleNotification);
-  }, [socket, user]);
+  }, [socket, user, t]);
 
   const markRead = useCallback(async (id) => {
     if (!id || String(id).startsWith('live-')) return;

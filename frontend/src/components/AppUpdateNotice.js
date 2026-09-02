@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useLang } from '../i18n';
 import PastelIcon from './PastelIcon';
+import api from '../services/api';
+import { CURRENT_APP_VERSION, compareVersions } from '../releaseVersion';
 
 const AppUpdateNotice = () => {
   const { t } = useLang();
   const [registration, setRegistration] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [latestRelease, setLatestRelease] = useState(null);
+
+  useEffect(() => {
+    api.get('/releases/latest').then(({ data }) => setLatestRelease(data.release || null)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleUpdate = (event) => setRegistration(event.detail?.registration || null);
@@ -14,6 +21,9 @@ const AppUpdateNotice = () => {
   }, []);
 
   if (!registration) return null;
+
+  const hasReleaseUpdate = latestRelease && compareVersions(latestRelease.version, CURRENT_APP_VERSION) > 0;
+  const summaryItems = latestRelease ? [...(latestRelease.features || []), ...(latestRelease.fixes || [])].slice(0, 3) : [];
 
   const refreshApp = () => {
     if (refreshing) return;
@@ -40,9 +50,11 @@ const AppUpdateNotice = () => {
         <span className="app-update-dot app-update-dot--three" />
       </div>
       <div className="app-update-copy">
-        <strong>{t('appUpdateTitle')}</strong>
-        <span>{t('appUpdateMessage')}</span>
+        <strong>{hasReleaseUpdate ? t('releaseAppUpdateTitle', latestRelease.version) : t('appUpdateTitle')}</strong>
+        <span>{hasReleaseUpdate ? t('releaseAppUpdateMessage') : t('appUpdateMessage')}</span>
+        {hasReleaseUpdate && summaryItems.length > 0 && <ul>{summaryItems.map(item => <li key={item}>• {item}</li>)}</ul>}
       </div>
+      {hasReleaseUpdate && <button type="button" className="app-update-details" onClick={() => { window.location.href = `/whats-new/${encodeURIComponent(latestRelease.version)}`; }}>{t('releaseViewDetails')}</button>}
       <button type="button" className="app-update-button" onClick={refreshApp} disabled={refreshing}>
         {refreshing ? t('appUpdateRefreshing') : t('appUpdateRefresh')}
       </button>

@@ -27,7 +27,8 @@ const store = {
   birthdays: [],    // { _id, userId, friendId, friendName, date (MM-DD), createdAt }
   sharedPhotos: [], // { _id, dataUrl, caption, uploadedBy: {_id,name,avatar}, createdAt }
   pushSubscriptions: [], // { userId, subscriptions: [PushSubscription, ...] }
-  notifications: [] // { _id, userId, type, title, body, from, data, read, createdAt }
+  notifications: [], // { _id, userId, type, title, body, from, data, read, createdAt }
+  releases: [] // { _id, version, title, summary, features, fixes, improvements, releasedAt, important, pushEnabled }
 };
 
 function load() {
@@ -46,6 +47,7 @@ function load() {
       store.sharedPhotos = loaded.sharedPhotos || [];
       store.pushSubscriptions = loaded.pushSubscriptions || [];
       store.notifications = loaded.notifications || [];
+      store.releases = loaded.releases || [];
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
@@ -178,6 +180,7 @@ function createUser(doc) {
     chatBackground: 'default',
     chatColor: null,
     chatColors: {},
+    seenReleaseVersions: [],
     bio: '',
     status: '',
     loginMethod: 'code',
@@ -693,6 +696,99 @@ function markAllNotificationsRead(userId) {
   return count;
 }
 
+// ===== Release notes =====
+function normalizeRelease(release) {
+  return {
+    _id: release._id || genId(),
+    version: String(release.version || '').trim(),
+    title: String(release.title || '').trim().slice(0, 160),
+    titleVi: String(release.titleVi || '').trim().slice(0, 160),
+    summary: String(release.summary || '').trim().slice(0, 500),
+    summaryVi: String(release.summaryVi || '').trim().slice(0, 500),
+    features: Array.isArray(release.features) ? release.features.map(String).map(s => s.trim()).filter(Boolean).slice(0, 20) : [],
+    fixes: Array.isArray(release.fixes) ? release.fixes.map(String).map(s => s.trim()).filter(Boolean).slice(0, 20) : [],
+    improvements: Array.isArray(release.improvements) ? release.improvements.map(String).map(s => s.trim()).filter(Boolean).slice(0, 20) : [],
+    featuresVi: Array.isArray(release.featuresVi) ? release.featuresVi.map(String).map(s => s.trim()).filter(Boolean).slice(0, 20) : [],
+    fixesVi: Array.isArray(release.fixesVi) ? release.fixesVi.map(String).map(s => s.trim()).filter(Boolean).slice(0, 20) : [],
+    improvementsVi: Array.isArray(release.improvementsVi) ? release.improvementsVi.map(String).map(s => s.trim()).filter(Boolean).slice(0, 20) : [],
+    releasedAt: release.releasedAt || new Date().toISOString(),
+    important: Boolean(release.important),
+    pushEnabled: Boolean(release.pushEnabled)
+  };
+}
+function compareVersions(a, b) {
+  const left = String(a || '').split('.').map(Number);
+  const right = String(b || '').split('.').map(Number);
+  for (let i = 0; i < Math.max(left.length, right.length); i += 1) {
+    if ((left[i] || 0) !== (right[i] || 0)) return (left[i] || 0) - (right[i] || 0);
+  }
+  return 0;
+}
+function getReleases() {
+  return [...store.releases].sort((a, b) => compareVersions(b.version, a.version) || new Date(b.releasedAt) - new Date(a.releasedAt));
+}
+function findRelease(version) {
+  return store.releases.find(release => release.version === String(version));
+}
+function createRelease(input) {
+  const release = normalizeRelease(input);
+  if (!release.version || !release.title) return null;
+  if (findRelease(release.version)) return findRelease(release.version);
+  store.releases.push(release);
+  persist();
+  return release;
+}
+function notifyUsersOfRelease(release) {
+  let created = 0;
+  store.users.forEach((user) => {
+    const exists = store.notifications.some(notification =>
+      notification.userId === user._id && notification.type === 'release_published' && notification.data?.releaseVersion === release.version
+    );
+    if (!exists) {
+      createNotification({
+        userId: user._id,
+        type: 'release_published',
+        title: 'PastelChat has been updated ✨',
+        body: `Version ${release.version} is now available. See what’s new and what we fixed.`,
+        data: { releaseVersion: release.version, route: `/whats-new/${encodeURIComponent(release.version)}` }
+      });
+      created += 1;
+    }
+  });
+  return created;
+}
+function markReleaseSeen(userId, version) {
+  const user = findUserById(userId);
+  const release = findRelease(version);
+  if (!user || !release) return null;
+  const seen = Array.isArray(user.seenReleaseVersions) ? user.seenReleaseVersions : [];
+  if (!seen.includes(release.version)) {
+    user.seenReleaseVersions = [...seen, release.version].slice(-50);
+    persist();
+  }
+  return release;
+}
+function hasSeenRelease(userId, version) {
+  const user = findUserById(userId);
+  return Boolean(user?.seenReleaseVersions?.includes(String(version)));
+}
+
+const INITIAL_RELEASE = {
+  version: '1.1.0',
+  title: 'More colorful, more connected',
+  titleVi: 'Nhiều màu sắc hơn, kết nối gần hơn',
+  summary: 'PastelChat is now more durable, expressive, and helpful across devices.',
+  summaryVi: 'PastelChat nay bền vững, nhiều cảm xúc và hữu ích hơn trên mọi thiết bị.',
+  features: ['Push Notifications', 'Notification deep linking', 'Custom pastel chat colors', 'What’s New release history', 'Custom PastelChat toast and confirmation feedback'],
+  featuresVi: ['Thông báo đẩy', 'Liên kết sâu từ thông báo', 'Màu pastel tùy chỉnh cho cuộc trò chuyện', 'Lịch sử Có gì mới', 'Toast và hộp xác nhận mang phong cách PastelChat'],
+  fixes: ['Chat history now survives deployments', 'Sessions remain logged in after updates', 'Removed the production dependency on ephemeral db.json storage', 'MongoDB persistence enabled'],
+  fixesVi: ['Lịch sử chat vẫn được giữ sau khi triển khai', 'Phiên đăng nhập vẫn được duy trì sau khi cập nhật', 'Đã loại bỏ phụ thuộc production vào db.json tạm thời', 'Đã bật lưu trữ MongoDB'],
+  improvements: ['Vietnamese/English notification localization', 'Improved PWA update behavior', 'Draft preservation during updates', 'Improved install guide and platform UI'],
+  improvementsVi: ['Bản địa hóa thông báo tiếng Việt/Anh', 'Cải thiện cập nhật PWA', 'Giữ lại tin nhắn nháp khi cập nhật', 'Cải thiện hướng dẫn cài đặt và giao diện nền tảng'],
+  important: true,
+  pushEnabled: false
+};
+
 // ===== Feedback =====
 function createFeedback(userId, type, message) {
   const fb = {
@@ -710,6 +806,12 @@ function createFeedback(userId, type, message) {
 
 load();
 const ready = hydrateFromDurableStore();
+ready.then(() => {
+  if (store.releases.length === 0) {
+    const release = createRelease(INITIAL_RELEASE);
+    if (release) notifyUsersOfRelease(release);
+  }
+}).catch(() => {});
 
 module.exports = {
   store, persist, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
@@ -728,5 +830,6 @@ module.exports = {
   storePushSubscription, removePushSubscription, getPushSubscriptions, getPushLanguage,
   createNotification, getUserNotifications, getUnreadNotificationCount,
   markNotificationRead, markAllNotificationsRead,
+  getReleases, findRelease, createRelease, notifyUsersOfRelease, markReleaseSeen, hasSeenRelease,
   createFeedback
 };

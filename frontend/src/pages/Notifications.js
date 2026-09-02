@@ -17,6 +17,7 @@ import {
 const iconForType = (type) => {
   if (type === 'new_message' || type === 'group_message') return 'chat-friends';
   if (type === 'friend_requested' || type === 'friend_accepted') return 'users';
+  if (type === 'release_published') return 'sparkles';
   return 'bell';
 };
 
@@ -27,6 +28,7 @@ const getNotificationCopy = (item, t) => {
   if (item.type === 'friend_accepted') return { title: t('notificationsFriendAccepted'), body: t('notificationsFriendAcceptedBody', name) };
   if (item.type === 'group_message') return { title: item.groupName || t('notificationsGroupMessage'), body: item.body };
   if (item.type === 'group_created' || item.type === 'group_invited') return { title: t('notificationsGroupAdded'), body: item.body };
+  if (item.type === 'release_published') return { title: t('releaseNotificationTitle', item.data?.releaseVersion), body: t('releaseNotificationBody', item.data?.releaseVersion) };
   return { title: item.title, body: item.body };
 };
 
@@ -81,7 +83,10 @@ const Notifications = () => {
       || (item.type === 'new_message' && item.from?._id ? `/chat/${item.from._id}` : null)
       || (['friend_requested', 'friend_accepted', 'friend_request'].includes(item.type) ? '/friends' : null)
       || ((['group_message', 'group_created', 'group_invited'].includes(item.type) && (item.data?.groupId || item.groupId)) ? `/group/${item.data?.groupId || item.groupId}` : null);
-    if (route) navigate(route);
+    const releaseRoute = item.type === 'release_published' && item.data?.releaseVersion
+      ? `/whats-new/${encodeURIComponent(item.data.releaseVersion)}` : null;
+    if (releaseRoute) navigate(releaseRoute);
+    else if (route) navigate(route);
   };
 
   return (

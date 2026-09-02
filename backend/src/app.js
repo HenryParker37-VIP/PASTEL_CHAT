@@ -16,6 +16,8 @@ const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
 const notificationRoutes = require('./routes/notifications');
+const releaseRoutes = require('./routes/releases');
+const adminReleaseRoutes = require('./routes/admin-releases');
 const stickerRoutes = require('./routes/stickers');
 const webrtcRoutes = require('./routes/webrtc');
 const setupSocket = require('./socket');
@@ -87,6 +89,8 @@ app.use('/feedback', feedbackRoutes);
 app.use('/admin', adminRoutes);
 app.use('/push', pushRoutes);
 app.use('/notifications', notificationRoutes);
+app.use('/releases', releaseRoutes);
+app.use('/admin/releases', adminReleaseRoutes);
 app.use('/stickers', stickerRoutes);
 app.use('/api/webrtc', webrtcRoutes);
 
