@@ -73,6 +73,20 @@ const Home = () => {
   const { t, lang, setLang } = useLang();
   const [time, setTime] = useState(new Date());
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  const [openingTile, setOpeningTile] = useState(null);
+
+  const openTile = (tile) => {
+    if (openingTile) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      navigate(tile.path);
+      return;
+    }
+
+    setOpeningTile(tile.key);
+    window.setTimeout(() => navigate(tile.path), 180);
+  };
 
   // Onboarding: show language picker → then tutorial on first login
   const [showLangPicker, setShowLangPicker] = useState(
@@ -135,9 +149,10 @@ const Home = () => {
           {TILES.map((tile, i) => (
             <button
               key={tile.key}
-              className={`home-mobile-tile home-mobile-tile--${tile.tone} pop-in`}
+              className={`home-mobile-tile home-mobile-tile--${tile.tone} pop-in${openingTile === tile.key ? ' is-opening' : ''}`}
               style={{ animationDelay: `${i * 0.06}s` }}
-              onClick={() => navigate(tile.path)}
+              onClick={() => openTile(tile)}
+              disabled={Boolean(openingTile)}
             >
               <span className="home-mobile-tile-icon-wrap">
                 <img className="home-mobile-tile-icon" src={tile.icon} alt="" width="64" height="64" style={{ '--home-icon-delay': `${-i * 0.45}s` }} draggable="false" />
@@ -246,9 +261,18 @@ const Home = () => {
         {TILES.map((tile, i) => (
           <div
             key={tile.key}
-            className={`home-tile home-tile--${tile.tone} pop-in`}
+            className={`home-tile home-tile--${tile.tone} pop-in${openingTile === tile.key ? ' is-opening' : ''}`}
             style={{ animationDelay: `${0.05 + i * 0.05}s` }}
-            onClick={() => navigate(tile.path)}
+            onClick={() => openTile(tile)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openTile(tile);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-disabled={Boolean(openingTile)}
           >
             <span className="home-tile-icon-wrap">
               <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" style={{ '--home-icon-delay': `${-i * 0.45}s` }} draggable="false" />
