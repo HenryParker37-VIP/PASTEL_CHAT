@@ -28,6 +28,14 @@ router.put('/me', authMiddleware, (req, res) => {
   if (typeof req.body.avatar === 'string') allowed.avatar = req.body.avatar.slice(0, 100000);
   if (typeof req.body.chatBackground === 'string') allowed.chatBackground = req.body.chatBackground.slice(0, 50);
   if (req.body.chatColor === null || typeof req.body.chatColor === 'string') allowed.chatColor = req.body.chatColor ? req.body.chatColor.slice(0, 20) : null;
+  if (req.body.chatColors && typeof req.body.chatColors === 'object' && !Array.isArray(req.body.chatColors)) {
+    allowed.chatColors = Object.fromEntries(
+      Object.entries(req.body.chatColors)
+        .filter(([friendId, color]) => /^[a-f0-9]{24}$/.test(friendId) && (color === null || typeof color === 'string'))
+        .slice(0, 100)
+        .map(([friendId, color]) => [friendId, color ? color.slice(0, 20) : null])
+    );
+  }
   if (typeof req.body.bio === 'string') allowed.bio = req.body.bio.slice(0, 120);
   if (typeof req.body.status === 'string') allowed.status = req.body.status.slice(0, 60);
   const user = updateUser(req.user._id, allowed);

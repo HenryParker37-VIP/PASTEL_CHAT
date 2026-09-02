@@ -15,7 +15,7 @@ const isMobile = () => window.innerWidth <= 700;
 
 const Chat = () => {
   const { friendId } = useParams();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { socket } = useSocket();
   const { startCall, activeCall } = useCall();
   const navigate = useNavigate();
@@ -38,8 +38,8 @@ const Chat = () => {
       setChatColor(null);
       return;
     }
-    setChatColor(localStorage.getItem(chatColorStorageKey) || null);
-  }, [chatColorStorageKey]);
+    setChatColor(user?.chatColors?.[friendId] || localStorage.getItem(chatColorStorageKey) || null);
+  }, [chatColorStorageKey, friendId, user?.chatColors]);
 
   useEffect(() => {
     if (!colorPickerOpen) return undefined;
@@ -269,12 +269,16 @@ const Chat = () => {
   const selectChatColor = (colorId) => {
     setChatColor(colorId);
     if (chatColorStorageKey) localStorage.setItem(chatColorStorageKey, colorId);
+    updateProfile({ chatColors: { ...(user?.chatColors || {}), [friendId]: colorId } });
     setColorPickerOpen(false);
   };
 
   const resetChatColor = () => {
     setChatColor(null);
     if (chatColorStorageKey) localStorage.removeItem(chatColorStorageKey);
+    const nextChatColors = { ...(user?.chatColors || {}) };
+    delete nextChatColors[friendId];
+    updateProfile({ chatColors: nextChatColors });
     setColorPickerOpen(false);
   };
 
