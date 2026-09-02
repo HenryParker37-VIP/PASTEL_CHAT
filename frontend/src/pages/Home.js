@@ -85,7 +85,37 @@ const Home = () => {
     }
 
     setOpeningTile(tile.key);
-    window.setTimeout(() => navigate(tile.path), 180);
+    window.setTimeout(() => {
+      const root = document.documentElement;
+      const sourceCard = document.querySelector(`[data-tile-key="${tile.key}"]`);
+      const transitionWash = sourceCard
+        ? getComputedStyle(sourceCard).getPropertyValue('--home-tile-transition-wash').trim()
+        : '';
+      root.style.setProperty('--home-transition-wash', transitionWash || 'rgba(255, 182, 193, 0.18)');
+
+      if (typeof document.startViewTransition === 'function') {
+        root.classList.add('home-view-transition');
+        const transition = document.startViewTransition(() => navigate(tile.path));
+        transition.finished.then(
+          () => {
+            root.classList.remove('home-view-transition');
+            root.style.removeProperty('--home-transition-wash');
+          },
+          () => {
+            root.classList.remove('home-view-transition');
+            root.style.removeProperty('--home-transition-wash');
+          }
+        );
+        return;
+      }
+
+      root.classList.add('home-card-route-transition');
+      navigate(tile.path);
+      window.setTimeout(() => {
+        root.classList.remove('home-card-route-transition');
+        root.style.removeProperty('--home-transition-wash');
+      }, 440);
+    }, 90);
   };
 
   // Onboarding: show language picker → then tutorial on first login
@@ -150,6 +180,7 @@ const Home = () => {
             <button
               key={tile.key}
               className={`home-mobile-tile home-mobile-tile--${tile.tone} pop-in${openingTile === tile.key ? ' is-opening' : ''}`}
+              data-tile-key={tile.key}
               style={{ animationDelay: `${i * 0.06}s` }}
               onClick={() => openTile(tile)}
               disabled={Boolean(openingTile)}
@@ -266,6 +297,7 @@ const Home = () => {
           >
             <div
               className={`home-tile home-tile--${tile.tone}${openingTile === tile.key ? ' is-opening' : ''}`}
+              data-tile-key={tile.key}
               onClick={() => openTile(tile)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
