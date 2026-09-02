@@ -261,24 +261,28 @@ const Home = () => {
         {TILES.map((tile, i) => (
           <div
             key={tile.key}
-            className={`home-tile home-tile--${tile.tone} pop-in${openingTile === tile.key ? ' is-opening' : ''}`}
+            className="home-tile-entry pop-in"
             style={{ animationDelay: `${0.05 + i * 0.05}s` }}
-            onClick={() => openTile(tile)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                openTile(tile);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-disabled={Boolean(openingTile)}
           >
-            <span className="home-tile-icon-wrap">
-              <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" style={{ '--home-icon-delay': `${-i * 0.45}s` }} draggable="false" />
-            </span>
-            <h3>{t(tile.labelKey)}</h3>
-            <p>{t(tile.descKey)}</p>
+            <div
+              className={`home-tile home-tile--${tile.tone}${openingTile === tile.key ? ' is-opening' : ''}`}
+              onClick={() => openTile(tile)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  openTile(tile);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-disabled={Boolean(openingTile)}
+            >
+              <span className="home-tile-icon-wrap">
+                <img className="home-tile-icon" src={tile.icon} alt="" width="80" height="80" style={{ '--home-icon-delay': `${-i * 0.45}s` }} draggable="false" />
+              </span>
+              <h3>{t(tile.labelKey)}</h3>
+              <p>{t(tile.descKey)}</p>
+            </div>
           </div>
         ))}
       </div>
