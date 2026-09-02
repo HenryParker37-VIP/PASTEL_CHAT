@@ -13,12 +13,18 @@ const {
   clearConversation,
   populateMessage,
   toggleReaction,
-  findUserById
+  findUserById,
+  findFriendship
 } = require('../db/store');
+
+function canAccessConversation(userId, friendId) {
+  return userId !== friendId && Boolean(findFriendship(userId, friendId) || findFriendship(friendId, userId));
+}
 
 // GET /messages/with/:friendId - Fetch 1-on-1 conversation
 router.get('/with/:friendId', authMiddleware, (req, res) => {
   try {
+    if (!canAccessConversation(req.user._id, req.params.friendId)) return res.status(403).json({ message: 'Conversation access denied' });
     const { limit = 100, before } = req.query;
     const msgs = getConversation(req.user._id, req.params.friendId, {
       limit: Math.min(Number(limit) || 100, 500),
@@ -33,17 +39,20 @@ router.get('/with/:friendId', authMiddleware, (req, res) => {
 
 // GET /messages/pinned/:friendId
 router.get('/pinned/:friendId', authMiddleware, (req, res) => {
+  if (!canAccessConversation(req.user._id, req.params.friendId)) return res.status(403).json({ message: 'Conversation access denied' });
   res.json(getPinnedMessages(req.user._id, req.params.friendId));
 });
 
 // GET /messages/search/:friendId?q=xxx
 router.get('/search/:friendId', authMiddleware, (req, res) => {
+  if (!canAccessConversation(req.user._id, req.params.friendId)) return res.status(403).json({ message: 'Conversation access denied' });
   const query = req.query.q || '';
   res.json(searchMessages(req.user._id, req.params.friendId, query));
 });
 
 // DELETE /messages/clear/:friendId - Clear whole conversation
 router.delete('/clear/:friendId', authMiddleware, (req, res) => {
+  if (!canAccessConversation(req.user._id, req.params.friendId)) return res.status(403).json({ message: 'Conversation access denied' });
   const count = clearConversation(req.user._id, req.params.friendId);
   const io = req.app.get('io');
   io.emit(`notify:${req.params.friendId}`, {
@@ -62,6 +71,11 @@ router.post('/', authMiddleware, (req, res) => {
     if ((!content || !content.trim()) && !media) return res.status(400).json({ message: 'Content or media required' });
     const receiver = findUserById(receiverId);
     if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
+    if (!canAccessConversation(req.user._id, receiverId)) return res.status(403).json({ message: 'You can only message a friend' });
+    if (replyTo) {
+      const original = findMessage(replyTo);
+      if (!original || ![original.senderId, original.receiverId].includes(req.user._id) || ![original.senderId, original.receiverId].includes(receiverId)) return res.status(400).json({ message: 'Invalid reply target' });
+    }
 
     // Validate media object
     let validMedia = null;
@@ -208,9 +222,11 @@ router.post('/:id/reply', authMiddleware, (req, res) => {
     const original = findMessage(req.params.id);
     if (!original) return res.status(404).json({ message: 'Original not found' });
     if (original.isRecalled) return res.status(400).json({ message: 'Cannot reply to recalled' });
+    if (![original.senderId, original.receiverId].includes(req.user._id)) return res.status(403).json({ message: 'Not a participant' });
 
     // Reply goes to the OTHER participant in the original conversation
     const otherId = original.senderId === req.user._id ? original.receiverId : original.senderId;
+    if (!otherId || !canAccessConversation(req.user._id, otherId)) return res.status(403).json({ message: 'Conversation access denied' });
     const msg = createMessage({
       senderId: req.user._id,
       receiverId: otherId,

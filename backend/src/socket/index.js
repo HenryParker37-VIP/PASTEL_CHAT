@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const {
   findUserById,
   updateUser,
@@ -8,8 +7,10 @@ const {
   createMessage,
   populateMessage,
   addSharedPhoto,
-  genId
+  genId,
+  findFriendship
 } = require('../db/store');
+const { authenticateToken } = require('../services/sessionAuth');
 const {
   sendMessagePush,
   sendPushToUser,
@@ -17,8 +18,6 @@ const {
   clearActiveChat
 } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'pastel-chat-secret';
 
 const setupSocket = (io) => {
   const emitToUser = (userId, event, payload) => {
@@ -30,15 +29,16 @@ const setupSocket = (io) => {
     try {
       const token = socket.handshake.auth.token;
       if (!token) return next(new Error('Auth: no token'));
-      const decoded = jwt.verify(token, JWT_SECRET);
-      const user = findUserById(decoded.userId);
-      if (!user) return next(new Error('Auth: user not found'));
-      socket.user = user;
+      const result = authenticateToken(token);
+      if (!result) return next(new Error('Auth: invalid session'));
+      socket.user = result.user;
       next();
     } catch {
       next(new Error('Auth: invalid token'));
     }
   });
+
+  const canContact = (fromId, toId) => fromId !== toId && Boolean(findFriendship(fromId, toId) || findFriendship(toId, fromId));
 
   // Send each connected user only the online status of their own friends
   const broadcastOnlineFriends = () => {
@@ -61,7 +61,7 @@ const setupSocket = (io) => {
 
     // Active chat tracking for suppressing unnecessary push notifications
     socket.on('chat:active', ({ friendId }) => {
-      if (friendId) setActiveChat(user._id, friendId);
+      if (friendId && canContact(user._id, friendId)) setActiveChat(user._id, friendId);
     });
 
     socket.on('chat:inactive', ({ friendId }) => {
@@ -71,7 +71,7 @@ const setupSocket = (io) => {
     // Typing: targeted to a specific peer
     let typingTimeouts = {};
     socket.on('user_typing', ({ to, isTyping }) => {
-      if (!to) return;
+      if (!to || !canContact(user._id, to)) return;
       clearTimeout(typingTimeouts[to]);
       const payload = {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
@@ -88,7 +88,11 @@ const setupSocket = (io) => {
 
     // Send private message via socket
     socket.on('send_private_message', ({ to, content, replyTo, media }) => {
-      if (!to || ((!content || !content.trim()) && !media)) return;
+      if (!to || !canContact(user._id, to) || ((!content || !content.trim()) && !media)) return;
+      if (replyTo) {
+        const original = require('../db/store').findMessage(replyTo);
+        if (!original || ![original.senderId, original.receiverId].includes(user._id) || ![original.senderId, original.receiverId].includes(to)) return;
+      }
       let validMedia = null;
       if (media && media.dataUrl && media.name) {
         const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
@@ -126,7 +130,7 @@ const setupSocket = (io) => {
     // All events are forwarded to the target user; server never inspects SDP/ICE.
 
     socket.on('call:invite', ({ to, callType }) => {
-      if (!to) return;
+      if (!to || !canContact(user._id, to)) return;
       const type = callType === 'video' ? 'video' : 'voice';
       emitToUser(to, `call:incoming:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
@@ -143,14 +147,14 @@ const setupSocket = (io) => {
     });
 
     socket.on('call:accept', ({ to }) => {
-      if (!to) return;
+      if (!to || !canContact(user._id, to)) return;
       emitToUser(to, `call:accepted:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar }
       });
     });
 
     socket.on('call:reject', ({ to }) => {
-      if (!to) return;
+      if (!to || !canContact(user._id, to)) return;
       emitToUser(to, `call:rejected:${to}`, { from: user._id });
     });
 
@@ -161,17 +165,17 @@ const setupSocket = (io) => {
 
     // WebRTC handshake relay
     socket.on('call:offer', ({ to, offer, iceRestart }) => {
-      if (!to || !offer) return;
+      if (!to || !canContact(user._id, to) || !offer) return;
       emitToUser(to, `call:offer:${to}`, { from: user._id, offer, iceRestart: Boolean(iceRestart) });
     });
 
     socket.on('call:answer', ({ to, answer, iceRestart }) => {
-      if (!to || !answer) return;
+      if (!to || !canContact(user._id, to) || !answer) return;
       emitToUser(to, `call:answer:${to}`, { from: user._id, answer, iceRestart: Boolean(iceRestart) });
     });
 
     socket.on('call:ice', ({ to, candidate }) => {
-      if (!to || !candidate) return;
+      if (!to || !canContact(user._id, to) || !candidate) return;
       emitToUser(to, `call:ice:${to}`, { from: user._id, candidate });
     });
 
@@ -236,7 +240,7 @@ const setupSocket = (io) => {
 
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay
     socket.on('wish_birthday', ({ targetUserId, age }) => {
-      if (!targetUserId) return;
+      if (!targetUserId || !canContact(user._id, targetUserId)) return;
       io.emit(`notify:${targetUserId}`, {
         type: 'happy_birthday',
         from: { _id: user._id, name: user.name, avatar: user.avatar },

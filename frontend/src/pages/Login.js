@@ -280,7 +280,7 @@ const Login = () => {
     const r = await loginWithCode(code);
     setBusy(false);
     if (!r.success) return setError(r.error);
-    if (r.user.loginCode === 'ADMN-0000' || r.user.isAdmin) {
+    if (r.user.isAdmin === true) {
       navigate('/admin');
     } else {
       navigate('/home');

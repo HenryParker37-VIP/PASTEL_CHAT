@@ -20,7 +20,8 @@ router.post('/', authMiddleware, (req, res) => {
   if (!name || !name.trim()) return res.status(400).json({ message: 'Group name required' });
   if (!Array.isArray(memberIds)) return res.status(400).json({ message: 'memberIds must be array' });
 
-  const group = createGroup({ name, creatorId: req.user._id, memberIds });
+  const validMemberIds = [...new Set(memberIds.map(String).filter((id) => findUserById(id)))].slice(0, 50);
+  const group = createGroup({ name, creatorId: req.user._id, memberIds: validMemberIds });
   const pub = groupPublic(group);
 
   const io = req.app.get('io');
@@ -150,6 +151,7 @@ router.delete('/:id/messages/:msgId', authMiddleware, (req, res) => {
   if (!group) return res.status(404).json({ message: 'Not found' });
   const msg = findMessage(req.params.msgId);
   if (!msg) return res.status(404).json({ message: 'Message not found' });
+  if (msg.groupId !== group._id) return res.status(403).json({ message: 'Message is not in this group' });
   if (String(msg.senderId) !== String(req.user._id)) return res.status(403).json({ message: 'Not your message' });
   updateMessage(msg._id, { isRecalled: true, content: 'This message has been recalled' });
   const io = req.app.get('io');
@@ -168,6 +170,7 @@ router.post('/:id/messages/:msgId/react', authMiddleware, (req, res) => {
   if (!ALLOWED.includes(emoji)) return res.status(400).json({ message: 'Invalid emoji' });
   const msg = findMessage(req.params.msgId);
   if (!msg || msg.isRecalled) return res.status(400).json({ message: 'Cannot react' });
+  if (msg.groupId !== group._id) return res.status(403).json({ message: 'Message is not in this group' });
   const updated = toggleReaction(msg._id, req.user._id, emoji);
   const populated = populateMessage(updated);
   const io = req.app.get('io');

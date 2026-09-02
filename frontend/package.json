@@ -24,7 +24,7 @@
   "main": "public/electron.js",
   "scripts": {
     "start": "react-scripts start",
-    "build": "node scripts/generate-build-meta.js && react-scripts build",
+    "build": "node scripts/generate-build-meta.js && GENERATE_SOURCEMAP=false react-scripts build",
     "lint": "eslint src/App.js src/pages/Resume.js src/components/ResumePdfDocument.js src/data/resumeData.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
