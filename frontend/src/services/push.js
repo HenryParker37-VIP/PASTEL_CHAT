@@ -116,7 +116,7 @@ export async function subscribeToPush(swRegistration) {
       });
     }
 
-    await api.post('/push/subscribe', { subscription: sub.toJSON() });
+    await api.post('/push/subscribe', { subscription: sub.toJSON(), language: localStorage.getItem('lang') || 'vi' });
     localStorage.setItem('pastelchat.notify', '1');
     return { success: true, permission: 'granted', subscription: sub };
   } catch (err) {
@@ -137,7 +137,7 @@ export async function syncExistingSubscription(swRegistration) {
 
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
-      await api.post('/push/subscribe', { subscription: sub.toJSON() });
+      await api.post('/push/subscribe', { subscription: sub.toJSON(), language: localStorage.getItem('lang') || 'vi' });
       return true;
     }
     return false;

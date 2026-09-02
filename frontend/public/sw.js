@@ -119,14 +119,14 @@ self.addEventListener('push', (event) => {
   }
 
   // ── Regular message / friend request / test notification ──
-  const title   = data.title || 'PastelChat';
-  const targetUrl = data.data?.url || data.url || '/';
+  const title   = data.title || 'Pastel Chat';
+  const targetUrl = data.data?.url || data.data?.route || data.url || data.route || '/';
   const options = {
     body:     data.body || 'You have a new notification on PastelChat',
     icon:     data.icon || '/icons/icon-192x192.png',
     badge:    data.badge || '/icons/icon-72x72.png',
     tag:      data.tag || (data.type ? `pastel-${data.type}` : 'pastel-notification'),
-    data:     data.data || { url: targetUrl, type: data.type },
+    data:     { ...(data.data || {}), url: targetUrl, type: data.type },
     vibrate:  [200, 100, 200],
     renotify: true,
   };

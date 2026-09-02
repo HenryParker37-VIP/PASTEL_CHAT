@@ -22,11 +22,12 @@ router.get('/:id', authMiddleware, (req, res) => {
   res.json(userPublic(user));
 });
 
-// PUT /users/me - Update own profile (avatar, chatBackground, bio, status)
+// PUT /users/me - Update own profile (avatar, chatBackground, chatColor, bio, status)
 router.put('/me', authMiddleware, (req, res) => {
   const allowed = {};
   if (typeof req.body.avatar === 'string') allowed.avatar = req.body.avatar.slice(0, 100000);
   if (typeof req.body.chatBackground === 'string') allowed.chatBackground = req.body.chatBackground.slice(0, 50);
+  if (req.body.chatColor === null || typeof req.body.chatColor === 'string') allowed.chatColor = req.body.chatColor ? req.body.chatColor.slice(0, 20) : null;
   if (typeof req.body.bio === 'string') allowed.bio = req.body.bio.slice(0, 120);
   if (typeof req.body.status === 'string') allowed.status = req.body.status.slice(0, 60);
   const user = updateUser(req.user._id, allowed);

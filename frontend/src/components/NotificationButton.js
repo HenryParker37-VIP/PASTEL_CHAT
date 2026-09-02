@@ -1,15 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../contexts/NotificationsContext';
+import { useLang } from '../i18n';
 import PastelIcon from './PastelIcon';
 
 const NotificationButton = ({ compact = false }) => {
   const navigate = useNavigate();
   const { unreadCount } = useNotifications();
+  const { t } = useLang();
+  const label = t('notificationsTitle');
   return (
     <button
       type="button"
-      aria-label={unreadCount ? `Thông báo, ${unreadCount} chưa đọc` : 'Thông báo'}
+      aria-label={unreadCount ? `${label}, ${unreadCount} ${t('notificationsUnread').toLowerCase()}` : label}
       onClick={() => navigate('/notifications')}
       style={compact ? {
         width: '100%', padding: '12px 16px', background: 'none', border: 'none',
@@ -24,7 +27,7 @@ const NotificationButton = ({ compact = false }) => {
       }}
     >
       <span style={{ display: 'inline-flex', alignItems: 'center' }}><PastelIcon name="bell" size={compact ? 16 : 15} /></span>
-      <span>Thông báo</span>
+      <span>{label}</span>
       {unreadCount > 0 && (
         <span aria-hidden="true" style={{
           minWidth: 18, height: 18, padding: '0 5px', borderRadius: 10,

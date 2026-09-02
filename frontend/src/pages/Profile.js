@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLang } from '../i18n';
 import AvatarCustomizer from '../components/AvatarCustomizer';
 import PastelIcon from '../components/PastelIcon';
+import { PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 
 const isCustomPhoto = (url) => url && url.startsWith('data:');
 
@@ -49,6 +51,7 @@ const STATUS_PRESETS = [
 
 const Profile = () => {
   const { user, updateName, updateProfile, checkName } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
   const [name, setName] = useState(user?.name || '');
   // avatarUrl holds the full resolved URL regardless of mode
@@ -57,6 +60,7 @@ const Profile = () => {
   const [avatarMode, setAvatarMode] = useState(isCustomPhoto(user?.avatar) ? 'photo' : 'custom');
   const [bio, setBio] = useState(user?.bio || '');
   const [status, setStatus] = useState(user?.status || '');
+  const [chatColor, setChatColor] = useState(user?.chatColor || null);
   const [saveStatus, setSaveStatus] = useState('');
   const [nameStatus, setNameStatus] = useState({ type: 'idle', msg: '' });
   const [busy, setBusy] = useState(false);
@@ -100,7 +104,7 @@ const Profile = () => {
     }
 
     if (ok) {
-      const patch = { bio, status };
+      const patch = { bio, status, chatColor };
       const newAvatarUrl = avatarMode === 'photo' && customPhoto ? customPhoto : avatarUrl;
       if (newAvatarUrl !== user.avatar) patch.avatar = newAvatarUrl;
       const r2 = await updateProfile(patch);
@@ -226,6 +230,46 @@ const Profile = () => {
               placeholder="Or type a custom status..."
               style={{ fontSize: 13 }}
             />
+          </div>
+
+          {/* Avatar */}
+          <div>
+            <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+              <PastelIcon name="palette" size={15} /> {t('profileChatColor')}
+            </span>
+            <p style={{ fontSize: 12, color: '#999', margin: '0 0 10px' }}>{t('profileChatColorDesc')}</p>
+            <div role="radiogroup" aria-label={t('profileChatColor')} style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={chatColor === null}
+                aria-label={t('profileChatColorAuto')}
+                title={t('profileChatColorAuto')}
+                onClick={() => setChatColor(null)}
+                style={{
+                  width: 30, height: 30, borderRadius: '50%', padding: 0, cursor: 'pointer',
+                  border: chatColor === null ? '3px solid #9B59B6' : '2px solid #E7DDEB',
+                  background: 'linear-gradient(135deg, #FFB6C1 0 33%, #C6AFE0 33% 66%, #A8D3E2 66%)',
+                  boxShadow: chatColor === null ? '0 0 0 3px rgba(155,89,182,0.15)' : 'none'
+                }}
+              />
+              {PASTEL_IDENTITY_PALETTE.map((color) => (
+                <button
+                  type="button"
+                  role="radio"
+                  key={color.id}
+                  aria-checked={chatColor === color.id}
+                  aria-label={color.label}
+                  title={color.label}
+                  onClick={() => setChatColor(color.id)}
+                  style={{
+                    width: 30, height: 30, borderRadius: '50%', padding: 0, cursor: 'pointer', background: color.bubble,
+                    border: chatColor === color.id ? `3px solid ${color.accent}` : '2px solid transparent',
+                    boxShadow: chatColor === color.id ? `0 0 0 3px ${color.soft}` : '0 1px 4px rgba(80,50,70,0.12)'
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Avatar */}
