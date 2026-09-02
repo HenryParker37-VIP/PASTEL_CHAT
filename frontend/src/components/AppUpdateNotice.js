@@ -6,6 +6,7 @@ import { CURRENT_APP_VERSION, RUNNING_BUILD_ID, compareVersions } from '../relea
 import { getRegistration } from '../serviceWorkerRegistration';
 
 // The build marker is intentionally checked independently of release notes.
+// Keep this component's update check available to already-open clients.
 
 const AppUpdateNotice = () => {
   const { t, lang } = useLang();
