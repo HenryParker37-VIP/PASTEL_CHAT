@@ -42,7 +42,7 @@ export const analyzeMessage = value => {
   return { normalized, concepts, signals };
 };
 
-const INTENT_ALIASES = { sadness: ['sad', 'cry', 'tired', 'bored', 'sick', 'heartbreak'], crying: ['cry'], joy: ['happy', 'laugh', 'celebrate', 'excited'], affection: ['love', 'cute', 'flirty'], support: ['support', 'comfort', 'motivation', 'good-luck'], sleep: ['sleep', 'good-night', 'cozy'] };
+const INTENT_ALIASES = { sadness: ['sad', 'cry', 'tired', 'bored', 'sick', 'heartbreak'], crying: ['cry'], joy: ['happy', 'laugh', 'celebrate', 'excited'], surprise: ['shock', 'shocked', 'wow'], affection: ['love', 'cute', 'flirty'], support: ['support', 'comfort', 'motivation', 'good-luck'], sleep: ['sleep', 'good-night', 'cozy', 'tired'] };
 const intentScore = (item, concept) => {
   const key = item.primaryIntent || '';
   if (key === concept.intent || key === concept.id) return 22;
@@ -65,6 +65,14 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   }).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
   const chosen = [];
   const packCounts = new Map();
+  const curated = { greeting: 'pastel-bunny-final-01', affection: 'pastel-bunny-final-03', sleep: 'pastel-bunny-final-12', joy: 'pastel-bunny-final-16', sadness: 'pastel-bunny-final-09', surprise: 'pastel-bunny-final-15', approval: 'pastel-bunny-final-06' };
+  for (const concept of analysis.concepts) {
+    const item = stickers.find(candidate => candidate.id === curated[concept.id]);
+    if (item && ranked.some(candidate => candidate.item.id === item.id) && !chosen.includes(item)) {
+      chosen.push(item);
+      packCounts.set(item.pack, (packCounts.get(item.pack) || 0) + 1);
+    }
+  }
   const celebratoryBunny = analysis.concepts.some(concept => concept.id === 'joy') && /\b(yay|let'?s go|gooo)\b/i.test(analysis.normalized)
     ? stickers.find(item => item.id === 'pastel-bunny-final-05') : null;
   if (celebratoryBunny) {
@@ -73,6 +81,7 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   }
   for (const candidate of ranked) {
     if (chosen.length >= 5) break;
+    if (chosen.includes(candidate.item)) continue;
     const count = packCounts.get(candidate.item.pack) || 0;
     if (count >= 2) continue;
     chosen.push(candidate.item);
