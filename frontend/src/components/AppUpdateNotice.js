@@ -5,6 +5,8 @@ import api from '../services/api';
 import { CURRENT_APP_VERSION, RUNNING_BUILD_ID, compareVersions } from '../releaseVersion';
 import { getRegistration } from '../serviceWorkerRegistration';
 
+// The build marker is intentionally checked independently of release notes.
+
 const AppUpdateNotice = () => {
   const { t, lang } = useLang();
   const [registration, setRegistration] = useState(null);
