@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PastelStickerArtwork from './PastelStickerArtwork';
 
 const StickerDisplay = ({ emoji, imageUrl, label, size = 'medium', allowEmojiFallback = true }) => {
   const [imageError, setImageError] = useState(false);
@@ -11,6 +12,14 @@ const StickerDisplay = ({ emoji, imageUrl, label, size = 'medium', allowEmojiFal
   };
 
   const style = sizeMap[size] || sizeMap.medium;
+
+  if (imageUrl?.startsWith('vector:')) {
+    return (
+      <div className="sticker-vector-frame" title={label} style={{ width: style.width, height: style.height }}>
+        <PastelStickerArtwork asset={imageUrl} label={label} size={style.width} />
+      </div>
+    );
+  }
 
   // If we have an imageUrl and it hasn't failed, try to display it
   if (imageUrl && !imageError) {

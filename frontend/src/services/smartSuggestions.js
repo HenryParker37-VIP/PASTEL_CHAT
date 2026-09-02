@@ -5,6 +5,12 @@ const SLANG = {
   lol: 'laugh', lmao: 'laugh', omg: 'surprise', pls: 'please', damn: 'surprise', cooked: 'toang'
 };
 
+const normalizeFields = item => ({
+  ...item,
+  tags: item.tags || { en: item.triggers || [], vi: item.triggers || [] },
+  emotion: item.emotion || [], intent: item.intent || [], tone: item.tone || []
+});
+
 const CONCEPTS = [
   { id: 'affection', phrases: ['love', 'love you', 'yêu', 'thương', 'miss you', 'miss u', 'miss you lots', 'nhớ bạn', 'nhớ you', 'nhớ em', 'nhớ anh', 'nhớ m', 'i miss', 'like you', 'thinking of you', 'hug', 'ôm', 'thích bạn', ...SMART_SUGGESTION_TRIGGERS.affection], emotion: 'love', tone: 'tender', intent: 'affection', gif: 'cute love reaction' },
   { id: 'joy', phrases: ['haha', 'hahaha', 'lol', 'lmao', 'funny', 'hilarious', 'buồn cười', 'mắc cười', 'cười', 'cười xỉu', 'great', 'yay', "let's go", 'gooo', ...SMART_SUGGESTION_TRIGGERS.laughter], emotion: 'joy', tone: 'playful', intent: 'react', gif: 'funny laughing reaction' },
@@ -48,13 +54,14 @@ export const analyzeMessage = (value = '') => {
 export const getSmartSuggestions = (message, { stickers = [], recentIds = [], favoriteIds = [] } = {}) => {
   const analysis = analyzeMessage(message);
   if (analysis.concepts.length === 0) return { ...analysis, stickers: [], gifQueries: [] };
-  const score = (item) => {
+  const score = (rawItem) => {
+    const item = normalizeFields(rawItem);
     const fields = [item.label, item.labelVi, ...(item.tags?.en || []), ...(item.tags?.vi || []), ...(item.emotion || []), ...(item.intent || []), ...(item.tone || [])].join(' ').toLowerCase();
     const overlap = analysis.signals.reduce((sum, signal) => sum + (fields.includes(signal) ? 3 : 0), 0);
     const directPhraseMatches = [...(item.tags?.en || []), ...(item.tags?.vi || [])]
       .filter(tag => tag.length > 2 && analysis.normalized.includes(normalizeMessage(tag))).length;
     const directPhraseMatch = directPhraseMatches * 5;
-    const firstPartyBonus = item.style === 'pastel-bunny' && overlap > 0 ? 4 : 0;
+    const firstPartyBonus = item.style === 'pastel-bunny' && overlap > 0 ? 12 : 0;
     return overlap + directPhraseMatch + firstPartyBonus + (favoriteIds.includes(item.id) ? 4 : 0) + (recentIds.includes(item.id) ? 2 : 0) + (item.intensity >= 4 && analysis.normalized.length > 30 ? 1 : 0);
   };
   const ranked = stickers.map(item => ({ item, score: score(item) })).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score);
@@ -62,6 +69,18 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   const usedPacks = new Set();
   const packCounts = new Map();
   const needsVisualVariants = analysis.concepts.some(({ intent }) => intent === 'greeting' || intent === 'farewell');
+  const preferredBunnyIds = {
+    greeting: ['bunny_hello', 'bunny_xinchao'], farewell: ['bunny_byebye', 'bunny_seeyou'],
+    laughter: ['bunny_laugh'], joy: ['bunny_laugh'], sadness: ['bunny_cry'], anger: ['bunny_angry'],
+    surprise: ['bunny_shocked'], affection: ['bunny_love', 'bunny_imissyou', 'bunny_nhoyou'], approval: ['bunny_thumbsup'], celebrate: ['bunny_celebrate'], celebration: ['bunny_celebrate']
+  };
+  const extraPreferred = /\b(yay|let's go|gooo)\b/.test(analysis.normalized) ? ['bunny_celebrate'] : [];
+  const preferred = [...analysis.concepts.flatMap(concept => preferredBunnyIds[concept.id] || []), ...extraPreferred]
+    .map(id => stickers.find(item => item.id === id)).filter(Boolean);
+  for (const item of preferred) {
+    if (chosen.length >= 5 || chosen.some(candidate => candidate.id === item.id)) break;
+    chosen.push(item); usedPacks.add(item.pack); packCounts.set(item.pack, (packCounts.get(item.pack) || 0) + 1);
+  }
   for (const candidate of ranked) {
     if (chosen.length >= 5) break;
     const packCount = packCounts.get(candidate.item.pack) || 0;

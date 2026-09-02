@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import StickerDisplay from './StickerDisplay';
-import { LOCAL_STICKERS } from '../data/stickerPacks';
+import { LOCAL_STICKERS } from '../data/stickerLibrary';
 import { getRecentStickerIds, getFavoriteStickerIds } from '../services/stickerPreferences';
 import { getSmartSuggestions } from '../services/smartSuggestions';
 

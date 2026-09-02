@@ -1,5 +1,5 @@
 import { analyzeMessage, getSmartSuggestions, normalizeMessage } from './smartSuggestions';
-import { LOCAL_STICKERS } from '../data/stickerPacks';
+import { LOCAL_STICKERS } from '../data/stickerLibrary';
 
 describe('smart sticker suggestions', () => {
   test.each([
