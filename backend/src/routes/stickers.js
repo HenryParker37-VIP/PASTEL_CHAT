@@ -361,7 +361,7 @@ router.get('/packs', (req, res) => {
     user ? store.userStickerPacks.filter(u => u.userId === user._id).map(u => u.packSlug) : []
   );
 
-  const packs = SEED_PACKS.map(p => ({
+  const packs = ACTIVE_PACKS.map(p => ({
     id: p.slug,
     slug: p.slug,
     name: p.name,
