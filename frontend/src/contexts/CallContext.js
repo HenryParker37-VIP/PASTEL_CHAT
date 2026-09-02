@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import { getIceServers } from '../services/api';
+import { useToast } from '../components/Toast';
+import { useLang } from '../i18n';
 
 const CallContext = createContext(null);
 export const useCall = () => useContext(CallContext);
@@ -17,6 +19,8 @@ const ICE_CONFIG = {
 export const CallProvider = ({ children }) => {
   const { socket } = useSocket();
   const { user }   = useAuth();
+  const { push } = useToast();
+  const { t } = useLang();
 
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeCall,   setActiveCall]   = useState(null);
@@ -320,10 +324,10 @@ export const CallProvider = ({ children }) => {
       socket.emit('call:offer', { to: peer._id, offer });
     } catch (err) {
       console.error('[Call] start failed:', err);
-      alert(err.message || 'Could not start call. Check camera/mic permissions.');
+      push({ icon: 'alert', title: t('feedbackCallFailed'), body: err.message, tone: 'error' });
       cleanupCall();
     }
-  }, [socket, getMedia, createPC, cleanupCall]);
+  }, [socket, getMedia, createPC, cleanupCall, push, t]);
 
   // ── Answer call ──────────────────────────────────────────────────────────────
 
@@ -353,10 +357,10 @@ export const CallProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('[Call] answer failed:', err);
-      alert(err.message || 'Could not answer call. Check camera/mic permissions.');
+      push({ icon: 'alert', title: t('feedbackCallFailed'), body: err.message, tone: 'error' });
       cleanupCall();
     }
-  }, [socket, getMedia, createPC, cleanupCall, flushPendingCandidates]);
+  }, [socket, getMedia, createPC, cleanupCall, flushPendingCandidates, push, t]);
 
   // ── Reject / End ─────────────────────────────────────────────────────────────
 

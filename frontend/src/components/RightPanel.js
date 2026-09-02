@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PastelIcon from './PastelIcon';
+import { useConfirm, useToast } from './Toast';
+import { useLang } from '../i18n';
 
 const BACKGROUNDS = [
   { id: 'cream',    label: 'Cream',    value: '#FFF8F3' },
@@ -14,6 +16,9 @@ const BACKGROUNDS = [
 
 const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick, onSearch, onBackgroundChange }) => {
   const { user, updateProfile } = useAuth();
+  const { t } = useLang();
+  const { confirm } = useConfirm();
+  const { push } = useToast();
   const [query, setQuery] = useState('');
   const [pinned, setPinned] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -123,9 +128,14 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
         <button
           className="btn"
           style={{ width: '100%', background: '#ffb3b3' }}
-          onClick={() => {
-            if (window.confirm('Clear this entire conversation? This cannot be undone.')) {
-              onClearChat?.();
+          onClick={async () => {
+            const accepted = await confirm({ title: t('chatClearTitle'), message: t('chatClearConfirm'), confirmLabel: t('chatClearTitle'), tone: 'danger', icon: 'trash' });
+            if (!accepted) return;
+            try {
+              await onClearChat?.();
+              push({ icon: 'check', title: t('feedbackConversationCleared'), tone: 'success' });
+            } catch {
+              push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
             }
           }}
         >

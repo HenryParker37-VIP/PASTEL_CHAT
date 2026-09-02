@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
+import { useConfirm, useToast } from '../components/Toast';
 import { getPastelIdentity } from '../utils/pastelIdentity';
 
 const isMobile = () => window.innerWidth <= 700;
@@ -17,6 +18,8 @@ const GroupChat = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
   const { t } = useLang();
+  const { confirm } = useConfirm();
+  const { push } = useToast();
   const navigate = useNavigate();
 
   const [group, setGroup] = useState(null);
@@ -133,8 +136,10 @@ const GroupChat = () => {
   };
 
   const handleLeave = async () => {
-    if (!window.confirm(t('groupLeaveConfirm'))) return;
+    const accepted = await confirm({ title: t('groupLeave'), message: t('groupLeaveConfirm'), confirmLabel: t('groupLeave'), tone: 'danger', icon: 'users' });
+    if (!accepted) return;
     await api.delete(`/groups/${groupId}/leave`);
+    push({ icon: 'check', title: t('feedbackGroupLeft'), tone: 'success' });
     navigate('/friends');
   };
 
@@ -146,8 +151,9 @@ const GroupChat = () => {
       const { data } = await api.post(`/groups/${groupId}/invite`, { userId: inviteId.trim() });
       setGroup(data);
       setInviteId('');
+      push({ icon: 'check', title: t('feedbackGroupInvited'), tone: 'success' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to invite');
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), body: err.response?.data?.message, tone: 'error' });
     } finally {
       setInviteBusy(false);
     }
