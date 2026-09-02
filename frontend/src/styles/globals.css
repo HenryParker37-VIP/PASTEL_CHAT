@@ -2169,6 +2169,19 @@ body.dark .sticker-emoji-btn:hover { background: #3A2D50; border-color: #C9A6E0;
 }
 .bubble-emoji-sticker:hover { transform: scale(1.08) rotate(-3deg); }
 
+/* Native sticker messages stay artwork-first; ordinary images/files keep their own cards. */
+.native-sticker-message { display: flex; justify-content: center; padding: 2px 0 0; }
+.native-sticker-message .sticker-display { width: clamp(132px, 18vw, 196px) !important; height: clamp(132px, 18vw, 196px) !important; background: transparent !important; }
+.native-sticker-message .sticker-display img { padding: 0 !important; object-fit: contain; }
+.msg-bubble-v2:has(.native-sticker-message) { padding: 4px 8px 5px; background: transparent; box-shadow: none; }
+.msg-bubble-v2:has(.native-sticker-message) .bubble-meta { padding-inline: 3px; color: #a98caf; }
+@media (max-width: 520px) {
+  .native-sticker-message .sticker-display { width: clamp(112px, 38vw, 164px) !important; height: clamp(112px, 38vw, 164px) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .native-sticker-message .sticker-display { transition: none; }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    STICKER STORE
 ══════════════════════════════════════════════════════════════════════════════ */

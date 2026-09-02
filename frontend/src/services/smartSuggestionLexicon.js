@@ -27,21 +27,21 @@ export const SMART_SUGGESTION_NORMALIZATION = {
 };
 
 export const SMART_SUGGESTION_TRIGGERS = {
-  crying: ['huhu', 'hiccc', 'khóc đây', 'khóc'],
-  sadness: ['bùn', 'buồn', 'chán'],
-  affection: ['iu', 'yêu', 'nhớ'],
-  hug: ['ôm'],
-  cute: ['dễ thương', 'cute'],
-  sleep: ['ngủ đây', 'ngủ', 'đi ngủ'],
-  tired: ['mệt'],
+  crying: ['huhu', 'huhuhu', 'hic', 'hiccc', 'khóc đây', 'khóc rồi', 'khóc', 'rơi nước mắt'],
+  sadness: ['bùn', 'buồn', 'buồn quá', 'buồn rồi', 'chán', 'chán quá', 'cô đơn', 'đau lòng', 'hụt hẫng'],
+  affection: ['iu', 'yêu', 'nhớ', 'thương', 'đáng yêu', 'dễ thương'],
+  hug: ['ôm', 'ôm nè', 'ôm nha', 'an ủi'],
+  cute: ['dễ thương', 'dễ thưn', 'cute', 'cuti', 'đáng yêu'],
+  sleep: ['ngủ đây', 'ngủ ngon', 'ngủ thôi', 'ngủ', 'đi ngủ', 'good night', 'buồn ngủ'],
+  tired: ['mệt', 'mệt rồi', 'mệt quá', 'mệt ngang', 'mệt xỉu'],
   completion: ['xong'],
   approval: ['ok', 'oke', 'oki'],
-  confusion: ['hả'],
+  confusion: ['hả', 'hảa', 'ủa', 'khó hiểu', 'bối rối', 'ngơ ngác'],
   helplessness: ['chịu'],
   applause: ['vỗ tay'],
   laughter: ['lol', 'lmao', 'haha', 'hihi', 'hehe'],
   study: ['học'],
-  apology: ['sorry', 'xin lũi', 'xin lỗi']
+  apology: ['sorry', 'xin lũi', 'xin lỗi', 'có lỗi']
 };
 
 export const SMART_SUGGESTION_CONCEPTS = {

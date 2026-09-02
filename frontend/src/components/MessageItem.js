@@ -161,7 +161,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
 
             {/* Sticker (illustrated) */}
             {message.media?.type === 'sticker' && !message.isRecalled && (
-              <div className="bubble-sticker" style={{ marginTop: 8 }}>
+              <div className="native-sticker-message">
                 <StickerDisplay
                   emoji={message.media.emoji}
                   imageUrl={message.media.imageUrl}
@@ -187,7 +187,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
             )}
 
             {/* Media attachment */}
-            {message.media && message.media.type !== 'gif' && !message.isRecalled && (
+            {message.media && !['gif', 'sticker'].includes(message.media.type) && !message.isRecalled && (
               message.media.type === 'image' ? (
                 <div className="bubble-media-img">
                   <img

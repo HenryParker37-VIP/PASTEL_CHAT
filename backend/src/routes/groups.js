@@ -109,7 +109,22 @@ router.post('/:id/messages', authMiddleware, (req, res) => {
   if ((!content || !content.trim()) && !media) return res.status(400).json({ message: 'Content or media required' });
 
   let validMedia = null;
-  if (media?.dataUrl && media?.name) {
+  if (media?.type === 'sticker' && media?.imageUrl) {
+    validMedia = {
+      type: 'sticker',
+      stickerId: media.stickerId ? String(media.stickerId).slice(0, 100) : null,
+      imageUrl: String(media.imageUrl).slice(0, 2000),
+      name: media.name ? String(media.name).slice(0, 200) : 'Sticker'
+    };
+  } else if (media?.type === 'gif' && media?.url) {
+    validMedia = {
+      type: 'gif',
+      url: String(media.url).slice(0, 2000),
+      preview: media.previewUrl || media.preview ? String(media.previewUrl || media.preview).slice(0, 2000) : null,
+      previewUrl: media.previewUrl || media.preview ? String(media.previewUrl || media.preview).slice(0, 2000) : null,
+      name: media.name ? String(media.name).slice(0, 200) : 'GIF'
+    };
+  } else if (media?.dataUrl && media?.name) {
     const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
     if (sizeBytes > 8 * 1024 * 1024) return res.status(400).json({ message: 'File too large' });
     validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sizeBytes };

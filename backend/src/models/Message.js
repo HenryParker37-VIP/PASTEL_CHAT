@@ -32,7 +32,7 @@ const messageSchema = new mongoose.Schema({
   media: {
     type: {
       type: String,
-      enum: ['gif', 'image', 'file'],
+      enum: ['sticker', 'gif', 'image', 'file'],
       default: null
     },
     url: String,
@@ -40,7 +40,9 @@ const messageSchema = new mongoose.Schema({
     name: String,
     size: Number,
     duration: Number,
-    dataUrl: String
+    dataUrl: String,
+    stickerId: String,
+    imageUrl: String
   },
   reactions: {
     type: Map,

@@ -5,7 +5,7 @@ export const STICKER_CATEGORIES = [
 ].map(label => ({ id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label, labelVi: label }));
 
 const categoryId = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-const sticker = (pack, number, label, labelVi, categories, en, vi) => {
+const sticker = (pack, number, label, labelVi, categories, en, vi, primaryIntent = 'cute') => {
   const id = `${pack.id}-${String(number).padStart(2, '0')}`;
   return {
     id, pack: pack.id, packId: pack.id, characterId: pack.id, name: label, label, labelVi,
@@ -15,6 +15,8 @@ const sticker = (pack, number, label, labelVi, categories, en, vi) => {
     previewAsset: `/stickers/source-packs/${pack.id}/${String(number).padStart(2, '0')}.webp`, assetType: 'webp',
     emotion: categories.map(category => category.toLowerCase()), tone: ['pastel', 'friendly'],
     intensity: number % 5 === 0 ? 4 : 2, style: 'pastelchat-user-source', isLegacy: false, isActive: true, sortOrder: number,
+    primaryIntent,
+    relatedIntents: [...new Set([primaryIntent, ...categories.map(categoryId)])],
     intent: [...new Set([...categories.map(categoryId), ...(categories.includes('Hello') ? ['greeting'] : []), ...(categories.includes('Good Night') ? ['sleep'] : [])])]
   };
 };
@@ -31,7 +33,7 @@ const VI = {
   hello: ['xin chào', 'chào', 'chào nha'], happy: ['vui', 'vui quá', 'yay'], love: ['yêu', 'iu', 'đang yêu'], hug: ['ôm', 'ôm nha', 'an ủi'], laugh: ['cười', 'haha', 'cười xỉu'], support: ['cố lên', 'giỏi quá', 'tuyệt vời'], chill: ['chill', 'thư giãn', 'cozy'], sad: ['buồn', 'buồn quá', 'buồn rồi'], cry: ['khóc', 'khóc rồi', 'khóc đây'], tired: ['mệt', 'buồn ngủ', 'ngủ thôi'], food: ['đói', 'ăn thôi', 'đến giờ ăn'], thinking: ['đang nghĩ', 'suy nghĩ', 'hmmm'], shock: ['trời ơi', 'sốc', 'hả'], okay: ['okie', 'ổn', 'đồng ý'], celebrate: ['ăn mừng', 'tuyệt vời', 'đi thôi'], work: ['làm việc', 'đang bận', 'học'], coffee: ['cà phê', 'uống cà phê'], cute: ['dễ thương', 'đáng yêu'], bye: ['tạm biệt', 'hẹn gặp lại']
 };
 const triggers = key => [EN[key] || EN.cute, VI[key] || VI.cute];
-const row = (label, labelVi, categories, key) => [label, labelVi, categories, ...triggers(key)];
+const row = (label, labelVi, categories, key) => [label, labelVi, categories, ...triggers(key), key];
 
 const bunnyRows = [
   row('Hiiui!', 'Hiiui!', ['Hello', 'Cute'], 'hello'), row('So cute!', 'Dễ thương quá!', ['Cute', 'Happy'], 'cute'), row('I love you~', 'Iuuuuu~', ['Love', 'Flirty'], 'love'), row('Hug me~', 'Ôm nà~', ['Hug', 'Love'], 'hug'),
