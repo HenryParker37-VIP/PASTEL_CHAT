@@ -307,15 +307,15 @@ const ARCHIVED_LEGACY_SEED_PACKS = [
 // the API manifest aligned so old emoji packs cannot reappear through a direct
 // API call or the new-user defaults path.
 const ACTIVE_PACKS = [
-  ['pastel-daily-feelings', 'Pastel Daily Feelings', 'Cảm Xúc Hằng Ngày', ['feelings', 'moods', 'daily']],
-  ['pastel-sleepy-chill', 'Pastel Sleepy & Chill', 'Ngủ Nghỉ & Thư Giãn', ['sleep', 'chill', 'cozy']],
-  ['pastel-love-affection', 'Pastel Love & Affection', 'Yêu Thương & Tình Cảm', ['love', 'affection', 'hearts']],
-  ['pastel-study-work', 'Pastel Study & Work', 'Học Hành & Công Việc', ['study', 'work', 'motivation']],
-  ['pastel-thanks-sorry', 'Pastel Thanks & Sorry', 'Cảm Ơn & Xin Lỗi', ['thanks', 'sorry', 'care']],
-  ['pastel-foodie-moments', 'Pastel Foodie Moments', 'Đồ Ăn & Thức Uống', ['food', 'drinks', 'hungry']],
-  ['pastel-fun-lifestyle', 'Pastel Fun & Lifestyle', 'Đi Chơi & Cuộc Sống', ['fun', 'lifestyle', 'outings']],
-  ['pastel-cute-animals', 'Pastel Cute Animals', 'Động Vật Siêu Cute', ['animals', 'cute', 'friends']],
-  ['pastel-ultimate-reactions', 'Pastel Ultimate Reactions', 'Reaction Siêu Đỉnh', ['reactions', 'shock', 'fun']],
+  ['pastel-daily-feelings', 'Pastel Daily Feelings', 'Cảm Xúc Hằng Ngày', 'Soft reactions for everyday moods and feelings.', ['feelings', 'moods', 'daily']],
+  ['pastel-sleepy-chill', 'Pastel Sleepy & Chill', 'Ngủ Nghỉ & Thư Giãn', 'Cozy stickers for rest, sleep, and quiet moments.', ['sleep', 'chill', 'cozy']],
+  ['pastel-love-affection', 'Pastel Love & Affection', 'Yêu Thương & Tình Cảm', 'Warm stickers for love, care, and affection.', ['love', 'affection', 'hearts']],
+  ['pastel-study-work', 'Pastel Study & Work', 'Học Hành & Công Việc', 'Motivation for study, work, and getting things done.', ['study', 'work', 'motivation']],
+  ['pastel-thanks-sorry', 'Pastel Thanks & Sorry', 'Cảm Ơn & Xin Lỗi', 'Thoughtful stickers for gratitude, apologies, and care.', ['thanks', 'sorry', 'care']],
+  ['pastel-foodie-moments', 'Pastel Foodie Moments', 'Đồ Ăn & Thức Uống', 'Cute food and drink moments for hungry chats.', ['food', 'drinks', 'hungry']],
+  ['pastel-fun-lifestyle', 'Pastel Fun & Lifestyle', 'Đi Chơi & Cuộc Sống', 'Playful stickers for outings, hobbies, and daily life.', ['fun', 'lifestyle', 'outings']],
+  ['pastel-cute-animals', 'Pastel Cute Animals', 'Động Vật Siêu Cute', 'A cheerful collection of adorable animal reactions.', ['animals', 'cute', 'friends']],
+  ['pastel-ultimate-reactions', 'Pastel Ultimate Reactions', 'Reaction Siêu Đỉnh', 'Big expressive reactions for unforgettable moments.', ['reactions', 'shock', 'fun']],
 ].map(([slug, name, nameVi, description, tags], packIndex) => ({
   slug, name, nameVi, description, tags, order: packIndex + 1,
   cover: `/stickers/source-packs/${slug}/cover.png`,
