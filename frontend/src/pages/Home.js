@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useLang } from '../i18n';
 import TypewriterText from '../components/TypewriterText';
-import TelegramSetup from '../components/TelegramSetup';
+import NotificationButton from '../components/NotificationButton';
 import LanguagePickerModal from '../components/LanguagePickerModal';
 import OnboardingTutorial from '../components/OnboardingTutorial';
 import PastelIcon from '../components/PastelIcon';
@@ -67,7 +67,6 @@ const Home = () => {
   const { t, lang, setLang } = useLang();
   const [time, setTime] = useState(new Date());
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
-  const [showTelegramSetup, setShowTelegramSetup] = useState(false);
 
   // Onboarding: show language picker → then tutorial on first login
   const [showLangPicker, setShowLangPicker] = useState(
@@ -159,18 +158,7 @@ const Home = () => {
               <PastelIcon name="shield-heart" size={12} /> Enhanced Security · Google OAuth
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                data-tutorial="telegram"
-                onClick={() => setShowTelegramSetup(true)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 16px', borderRadius: 20,
-                  background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-                  cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
-                }}
-              >
-                <PastelIcon name="telegram" size={15} /><span>Telegram</span>
-              </button>
+              <NotificationButton />
               <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
@@ -190,18 +178,7 @@ const Home = () => {
             <p className="home-mobile-code-hint">{t('homeLoginCode')}</p>
             <div className="code-display">{user.loginCode}</div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                data-tutorial="telegram"
-                onClick={() => setShowTelegramSetup(true)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 16px', borderRadius: 20,
-                  background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-                  cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
-                }}
-              >
-                <PastelIcon name="telegram" size={15} /><span>Telegram</span>
-              </button>
+              <NotificationButton />
               <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
@@ -217,13 +194,6 @@ const Home = () => {
 
         {/* Time */}
         <p className="home-mobile-time">{time.toLocaleTimeString()}</p>
-
-        {showTelegramSetup && (
-          <TelegramSetup
-            onClose={() => setShowTelegramSetup(false)}
-            onConnected={() => setShowTelegramSetup(false)}
-          />
-        )}
 
         {/* Onboarding: language picker → tutorial */}
         {showLangPicker && <LanguagePickerModal onSelect={handleLangChosen} />}
@@ -300,19 +270,7 @@ const Home = () => {
             <PastelIcon name="shield-heart" size={12} /> Enhanced Security · Google OAuth
           </div>
           <div style={{ marginTop: 4, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              data-tutorial="telegram"
-              onClick={() => setShowTelegramSetup(true)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 16px', borderRadius: 20,
-                background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-                cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
-              }}
-            >
-              <PastelIcon name="telegram" size={15} />
-              <span>Telegram</span>
-            </button>
+            <NotificationButton />
             <div
               data-tutorial="install"
               onClick={() => navigate('/install')}
@@ -341,19 +299,7 @@ const Home = () => {
           <div className="code-display">{user.loginCode}</div>
           <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
           <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              data-tutorial="telegram"
-              onClick={() => setShowTelegramSetup(true)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 16px', borderRadius: 20,
-                background: 'linear-gradient(135deg, #0088cc 0%, #0055aa 100%)',
-                cursor: 'pointer', border: 'none', fontWeight: 600, color: 'white', fontSize: 12
-              }}
-            >
-              <PastelIcon name="telegram" size={15} />
-              <span>Telegram</span>
-            </button>
+            <NotificationButton />
             <div
               data-tutorial="install"
               onClick={() => navigate('/install')}
@@ -370,13 +316,6 @@ const Home = () => {
           </div>
         </div>
       ) : null}
-
-      {showTelegramSetup && (
-        <TelegramSetup
-          onClose={() => setShowTelegramSetup(false)}
-          onConnected={() => setShowTelegramSetup(false)}
-        />
-      )}
 
       {/* Onboarding: language picker → tutorial */}
       {showLangPicker && <LanguagePickerModal onSelect={handleLangChosen} />}

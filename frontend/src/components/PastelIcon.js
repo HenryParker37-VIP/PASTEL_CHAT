@@ -60,7 +60,6 @@ const glyphs = {
   'end-call': <path d="M5 6.5c4.7-2.7 9.3-2.7 14 0l-1.5 3.7-2.4-1c-2-.7-4-.7-6 0l-2.4 1z" {...common}/>,
   flip: <><path d="M7 7h10l-2.5-2.5M17 7l-2.5 2.5M17 17H7l2.5 2.5M7 17l2.5-2.5" {...common}/></>,
   'picture-in-picture': <><rect x="3" y="5" width="18" height="14" rx="2" {...common}/><rect x="13" y="12" width="5" height="4" rx=".8" {...common}/></>,
-  telegram: <><path d="m20.5 4-3 15.5-5.3-4-2.7 2.5.4-4.1 7.4-6.7-9.1 5.1-3.6-1.2z" {...common}/></>,
   gift: <><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M8.3 7C6 7 5.5 4 7.7 4c1.9 0 3.2 2 4.3 3M15.7 7c2.3 0 2.8-3 0-3-1.9 0-3.2 2-4.3 3" {...common}/></>,
 };
 

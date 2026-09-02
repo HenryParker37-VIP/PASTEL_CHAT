@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 // window.opener required, so this works even when COOP headers null it.
 import { broadcastResponseToMainFrame } from '@azure/msal-browser/redirect-bridge';
 import { SocketProvider, useSocket } from './contexts/SocketContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import { CallProvider, useCall } from './contexts/CallContext';
 import { ToastProvider, useToast } from './components/Toast';
 import { LangProvider } from './i18n';
@@ -27,6 +28,7 @@ import SharedPhotos from './pages/SharedPhotos';
 import InstallGuide from './pages/InstallGuide';
 import Privacy from './pages/Privacy';
 import Admin from './pages/Admin';
+import Notifications from './pages/Notifications';
 import LoadingAnimation from './components/LoadingAnimation';
 import Signature from './components/Signature';
 import IncomingCallAlert from './components/IncomingCallAlert';
@@ -207,6 +209,7 @@ const AppRoutes = () => {
         <Route path="/my-space" element={<ProtectedRoute><PageFrame><PrivateSpace /></PageFrame></ProtectedRoute>} />
         <Route path="/shared-photos" element={<ProtectedRoute><SharedPhotos /></ProtectedRoute>} />
         <Route path="/install" element={<ProtectedRoute><PageFrame><InstallGuide /></PageFrame></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><PageFrame><Notifications /></PageFrame></ProtectedRoute>} />
         <Route path="/privacy" element={<ProtectedRoute><PageFrame><Privacy /></PageFrame></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><PageFrame><Admin /></PageFrame></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/home" replace />} />
@@ -274,11 +277,13 @@ const App = () => {
         <AuthProvider>
           <ToastProvider>
             <SocketProvider>
-              <CallProvider>
-                <Router>
-                  <AppRoutes />
-                </Router>
-              </CallProvider>
+              <NotificationsProvider>
+                <CallProvider>
+                  <Router>
+                    <AppRoutes />
+                  </Router>
+                </CallProvider>
+              </NotificationsProvider>
             </SocketProvider>
           </ToastProvider>
         </AuthProvider>

@@ -15,8 +15,8 @@ const privateSpaceRoutes = require('./routes/private-space');
 const feedbackRoutes = require('./routes/feedback');
 const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
+const notificationRoutes = require('./routes/notifications');
 const stickerRoutes = require('./routes/stickers');
-const telegramRoutes = require('./routes/telegram');
 const webrtcRoutes = require('./routes/webrtc');
 const setupSocket = require('./socket');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
@@ -86,9 +86,8 @@ app.use('/private-space', privateSpaceRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/admin', adminRoutes);
 app.use('/push', pushRoutes);
+app.use('/notifications', notificationRoutes);
 app.use('/stickers', stickerRoutes);
-app.use('/api/telegram', telegramRoutes);
-app.use('/telegram', telegramRoutes);
 app.use('/api/webrtc', webrtcRoutes);
 
 app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -259,8 +258,6 @@ const startTelegramPolling = () => {
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);
-  // Start Telegram polling immediately
-  startTelegramPolling();
 });
 
 module.exports = { app, server };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import TelegramSetup from './TelegramSetup';
+import NotificationButton from './NotificationButton';
 import PastelIcon from './PastelIcon';
 
 const Header = () => {
@@ -11,7 +11,6 @@ const Header = () => {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
-  const [showTelegramSetup, setShowTelegramSetup] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -174,21 +173,7 @@ const Header = () => {
                 </div>
               )}
             </div>
-            <button
-              onClick={() => { setShowMenu(false); setShowTelegramSetup(true); }}
-              style={{
-                width: '100%', padding: '12px 16px',
-                background: 'none', border: 'none',
-                textAlign: 'left', cursor: 'pointer',
-                fontSize: '13px', color: '#6366f1',
-                fontWeight: 500,
-                transition: 'background 0.15s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F0F4FF'}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >
-              <PastelIcon name="telegram" size={16} /> Telegram Notifications
-            </button>
+            <NotificationButton compact />
             <button
               onClick={() => { setShowMenu(false); logout(); }}
               style={{
@@ -208,12 +193,6 @@ const Header = () => {
         )}
       </div>
 
-      {showTelegramSetup && (
-        <TelegramSetup
-          onClose={() => setShowTelegramSetup(false)}
-          onConnected={() => setShowTelegramSetup(false)}
-        />
-      )}
     </header>
   );
 };

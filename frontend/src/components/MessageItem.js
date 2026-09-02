@@ -4,6 +4,7 @@ import api from '../services/api';
 import GifMessage from './GifMessage';
 import StickerDisplay from './StickerDisplay';
 import PastelIcon from './PastelIcon';
+import { getPastelIdentity } from '../utils/pastelIdentity';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -34,6 +35,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
   const sender = typeof message.senderId === 'object' ? message.senderId : null;
   const senderName = isOwn ? 'You' : (peer?.customNickname || sender?.name || 'Friend');
   const senderAvatar = sender?.avatar;
+  const senderIdentity = getPastelIdentity(sender?._id || message.senderId);
 
   const replyRef = message.replyTo;
   const emojiOnly = !message.isRecalled && isEmojiOnly(message.content);
@@ -94,12 +96,13 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
             <img
               src={senderAvatar}
               alt={senderName}
-              style={{ width: 32, height: 32, borderRadius: '50%', display: 'block' }}
+              style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${senderIdentity.accent}` }}
             />
           ) : (
             <div style={{
               width: 32, height: 32, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
+              background: senderIdentity.soft,
+              border: `2px solid ${senderIdentity.accent}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 14, color: 'white', fontWeight: 700
             }}>
@@ -119,7 +122,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
       }}>
         {/* Sender name — only for received, non-emoji messages */}
         {!isOwn && !emojiOnly && !message.isRecalled && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#B08ABD', marginLeft: 4, marginBottom: 2 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: senderIdentity.accent, marginLeft: 4, marginBottom: 2 }}>
             {senderName}
           </span>
         )}

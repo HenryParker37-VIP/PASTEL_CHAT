@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
-const { notifyNewMessage, notifySticker, notifyGif } = require('../integrations/notificationManager');
 const { sendMessagePush } = require('../services/pushService');
+const { notifyInApp } = require('../services/inAppNotifications');
 const {
   createMessage,
   updateMessage,
@@ -117,32 +117,21 @@ router.post('/', authMiddleware, (req, res) => {
     io.emit(`msg:${req.user._id}:${receiverId}`, populated);
     io.emit(`msg:${receiverId}:${req.user._id}`, populated);
     // Also notify receiver for toast
-    io.emit(`notify:${receiverId}`, {
+    notifyInApp(io, receiverId, {
       type: 'new_message',
       from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar },
       preview: populated.content.slice(0, 80),
       messageId: populated._id
+    }, {
+      title: `Tin nhắn mới từ ${req.user.name}`,
+      body: populated.content.slice(0, 160) || 'Bạn nhận được một tệp đính kèm.',
+      data: { route: `/chat/${req.user._id}`, friendId: req.user._id, messageId: populated._id }
     });
 
     // Send Web Push notification
     sendMessagePush(receiverId, req.user, validMedia || content).catch(e =>
       console.error('[Push] Failed to send message push:', e.message)
     );
-
-    // Send Telegram notification if applicable
-    if (validMedia?.type === 'sticker') {
-      notifySticker(receiverId, req.user, validMedia.name).catch(e =>
-        console.error('[Telegram] Failed to send sticker notification:', e.message)
-      );
-    } else if (validMedia?.type === 'gif') {
-      notifyGif(receiverId, req.user, validMedia.name).catch(e =>
-        console.error('[Telegram] Failed to send GIF notification:', e.message)
-      );
-    } else if (content && content.trim()) {
-      notifyNewMessage(receiverId, req.user, content).catch(e =>
-        console.error('[Telegram] Failed to send message notification:', e.message)
-      );
-    }
 
     res.status(201).json(populated);
   } catch (e) {
@@ -232,11 +221,15 @@ router.post('/:id/reply', authMiddleware, (req, res) => {
     const io = req.app.get('io');
     io.emit(`msg:${req.user._id}:${otherId}`, populated);
     io.emit(`msg:${otherId}:${req.user._id}`, populated);
-    io.emit(`notify:${otherId}`, {
+    notifyInApp(io, otherId, {
       type: 'new_message',
       from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar },
       preview: populated.content.slice(0, 80),
       messageId: populated._id
+    }, {
+      title: `Tin nhắn mới từ ${req.user.name}`,
+      body: populated.content.slice(0, 160),
+      data: { route: `/chat/${req.user._id}`, friendId: req.user._id, messageId: populated._id }
     });
 
     // Send Web Push notification

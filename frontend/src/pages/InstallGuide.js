@@ -2,56 +2,71 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '../i18n';
 
+const PRODUCTION_URL = 'https://pastel-chat.onrender.com';
+
+const platformButtonStyle = {
+  flex: 1,
+  minHeight: 48,
+  padding: '12px 16px',
+  border: 'none',
+  borderRadius: 12,
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  fontSize: 14,
+  fontWeight: 600,
+  lineHeight: 1.2,
+  WebkitTapHighlightColor: 'transparent'
+};
+
+const platformIconStyle = {
+  width: 20,
+  height: 20,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flex: '0 0 20px'
+};
+
+const appleIconStyle = {
+  fontSize: 22,
+  lineHeight: 1,
+  transform: 'translateY(-1px)'
+};
+
+const androidIconStyle = {
+  width: 18,
+  height: 18,
+  objectFit: 'contain',
+  display: 'block'
+};
+
+const PlatformButton = ({ active, onClick, icon, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    style={{
+      ...platformButtonStyle,
+      background: active ? 'linear-gradient(135deg, #FFB6C1, #DDA0DD)' : '#F5F5F5',
+      color: active ? 'white' : '#666'
+    }}
+  >
+    <span style={platformIconStyle} aria-hidden="true">{icon}</span>
+    <span>{children}</span>
+  </button>
+);
+
 const InstallGuide = () => {
   const navigate = useNavigate();
   const { t } = useLang();
   const [platform, setPlatform] = useState('ios');
 
-  const iosSteps = [
-    {
-      step: '1',
-      title: 'Open in Safari',
-      desc: 'Use Safari browser to open pastel-chat.vercel.app'
-    },
-    {
-      step: '2',
-      title: 'Tap Share',
-      desc: 'Press the Share button (arrow pointing up from box)'
-    },
-    {
-      step: '3',
-      title: 'Add to Home Screen',
-      desc: 'Scroll down and tap "Add to Home Screen"'
-    },
-    {
-      step: '4',
-      title: 'Confirm',
-      desc: 'Name the app "Pastel Chat" and tap Add'
-    }
-  ];
-
-  const androidSteps = [
-    {
-      step: '1',
-      title: 'Open in Chrome',
-      desc: 'Use Chrome browser to open pastel-chat.vercel.app'
-    },
-    {
-      step: '2',
-      title: 'Tap Menu',
-      desc: 'Press the menu button (three vertical dots)'
-    },
-    {
-      step: '3',
-      title: 'Install App',
-      desc: 'Tap "Install app" or "Add to home screen"'
-    },
-    {
-      step: '4',
-      title: 'Done',
-      desc: 'The app will be added to your home screen'
-    }
-  ];
+  const iosSteps = t('installIosSteps', PRODUCTION_URL);
+  const androidSteps = t('installAndroidSteps', PRODUCTION_URL);
 
   const steps = platform === 'ios' ? iosSteps : androidSteps;
 
@@ -65,38 +80,20 @@ const InstallGuide = () => {
 
       {/* Platform selector */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
-        <button
+        <PlatformButton
+          active={platform === 'ios'}
           onClick={() => setPlatform('ios')}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            background: platform === 'ios' ? 'linear-gradient(135deg, #FFB6C1, #DDA0DD)' : '#F5F5F5',
-            border: 'none',
-            borderRadius: 12,
-            color: platform === 'ios' ? 'white' : '#666',
-            fontWeight: platform === 'ios' ? 600 : 500,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
+          icon={<span style={appleIconStyle}></span>}
         >
-          🍎 {t('installIos')}
-        </button>
-        <button
+          {t('installIos')}
+        </PlatformButton>
+        <PlatformButton
+          active={platform === 'android'}
           onClick={() => setPlatform('android')}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            background: platform === 'android' ? 'linear-gradient(135deg, #FFB6C1, #DDA0DD)' : '#F5F5F5',
-            border: 'none',
-            borderRadius: 12,
-            color: platform === 'android' ? 'white' : '#666',
-            fontWeight: platform === 'android' ? 600 : 500,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
+          icon={<img src="/images/android-logo.png?v=2" alt="" style={androidIconStyle} />}
         >
-          🤖 {t('installAndroid')}
-        </button>
+          {t('installAndroid')}
+        </PlatformButton>
       </div>
 
       {/* Steps */}

@@ -9,12 +9,6 @@ const STEPS = {
       position: 'above',
     },
     {
-      selector: '[data-tutorial="telegram"]',
-      title: 'Telegram Notifications',
-      body: 'Connect your Telegram account to receive instant alerts for incoming calls, friend requests, and new messages — even when Pastel Chat is closed.',
-      position: 'above',
-    },
-    {
       selector: '[data-tutorial="features"]',
       title: 'Everything in One Place',
       body: 'Chat with friends, join group conversations, share photos, make voice & video calls, customize your avatar, organize your Private Space — it\'s all here waiting for you!',
@@ -26,12 +20,6 @@ const STEPS = {
       selector: '[data-tutorial="install"]',
       title: 'Thêm vào Màn hình Chính',
       body: 'Cài Pastel Chat lên điện thoại để truy cập nhanh hơn, nhận thông báo tốt hơn và trải nghiệm như ứng dụng thật trên iPhone & Android — không cần App Store!',
-      position: 'above',
-    },
-    {
-      selector: '[data-tutorial="telegram"]',
-      title: 'Thông báo Telegram',
-      body: 'Kết nối Telegram để nhận thông báo tức thì về cuộc gọi đến, yêu cầu kết bạn và tin nhắn mới — ngay cả khi Pastel Chat đang đóng.',
       position: 'above',
     },
     {

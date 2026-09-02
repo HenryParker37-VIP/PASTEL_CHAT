@@ -170,6 +170,18 @@ const vi = {
   installIos: 'iPhone & iPad',
   installAndroid: 'Android',
   installStep: (n) => `Bước ${n}`,
+  installIosSteps: (url) => [
+    { step: '1', title: 'Mở bằng Safari', desc: `Dùng trình duyệt Safari để mở Pastel Chat tại ${url}.` },
+    { step: '2', title: 'Nhấn nút Chia sẻ', desc: 'Nhấn biểu tượng Chia sẻ (hình vuông có mũi tên hướng lên).' },
+    { step: '3', title: 'Thêm vào Màn hình chính', desc: 'Kéo xuống và chọn “Thêm vào Màn hình chính”.' },
+    { step: '4', title: 'Xác nhận', desc: 'Đặt tên ứng dụng là “Pastel Chat”, sau đó nhấn “Thêm”.' }
+  ],
+  installAndroidSteps: (url) => [
+    { step: '1', title: 'Mở bằng Chrome', desc: `Dùng trình duyệt Chrome để mở Pastel Chat tại ${url}.` },
+    { step: '2', title: 'Mở menu', desc: 'Nhấn nút menu (biểu tượng ba dấu chấm dọc).' },
+    { step: '3', title: 'Cài đặt ứng dụng', desc: 'Chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”.' },
+    { step: '4', title: 'Hoàn tất', desc: 'Pastel Chat sẽ được thêm vào màn hình chính.' }
+  ],
   installDone: 'Xong! Mở Pastel Chat từ màn hình chính.',
 
   // Private space
