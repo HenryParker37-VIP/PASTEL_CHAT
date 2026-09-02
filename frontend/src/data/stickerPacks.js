@@ -28,7 +28,9 @@ const pastelSticker = (id, name, nameVi, tags, emotion, intent, tone, intensity 
   style: 'pastelchat-original'
 });
 
-export const LOCAL_STICKER_PACKS = [
+// Kept for historical message lookup and legacy rendering only. The active
+// picker/store manifest lives in stickerLibrary.js.
+export const LEGACY_STICKER_PACKS = [
   { ...PASTEL_BUNNY_PACK, stickers: [...PASTEL_BUNNY_PACK.stickers, ...PASTEL_BUNNY_EXPANSION_STICKERS] },
   {
     id: 'greetings', name: 'Hello & Bye', nameVi: 'Chào & Tạm biệt', category: 'Greetings',
@@ -103,4 +105,4 @@ export const LOCAL_STICKER_PACKS = [
   }
 ];
 
-export const LOCAL_STICKERS = LOCAL_STICKER_PACKS.flatMap(pack => pack.stickers);
+export const LEGACY_STICKERS = LEGACY_STICKER_PACKS.flatMap(pack => pack.stickers);
