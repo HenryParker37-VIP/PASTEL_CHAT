@@ -16,33 +16,63 @@ const AppUpdateNotice = () => {
 
   useEffect(() => {
     let checking = false;
-    const checkForUpdate = async () => {
+    const logCheck = (event, details = {}) => {
+      const debug = { event, ...details, checkedAt: new Date().toISOString() };
+      window.__PASTELCHAT_UPDATE_DEBUG__ = debug;
+      console.info('[PastelChat update]', event, details);
+    };
+    const checkForUpdate = async (trigger = 'startup') => {
       if (checking) return;
       checking = true;
+      logCheck('check-started', { trigger, clientBuildId: RUNNING_BUILD_ID });
       try {
         const registration = getRegistration();
-        if (registration?.update) await registration.update();
-      } catch { /* service worker checks are best effort */ }
+        if (registration?.update) {
+          await registration.update();
+          logCheck('service-worker-update-complete', { clientBuildId: RUNNING_BUILD_ID });
+        } else {
+          logCheck('service-worker-update-skipped', { reason: 'registration-unavailable' });
+        }
+      } catch (error) {
+        logCheck('service-worker-update-failed', { message: error.message });
+      }
       try {
-        const [{ data: releaseData }, { data: versionData }] = await Promise.all([
-          api.get('/releases/latest'),
-          api.get('/api/version', { headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' }, params: { _: Date.now() } })
-        ]);
-        setLatestRelease(releaseData.release || null);
-        setBuildUpdateAvailable(Boolean(versionData.buildId && versionData.buildId !== RUNNING_BUILD_ID));
-      } catch { /* network errors should not interrupt the app */ }
+        const versionUrl = `${String(api.defaults.baseURL || '').replace(/\/$/, '')}/api/version?ts=${Date.now()}`;
+        const response = await fetch(versionUrl, {
+          cache: 'no-store',
+          headers: { Accept: 'application/json', 'Cache-Control': 'no-cache, no-store' }
+        });
+        if (!response.ok) throw new Error(`Version endpoint returned ${response.status}`);
+        const versionData = await response.json();
+        const mismatch = Boolean(versionData.buildId && versionData.buildId !== RUNNING_BUILD_ID);
+        setBuildUpdateAvailable(mismatch);
+        logCheck('version-compared', {
+          clientBuildId: RUNNING_BUILD_ID,
+          serverBuildId: versionData.buildId || null,
+          mismatch,
+          updateAvailable: mismatch
+        });
+      } catch (error) {
+        logCheck('version-check-failed', { message: error.message, clientBuildId: RUNNING_BUILD_ID });
+      }
+      try {
+        const { data } = await api.get('/releases/latest');
+        setLatestRelease(data.release || null);
+      } catch { /* release notes are optional; build detection must still work */ }
       checking = false;
     };
-    const onVisible = () => { if (document.visibilityState === 'visible') checkForUpdate(); };
+    const onFocus = () => checkForUpdate('focus');
+    const onVisible = () => { if (document.visibilityState === 'visible') checkForUpdate('visibilitychange'); };
+    const onOnline = () => checkForUpdate('online');
     checkForUpdate();
-    window.addEventListener('focus', checkForUpdate);
+    window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('online', checkForUpdate);
-    const interval = window.setInterval(checkForUpdate, 120000);
+    window.addEventListener('online', onOnline);
+    const interval = window.setInterval(() => checkForUpdate('interval'), 120000);
     return () => {
-      window.removeEventListener('focus', checkForUpdate);
+      window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('online', checkForUpdate);
+      window.removeEventListener('online', onOnline);
       window.clearInterval(interval);
     };
   }, []);
