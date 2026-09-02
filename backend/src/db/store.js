@@ -30,6 +30,7 @@ const store = {
   notifications: [], // { _id, userId, type, title, body, from, data, read, createdAt }
   releases: [], // { _id, version, title, summary, features, fixes, improvements, releasedAt, important, pushEnabled }
   sessions: [], // { _id, userId, createdAt, lastUsedAt, expiresAt, revokedAt }
+  accessCodes: [], // { _id, role, codeHash, codeSuffix, label, createdAt, expiresAt, revokedAt, lastUsedAt, createdBy }
   reports: [], // { _id, reporterId, reportedUserId, entityType, entityId, category, description, evidence, status, adminNotes, resolution, createdAt, updatedAt }
   announcements: [], // { _id, title, body, scope, pushEnabled, createdBy, createdAt }
   auditLogs: [] // append-only administrative/security events
@@ -53,6 +54,7 @@ function load() {
       store.notifications = loaded.notifications || [];
       store.releases = loaded.releases || [];
       store.sessions = loaded.sessions || [];
+      store.accessCodes = loaded.accessCodes || [];
       store.reports = loaded.reports || [];
       store.announcements = loaded.announcements || [];
       store.auditLogs = loaded.auditLogs || [];
@@ -61,34 +63,7 @@ function load() {
       console.log('[DB] Starting fresh at', DB_PATH);
     }
     
-    // Bootstrap or migrate the admin identity only when an operator explicitly
-    // supplies ADMIN_LOGIN_CODE. Never keep a master login code in source.
-    const configuredAdminCode = String(process.env.ADMIN_LOGIN_CODE || '').trim().toUpperCase();
-    const configuredAdmin = configuredAdminCode && store.users.find(u => u.isAdmin === true);
-    if (configuredAdmin) {
-      if (configuredAdmin.loginCode !== configuredAdminCode) {
-        configuredAdmin.loginCode = configuredAdminCode;
-        persist();
-      }
-    } else if (configuredAdminCode && !store.users.find(u => u.isAdmin === true)) {
-      store.users.push({
-        _id: genId(),
-        name: 'Admin',
-        loginCode: configuredAdminCode,
-        isAdmin: true,
-        authVersion: 0,
-        isOnline: false,
-        createdAt: new Date().toISOString(),
-        lastSeen: new Date().toISOString(),
-        avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50',
-        chatBackground: 'default',
-        chatColor: null
-      });
-      persist();
-      console.log('[DB] Bootstrapped configured Admin user');
-    } else if (!store.users.find(u => u.isAdmin === true)) {
-      console.warn('[DB] ADMIN_LOGIN_CODE is not configured; admin login is disabled.');
-    }
+    ensureConfiguredAdmin();
   } catch (e) {
     console.error('[DB] Failed to load, starting fresh:', e.message);
   }
@@ -150,6 +125,113 @@ async function hydrateFromDurableStore() {
       throw new Error(`Durable MongoDB unavailable; refusing ephemeral fallback: ${e.message}`);
     }
     console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
+  }
+}
+
+function normalizeAccessCode(value) {
+  let code = String(value || '').trim().toUpperCase();
+  if (code.length === 8 && !code.includes('-')) code = `${code.slice(0, 4)}-${code.slice(4)}`;
+  return code;
+}
+function accessCodeHash(value) {
+  const secret = String(process.env.JWT_SECRET || 'pastel-chat-development-secret');
+  return crypto.createHmac('sha256', secret).update(normalizeAccessCode(value)).digest('hex');
+}
+function maskedAccessCode(record) {
+  return `DEMO••••${record.codeSuffix || ''}`;
+}
+function accessCodeStatus(record, now = Date.now()) {
+  if (record.revokedAt) return 'Revoked';
+  if (record.expiresAt && new Date(record.expiresAt).getTime() <= now) return 'Expired';
+  return 'Active';
+}
+function accessCodeView(record) {
+  return {
+    _id: record._id,
+    role: record.role,
+    maskedCode: maskedAccessCode(record),
+    label: record.label || '',
+    status: accessCodeStatus(record),
+    createdAt: record.createdAt,
+    expiresAt: record.expiresAt || null,
+    lastUsedAt: record.lastUsedAt || null
+  };
+}
+function createAccessCode({ code, label = '', expiresAt = null, createdBy = null }) {
+  const normalized = normalizeAccessCode(code);
+  if (!normalized) return null;
+  const record = {
+    _id: genId(), role: 'DEMO', codeHash: accessCodeHash(normalized), codeSuffix: normalized.slice(-2),
+    label: String(label || '').trim().slice(0, 120), createdAt: new Date().toISOString(),
+    expiresAt: expiresAt || null, revokedAt: null, lastUsedAt: null, createdBy: createdBy || null
+  };
+  store.accessCodes.unshift(record); persist(); return record;
+}
+function generateDemoAccessCode() {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const bytes = crypto.randomBytes(4);
+    let suffix = '';
+    for (let index = 0; index < 4; index += 1) suffix += CODE_ALPHABET[bytes[index] % CODE_ALPHABET.length];
+    const code = `DEMO-${suffix}`;
+    if (!store.accessCodes.some((record) => record.codeHash === accessCodeHash(code))) return code;
+  }
+  throw new Error('Could not generate unique demo access code');
+}
+function findAccessCodeByCode(code) {
+  const hash = accessCodeHash(code);
+  const record = store.accessCodes.find((item) => item.role === 'DEMO' && item.codeHash === hash);
+  if (!record || accessCodeStatus(record) !== 'Active') return null;
+  return record;
+}
+function findAccessCodeByHash(hash) {
+  return store.accessCodes.find((item) => item.codeHash === hash) || null;
+}
+function findAccessCodeById(id) {
+  return store.accessCodes.find((item) => item._id === id) || null;
+}
+function markAccessCodeUsed(id) {
+  const record = store.accessCodes.find((item) => item._id === id);
+  if (record) { record.lastUsedAt = new Date().toISOString(); persist(); }
+  return record;
+}
+function revokeAccessCode(id) {
+  const record = store.accessCodes.find((item) => item._id === id);
+  if (record && !record.revokedAt) { record.revokedAt = new Date().toISOString(); persist(); }
+  return record;
+}
+function revokeAccessCodeSessions(accessCodeId) {
+  const now = new Date().toISOString();
+  let count = 0;
+  store.sessions.forEach((session) => {
+    if (session.accessCodeId === accessCodeId && !session.revokedAt) { session.revokedAt = now; count += 1; }
+  });
+  if (count) persist();
+  return count;
+}
+function ensureConfiguredAdmin() {
+  const configuredAdminCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
+  const configuredAdmin = store.users.find((user) => user.isAdmin === true);
+  if (configuredAdminCode && configuredAdmin) {
+    if (configuredAdmin.loginCode !== null || configuredAdmin.adminRole !== 'OWNER') {
+      configuredAdmin.loginCode = null;
+      configuredAdmin.adminRole = 'OWNER';
+      persist();
+    }
+  } else if (configuredAdminCode && !configuredAdmin) {
+    store.users.push({
+      _id: genId(), name: 'Admin', loginCode: null, isAdmin: true, adminRole: 'OWNER', authVersion: 0,
+      isOnline: false, createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(),
+      avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50', chatBackground: 'default', chatColor: null
+    });
+    persist();
+    console.log('[DB] Bootstrapped configured Admin user');
+  } else if (!configuredAdmin) {
+    console.warn('[DB] ADMIN_LOGIN_CODE is not configured; admin login is disabled.');
+  }
+  const configuredDemoCode = normalizeAccessCode(process.env.DEMO_LOGIN_CODE);
+  if (configuredDemoCode && !findAccessCodeByHash(accessCodeHash(configuredDemoCode))) {
+    createAccessCode({ code: configuredDemoCode, label: 'Initial demo access', createdBy: 'system' });
+    console.log('[DB] Bootstrapped configured demo access code');
   }
 }
 
@@ -220,9 +302,9 @@ function updateUser(id, updates) {
 }
 
 // ===== Sessions =====
-function createSession({ _id, userId, expiresAt }) {
+function createSession({ _id, userId, expiresAt, adminRole = null, accessCodeId = null }) {
   const now = new Date().toISOString();
-  const session = { _id, userId, createdAt: now, lastUsedAt: now, expiresAt, revokedAt: null };
+  const session = { _id, userId, createdAt: now, lastUsedAt: now, expiresAt, revokedAt: null, adminRole, accessCodeId };
   store.sessions.push(session);
   persist();
   return session;
@@ -896,6 +978,7 @@ function createFeedback(userId, type, message) {
 load();
 const ready = hydrateFromDurableStore();
 ready.then(() => {
+  ensureConfiguredAdmin();
   if (store.releases.length === 0) {
     const release = createRelease(INITIAL_RELEASE);
     if (release) notifyUsersOfRelease(release);
@@ -904,6 +987,8 @@ ready.then(() => {
 
 module.exports = {
   store, persist, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
+  normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
+  markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
   createUser, updateUser, searchUsers, getOnlineUsers, userPublic,
   createSession, findSession, touchSession, revokeSession, revokeUserSessions, getActiveSessionCount,

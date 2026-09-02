@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const requireAdmin = require('../middleware/admin');
+const requireOwner = requireAdmin.requireOwner;
 const rateLimit = require('../middleware/rateLimit');
 const { store, createRelease, findRelease, notifyUsersOfRelease, createAuditLog } = require('../db/store');
 const { sendPushToUser, getPushLanguage } = require('../services/pushService');
@@ -9,7 +10,7 @@ function cleanList(value) {
   return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean).slice(0, 20) : [];
 }
 
-router.post('/', requireAdmin, rateLimit({ name: 'admin-release', windowMs: 5 * 60_000, max: 10 }), async (req, res) => {
+router.post('/', requireOwner, rateLimit({ name: 'admin-release', windowMs: 5 * 60_000, max: 10 }), async (req, res) => {
   const body = req.body || {};
   const version = String(body.version || '').trim();
   const title = String(body.title || '').trim();
