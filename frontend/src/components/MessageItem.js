@@ -4,7 +4,7 @@ import api from '../services/api';
 import GifMessage from './GifMessage';
 import StickerDisplay from './StickerDisplay';
 import PastelIcon from './PastelIcon';
-import { getPastelIdentity } from '../utils/pastelIdentity';
+import { getPastelColor, getPastelIdentity } from '../utils/pastelIdentity';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -36,6 +36,9 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
   const senderName = isOwn ? 'You' : (peer?.customNickname || sender?.name || 'Friend');
   const senderAvatar = sender?.avatar;
   const senderIdentity = getPastelIdentity(sender?._id || message.senderId);
+  const bubbleIdentity = isOwn
+    ? (getPastelColor(user?.chatColor) || getPastelIdentity(user?._id))
+    : (getPastelColor(peer?.chatColor) || senderIdentity);
 
   const replyRef = message.replyTo;
   const emojiOnly = !message.isRecalled && isEmojiOnly(message.content);
@@ -129,7 +132,14 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
 
         {/* Bubble */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: 6, flexDirection: isOwn ? 'row-reverse' : 'row' }}>
-          <div className={`msg-bubble-v2 ${isOwn ? 'own' : 'theirs'} ${emojiOnly ? 'emoji-only' : ''} ${message.isRecalled ? 'recalled' : ''}`}>
+          <div
+            className={`msg-bubble-v2 ${isOwn ? 'own' : 'theirs'} ${emojiOnly ? 'emoji-only' : ''} ${message.isRecalled ? 'recalled' : ''}`}
+            style={!message.isRecalled && !emojiOnly ? {
+              background: isOwn ? bubbleIdentity.bubble : undefined,
+              color: isOwn ? bubbleIdentity.text : undefined,
+              boxShadow: isOwn ? `0 2px 12px ${bubbleIdentity.accent}55` : undefined
+            } : undefined}
+          >
             {/* Reply preview */}
             {replyPreview && (
               <div className="reply-preview">

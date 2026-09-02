@@ -1,7 +1,8 @@
 const webpush = require('web-push');
 const {
   getPushSubscriptions,
-  removePushSubscription
+  removePushSubscription,
+  getPushLanguage
 } = require('../db/store');
 
 // Configure VAPID details if keys are present
@@ -154,8 +155,8 @@ async function sendMessagePush(receiverId, sender, contentOrMedia) {
 
   const payload = {
     type: 'new_message',
-    title: 'PastelChat',
-    body: `${senderName}: ${preview}`,
+    title: senderName,
+    body: preview,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     tag: `msg-${senderId}`,
@@ -183,11 +184,12 @@ async function sendFriendRequestPush(receiverId, sender) {
 
   const senderName = sender.name || 'Someone';
   const senderId = sender._id || sender.id;
+  const language = getPushLanguage(receiverId);
 
   const payload = {
     type: 'friend_request',
-    title: 'PastelChat',
-    body: `${senderName} sent you a friend request`,
+    title: language === 'vi' ? 'Lời mời kết bạn' : 'Friend request',
+    body: language === 'vi' ? `${senderName} đã gửi cho bạn lời mời kết bạn` : `${senderName} sent you a friend request`,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     tag: `friend-req-${senderId}`,
@@ -211,7 +213,7 @@ async function sendTestPush(userId) {
 
   const payload = {
     type: 'test_push',
-    title: 'PastelChat',
+    title: 'Pastel Chat',
     body: '🌸 Push notifications are working perfectly on your device!',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',

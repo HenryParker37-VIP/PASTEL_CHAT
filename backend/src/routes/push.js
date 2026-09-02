@@ -12,9 +12,9 @@ router.get('/vapid-public-key', (req, res) => {
 
 // Store push subscription for the authenticated user
 router.post('/subscribe', auth, (req, res) => {
-  const { subscription } = req.body;
+  const { subscription, language } = req.body;
   if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
-  storePushSubscription(req.user._id, subscription);
+  storePushSubscription(req.user._id, { ...subscription, language: language === 'vi' ? 'vi' : 'en' });
   res.json({ ok: true });
 });
 

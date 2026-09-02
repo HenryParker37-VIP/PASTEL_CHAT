@@ -132,8 +132,8 @@ async function runTests() {
       await pushService.sendMessagePush(testReceiver, testSender, 'bro đang đâu đó');
 
       assert.ok(capturedPayload, 'Payload should be captured');
-      assert.strictEqual(capturedPayload.title, 'PastelChat');
-      assert.strictEqual(capturedPayload.body, 'Henry: bro đang đâu đó');
+      assert.strictEqual(capturedPayload.title, 'Henry');
+      assert.strictEqual(capturedPayload.body, 'bro đang đâu đó');
       assert.strictEqual(capturedPayload.url, '/chat/sender_123');
       assert.strictEqual(capturedPayload.tag, 'msg-sender_123');
       assert.strictEqual(capturedPayload.data.url, '/chat/sender_123');
@@ -142,7 +142,7 @@ async function runTests() {
       // Test with media/photo
       capturedPayload = null;
       await pushService.sendMessagePush(testReceiver, testSender, { media: { type: 'image' } });
-      assert.strictEqual(capturedPayload.body, 'Henry: Sent a photo 📷');
+      assert.strictEqual(capturedPayload.body, 'Sent a photo 📷');
 
       // Clean up test sub
       removePushSubscription(testReceiver, mockSub.endpoint);
@@ -171,7 +171,7 @@ async function runTests() {
       await pushService.sendFriendRequestPush(testReceiver, testSender);
 
       assert.ok(capturedPayload, 'Payload should be captured');
-      assert.strictEqual(capturedPayload.title, 'PastelChat');
+      assert.strictEqual(capturedPayload.title, 'Friend request');
       assert.strictEqual(capturedPayload.body, 'Minh sent you a friend request');
       assert.strictEqual(capturedPayload.url, '/friends');
       assert.strictEqual(capturedPayload.tag, 'friend-req-sender_456');

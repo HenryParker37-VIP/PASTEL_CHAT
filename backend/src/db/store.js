@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 
 const store = {
-  users: [],        // { _id, name, loginCode, avatar, chatBackground, createdAt, isOnline, lastSeen }
+  users: [],        // { _id, name, loginCode, avatar, chatBackground, chatColor, createdAt, isOnline, lastSeen }
   friendships: [],  // { _id, userId, friendId, customNickname, createdAt }
   friendRequests: [], // { _id, fromId, toId, createdAt }
   messages: [],     // { _id, senderId, receiverId|null, groupId|null, content, replyTo, isRecalled, isPinned, timestamp }
@@ -52,7 +52,8 @@ function load() {
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
         avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50',
-        chatBackground: 'default'
+        chatBackground: 'default',
+        chatColor: null
       });
       persist();
       console.log('[DB] Bootstrapped default Admin user (ADMN-0307)');
@@ -119,6 +120,7 @@ function createUser(doc) {
     lastSeen: new Date().toISOString(),
     avatar: '',
     chatBackground: 'default',
+    chatColor: null,
     bio: '',
     status: '',
     loginMethod: 'code',
@@ -149,7 +151,7 @@ function userPublic(u) {
   if (!u) return null;
   return {
     _id: u._id, name: u.name, avatar: u.avatar,
-    chatBackground: u.chatBackground, isOnline: !!u.isOnline,
+    chatBackground: u.chatBackground, chatColor: u.chatColor || null, isOnline: !!u.isOnline,
     bio: u.bio || '', status: u.status || '',
     loginMethod: u.loginMethod || 'code',
     isGoogleVerified: !!u.isGoogleVerified
@@ -570,6 +572,7 @@ function storePushSubscription(userId, subscription) {
   }
   const exists = entry.subscriptions.find(s => s.endpoint === subscription.endpoint);
   if (!exists) entry.subscriptions.push(subscription);
+  else if (subscription.language) exists.language = subscription.language;
   persist();
 }
 function removePushSubscription(userId, endpoint) {
@@ -582,6 +585,10 @@ function removePushSubscription(userId, endpoint) {
 function getPushSubscriptions(userId) {
   const entry = store.pushSubscriptions.find(e => e.userId === userId);
   return entry ? entry.subscriptions : [];
+}
+function getPushLanguage(userId) {
+  const entry = store.pushSubscriptions.find(e => e.userId === userId);
+  return entry?.subscriptions?.find(s => s.language)?.language || 'en';
 }
 
 // ===== In-app notifications =====
@@ -660,7 +667,7 @@ module.exports = {
   createReminder, getUserReminders, findReminder, deleteReminder,
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
   addSharedPhoto, getSharedPhotos, togglePhotoEncryption,
-  storePushSubscription, removePushSubscription, getPushSubscriptions,
+  storePushSubscription, removePushSubscription, getPushSubscriptions, getPushLanguage,
   createNotification, getUserNotifications, getUnreadNotificationCount,
   markNotificationRead, markAllNotificationsRead,
   createFeedback
