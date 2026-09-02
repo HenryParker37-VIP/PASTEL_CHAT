@@ -2580,10 +2580,10 @@ body.dark .avatar-type-btn { background: #2A1F3D; color: #E8D5F0; border-color: 
 .admin-panel__heading h2 { margin: 5px 0 0; color: var(--text); font-size: 21px; }
 .admin-panel__heading h2 small { color: var(--subtext); font-size: 13px; font-weight: 600; }
 .admin-health__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.admin-health__item { display: flex; align-items: flex-start; gap: 9px; min-width: 0; padding: 12px; border-radius: 13px; background: #fffaf8; }
+.admin-health__item { display: flex; align-items: flex-start; gap: 9px; min-width: 0; padding: 12px; border: 1px solid rgba(154,112,156,.16); border-radius: 13px; background: #f8f0f5; color: #4f4359; }
 .admin-health__item strong, .admin-health__item small { display: block; }
-.admin-health__item strong { font-size: 12px; }
-.admin-health__item small { margin-top: 4px; color: var(--subtext); font-size: 11px; line-height: 1.35; }
+.admin-health__item strong { color: #4f4359; font-size: 12px; }
+.admin-health__item small { margin-top: 4px; color: #6f5d76; font-size: 11px; line-height: 1.35; }
 .status-dot { width: 9px; height: 9px; flex: 0 0 auto; margin-top: 4px; border-radius: 50%; background: #c2b4c2; }
 .status-dot--healthy { background: #69b584; box-shadow: 0 0 0 4px rgba(105,181,132,.13); }
 .status-dot--degraded { background: #e0aa64; }
