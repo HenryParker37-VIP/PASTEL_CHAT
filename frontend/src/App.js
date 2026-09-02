@@ -38,6 +38,7 @@ import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
 import GlobalChecker from './components/GlobalChecker';
 import PastelIcon from './components/PastelIcon';
 import AppUpdateNotice from './components/AppUpdateNotice';
+import ReleaseNotes from './pages/ReleaseNotes';
 
 // Rendered inside the Microsoft OAuth popup window — nothing else in the app runs here.
 //
@@ -119,6 +120,12 @@ const GlobalSocketListener = ({ onHappyBirthday }) => {
       }
       if (payload.type === 'group_created' || payload.type === 'group_invited') {
         push({ icon: 'users', title: `Added to "${payload.group?.name}"`, body: `by ${payload.from?.name}` });
+      }
+      if (payload.type === 'release_published') {
+        const releaseVersion = payload.releaseVersion || payload.data?.releaseVersion;
+        if (releaseVersion) {
+          push({ icon: 'sparkles', title: t('releaseNotificationTitle', releaseVersion), body: t('releaseNotificationBody', releaseVersion), onClick: () => navigate(`/whats-new/${encodeURIComponent(releaseVersion)}`) });
+        }
       }
       if (payload.type === 'happy_birthday') {
         onHappyBirthday({ friendName: user.name, age: payload.age, isOwn: true });
@@ -212,6 +219,8 @@ const AppRoutes = () => {
         <Route path="/shared-photos" element={<ProtectedRoute><SharedPhotos /></ProtectedRoute>} />
         <Route path="/install" element={<ProtectedRoute><PageFrame><InstallGuide /></PageFrame></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><PageFrame><Notifications /></PageFrame></ProtectedRoute>} />
+        <Route path="/whats-new" element={<ProtectedRoute><PageFrame><ReleaseNotes /></PageFrame></ProtectedRoute>} />
+        <Route path="/whats-new/:version" element={<ProtectedRoute><PageFrame><ReleaseNotes /></PageFrame></ProtectedRoute>} />
         <Route path="/privacy" element={<ProtectedRoute><PageFrame><Privacy /></PageFrame></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><PageFrame><Admin /></PageFrame></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/home" replace />} />

@@ -60,6 +60,12 @@ const TILES = [
   },
 ];
 
+const ReleaseNotesButton = ({ t, navigate }) => (
+  <button type="button" className="btn btn-ghost" onClick={() => navigate('/whats-new')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, fontSize: 12, color: '#7B5B95' }}>
+    <PastelIcon name="sparkles" size={15} /> {t('releaseTitle')}
+  </button>
+);
+
 const Home = () => {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
@@ -159,6 +165,7 @@ const Home = () => {
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <NotificationButton />
+              <ReleaseNotesButton t={t} navigate={navigate} />
               <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
@@ -179,6 +186,7 @@ const Home = () => {
             <div className="code-display">{user.loginCode}</div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
               <NotificationButton />
+              <ReleaseNotesButton t={t} navigate={navigate} />
               <div data-tutorial="install" onClick={() => navigate('/install')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 16px', borderRadius: 20,
@@ -271,6 +279,7 @@ const Home = () => {
           </div>
           <div style={{ marginTop: 4, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <NotificationButton />
+            <ReleaseNotesButton t={t} navigate={navigate} />
             <div
               data-tutorial="install"
               onClick={() => navigate('/install')}
@@ -300,6 +309,7 @@ const Home = () => {
           <p style={{ fontSize: 12, color: '#aaa', marginTop: 8 }}>{t('homeLoginCodeHint')}</p>
           <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
             <NotificationButton />
+            <ReleaseNotesButton t={t} navigate={navigate} />
             <div
               data-tutorial="install"
               onClick={() => navigate('/install')}
