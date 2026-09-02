@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 const MONGODB_URI = process.env.MONGODB_URI;
+const mongoConfigured = Boolean(MONGODB_URI);
 const durableStateSchema = new mongoose.Schema({
   key: { type: String, unique: true, required: true },
   data: { type: mongoose.Schema.Types.Mixed, required: true }
@@ -74,14 +75,16 @@ function load() {
 
 let saveTimer;
 function persist() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      fs.writeFileSync(DB_PATH, JSON.stringify(store, null, 2));
-    } catch (e) {
-      console.error('[DB] Save error:', e.message);
-    }
-  }, 50);
+  if (!mongoConfigured) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try {
+        fs.writeFileSync(DB_PATH, JSON.stringify(store, null, 2));
+      } catch (e) {
+        console.error('[DB] Save error:', e.message);
+      }
+    }, 50);
+  }
 
   if (mongoConnected) {
     clearTimeout(durableSaveTimer);
@@ -121,6 +124,9 @@ async function hydrateFromDurableStore() {
     }
   } catch (e) {
     mongoConnected = false;
+    if (mongoConfigured) {
+      throw new Error(`Durable MongoDB unavailable; refusing ephemeral fallback: ${e.message}`);
+    }
     console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
   }
 }
@@ -171,6 +177,7 @@ function createUser(doc) {
     avatar: '',
     chatBackground: 'default',
     chatColor: null,
+    chatColors: {},
     bio: '',
     status: '',
     loginMethod: 'code',
@@ -201,7 +208,7 @@ function userPublic(u) {
   if (!u) return null;
   return {
     _id: u._id, name: u.name, avatar: u.avatar,
-    chatBackground: u.chatBackground, chatColor: u.chatColor || null, isOnline: !!u.isOnline,
+    chatBackground: u.chatBackground, chatColor: u.chatColor || null, chatColors: u.chatColors || {}, isOnline: !!u.isOnline,
     bio: u.bio || '', status: u.status || '',
     loginMethod: u.loginMethod || 'code',
     isGoogleVerified: !!u.isGoogleVerified
