@@ -3,7 +3,7 @@ const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/offline.html'];
-const NEVER_CACHE   = ['/api/', '/socket.io/', 'chrome-extension'];
+const NEVER_CACHE   = ['/api/version', '/api/', '/socket.io/', 'chrome-extension'];
 
 // ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
