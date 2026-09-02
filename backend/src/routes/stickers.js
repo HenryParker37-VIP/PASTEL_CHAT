@@ -319,7 +319,7 @@ const ACTIVE_PACKS = [
 ].map(([slug, name, nameVi, description, tags], packIndex) => ({
   slug, name, nameVi, description, tags, order: packIndex + 1,
   cover: `/stickers/source-packs/${slug}/cover.png`,
-  stickers: Array.from({ length: 16 }, (_, index) => {
+  stickers: Array.from({ length: 25 }, (_, index) => {
     const number = String(index + 1).padStart(2, '0');
     return {
       imageUrl: `/stickers/source-packs/${slug}/${number}.png`,
