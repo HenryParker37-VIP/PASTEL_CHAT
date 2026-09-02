@@ -11,8 +11,9 @@ const sticker = (pack, number, label, labelVi, categories, en, vi, primaryIntent
     id, pack: pack.id, packId: pack.id, characterId: pack.id, name: label, label, labelVi,
     category: categoryId(categories[0]), categories: categories.map(categoryId), secondaryCategories: categories.slice(1).map(categoryId),
     tags: { en, vi }, triggers: [...new Set([...en, ...vi])], triggerAliases: { en, vi },
-    asset: `/stickers/source-packs/${pack.id}/${String(number).padStart(2, '0')}.webp`,
-    previewAsset: `/stickers/source-packs/${pack.id}/${String(number).padStart(2, '0')}.webp`, assetType: 'webp',
+    aliases: [...new Set([...en, ...vi, label, labelVi])], relatedKeywords: [...new Set([...categories, ...en, ...vi])],
+    asset: `/stickers/source-packs/${pack.id}/${String(number).padStart(2, '0')}.${pack.assetExtension}`,
+    previewAsset: `/stickers/source-packs/${pack.id}/${String(number).padStart(2, '0')}.${pack.assetExtension}`, assetType: pack.assetExtension,
     emotion: categories.map(category => category.toLowerCase()), tone: ['pastel', 'friendly'],
     intensity: number % 5 === 0 ? 4 : 2, style: 'pastelchat-user-source', isLegacy: false, isActive: true, sortOrder: number,
     primaryIntent,
@@ -21,9 +22,9 @@ const sticker = (pack, number, label, labelVi, categories, en, vi, primaryIntent
   };
 };
 
-const pack = (id, name, nameVi, description, coverColor, rows) => {
-  const descriptor = { id, name, nameVi, description, coverColor };
-  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.webp`, packId: id, characterId: id, featured: id === 'pastel-bunny-final', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
+const pack = (id, name, nameVi, description, coverColor, rows, assetExtension = 'webp') => {
+  const descriptor = { id, name, nameVi, description, coverColor, assetExtension };
+  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.${assetExtension}`, packId: id, characterId: id, featured: id === 'pastel-bunny-final', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
 };
 
 const EN = {
@@ -32,6 +33,8 @@ const EN = {
 const VI = {
   hello: ['xin chào', 'chào', 'chào nha'], happy: ['vui', 'vui quá', 'yay'], love: ['yêu', 'iu', 'đang yêu'], hug: ['ôm', 'ôm nha', 'an ủi'], laugh: ['cười', 'haha', 'cười xỉu'], support: ['cố lên', 'giỏi quá', 'tuyệt vời'], chill: ['chill', 'thư giãn', 'cozy'], sad: ['buồn', 'buồn quá', 'buồn rồi'], cry: ['khóc', 'khóc rồi', 'khóc đây'], tired: ['mệt', 'buồn ngủ', 'ngủ thôi'], food: ['đói', 'ăn thôi', 'đến giờ ăn'], thinking: ['đang nghĩ', 'suy nghĩ', 'hmmm'], shock: ['trời ơi', 'sốc', 'hả'], okay: ['okie', 'ổn', 'đồng ý'], celebrate: ['ăn mừng', 'tuyệt vời', 'đi thôi'], work: ['làm việc', 'đang bận', 'học'], coffee: ['cà phê', 'uống cà phê'], cute: ['dễ thương', 'đáng yêu'], bye: ['tạm biệt', 'hẹn gặp lại']
 };
+Object.assign(EN, { bored: ['bored', 'meh'], hungry: ['hungry', 'food'], study: ['study', 'studying'], work: ['work', 'working'], wait: ['wait', 'waiting', 'brb'], panic: ['panic', 'help', 'why'], thanks: ['thanks', 'thank you'], praise: ['proud', 'clap', 'amazing'], calm: ['calm', 'relax'], morning: ['good morning', 'morning'], water: ['water', 'take care'], sick: ['sick', 'feel better'], bye: ['bye', 'goodbye'] });
+Object.assign(VI, { bored: ['chán', 'chán quá'], hungry: ['đói', 'ăn thôi'], study: ['học', 'học bài'], work: ['làm việc', 'đang bận'], wait: ['đợi', 'chờ'], panic: ['hoảng', 'cứu'], thanks: ['cảm ơn'], praise: ['tự hào', 'vỗ tay'], calm: ['bình tĩnh', 'thư giãn'], morning: ['buổi sáng', 'chào ngày mới'], water: ['uống nước', 'giữ gìn'], sick: ['ốm', 'mau khỏe'], bye: ['tạm biệt', 'hẹn gặp'] });
 const triggers = key => [EN[key] || EN.cute, VI[key] || VI.cute];
 const row = (label, labelVi, categories, key) => [label, labelVi, categories, ...triggers(key), key];
 
@@ -83,6 +86,36 @@ const bearRows = [
   row('Birthday', 'Sinh nhật vui', ['Birthday', 'Celebrate'], 'celebrate'), row('Proud', 'Tự hào', ['Proud', 'Celebrate'], 'celebrate'), row('Love you', 'Thương lắm', ['Love', 'Hug'], 'love'), row('Stay healthy', 'Nhớ giữ sức', ['Support', 'Sick'], 'support'),
   row('Take medicine', 'Uống thuốc', ['Sick', 'Support'], 'support'), row('Warm hug', 'Ấm áp nè', ['Comfort', 'Hug'], 'hug'), row('Cheer up', 'Vui lên', ['Happy', 'Support'], 'happy'), row('It’s okay', 'Ổn thôi', ['Okay', 'Comfort'], 'okay')
 ];
+const bunnyEnglishRows = [
+  row('Haha!!', 'Haha!!', ['Laugh', 'LOL'], 'laugh'), row('Yay!', 'Yay!', ['Happy', 'Celebrate'], 'happy'), row('Aww', 'Aww', ['Cute', 'Love'], 'cute'), row('Miss you', 'Miss you', ['Miss You', 'Love'], 'love'),
+  row('Hugs!', 'Hugs!', ['Hug', 'Love'], 'hug'), row('Good night', 'Good night', ['Good Night', 'Sleep'], 'sleep'), row('Good morning', 'Good morning', ['Good Morning', 'Happy'], 'morning'), row('So tired', 'So tired', ['Tired', 'Sleep'], 'tired'),
+  row('OMG', 'OMG', ['OMG', 'Shocked'], 'shock'), row('Sorry!', 'Sorry!', ['Sorry', 'Sad'], 'apology'), row('Thank you', 'Thank you', ['Thank You', 'Happy'], 'thanks'), row('Love you', 'Love you', ['Love', 'Flirty'], 'love'),
+  row("Let's go!", "Let's go!", ['Celebrate', 'Excited'], 'celebrate'), row('Cute!', 'Cute!', ['Cute', 'Love'], 'cute'), row('Proud of you', 'Proud of you', ['Proud', 'Support'], 'praise'), row('Okayyy', 'Okayyy', ['Okay', 'Yes'], 'approval')
+];
+const cloudBearEnglishRows = [
+  row('Feel better', 'Feel better', ['Sick', 'Support'], 'sick'), row('Rest well', 'Rest well', ['Sleep', 'Cozy'], 'sleep'), row("Don't worry", "Don't worry", ['Comfort', 'Support'], 'support'), row("I'm here", "I'm here", ['Support', 'Friendship'], 'support'),
+  row('Take care', 'Take care', ['Support', 'Comfort'], 'water'), row('Get well soon', 'Get well soon', ['Sick', 'Support'], 'sick'), row('Deep breaths', 'Deep breaths', ['Chill', 'Comfort'], 'calm'), row('Stay strong', 'Stay strong', ['Motivation', 'Support'], 'support'),
+  row('Be calm', 'Be calm', ['Chill', 'Comfort'], 'calm'), row('Big hug', 'Big hug', ['Hug', 'Comfort'], 'hug'), row('Drink water', 'Drink water', ['Support', 'Sick'], 'water'), row('Good luck', 'Good luck', ['Good Luck', 'Support'], 'support'),
+  row('You got this', 'You got this', ['Support', 'Motivation'], 'support'), row('Sleepy…', 'Sleepy…', ['Sleep', 'Tired'], 'tired'), row('Happy birthday', 'Happy birthday', ['Birthday', 'Celebrate'], 'celebrate'), row('Eat well', 'Eat well', ['Food', 'Support'], 'food')
+];
+const peachKittyRows = [
+  row('Meh…', 'Meh…', ['Bored', 'Annoyed'], 'bored'), row('Bored', 'Bored', ['Bored', 'Sad'], 'bored'), row('Hungry', 'Hungry', ['Hungry', 'Food'], 'hungry'), row('Sleepy', 'Sleepy', ['Sleep', 'Cozy'], 'sleep'),
+  row('Study time', 'Study time', ['Study', 'Work'], 'study'), row('Working…', 'Working…', ['Work', 'Busy'], 'work'), row('Done!', 'Done!', ['Finished', 'Celebrate'], 'completion'), row('Waittt', 'Waittt', ['Waiting', 'Thinking'], 'wait'),
+  row('Nooo', 'Nooo', ['Cry', 'Sad'], 'cry'), row('Yesss!', 'Yesss!', ['Happy', 'Celebrate'], 'happy'), row('Wow!', 'Wow!', ['Wow', 'Shocked'], 'shock'), row('Phew…', 'Phew…', ['Tired', 'Relief'], 'tired'),
+  row('Need coffee', 'Need coffee', ['Coffee', 'Tired'], 'coffee'), row('Miss me?', 'Miss me?', ['Miss You', 'Love'], 'love'), row('Love this', 'Love this', ['Love', 'Happy'], 'love'), row('Oopsie', 'Oopsie', ['Sorry', 'Awkward'], 'apology')
+];
+const duckRows = [
+  row('LOL', 'LOL', ['LOL', 'Laugh'], 'laugh'), row('LMAO', 'LMAO', ['LOL', 'Laugh'], 'laugh'), row('BRB', 'BRB', ['Waiting', 'Bye'], 'wait'), row('IDK', 'IDK', ['Confused', 'Thinking'], 'confusion'),
+  row('Why?!', 'Why?!', ['Cry', 'Confused'], 'cry'), row('Help meee', 'Help meee', ['Panic', 'Please'], 'panic'), row('Slay!', 'Slay!', ['Proud', 'Happy'], 'praise'), row('Nope', 'Nope', ['No', 'Annoyed'], 'approval'),
+  row('Okay', 'Okay', ['Okay', 'Yes'], 'approval'), row('Hii!', 'Hii!', ['Hello', 'Cute'], 'hello'), row('Byeee', 'Byeee', ['Bye', 'Friendship'], 'bye'), row('Tea time', 'Tea time', ['Food', 'Cozy'], 'food'),
+  row('Good vibes', 'Good vibes', ['Happy', 'Chill'], 'happy'), row('Chill', 'Chill', ['Chill', 'Cozy'], 'chill'), row('Clap clap', 'Clap clap', ['Clap', 'Praise'], 'applause'), row('Shocked!', 'Shocked!', ['Shocked', 'Panic'], 'shock')
+];
+const sheepyRows = [
+  row('Hi babe', 'Hi babe', ['Hello', 'Flirty'], 'hello'), row('Sweet dreams', 'Sweet dreams', ['Sleep', 'Love'], 'sleep'), row('Morning sun', 'Morning sun', ['Good Morning', 'Happy'], 'morning'), row('Sending love', 'Sending love', ['Love', 'Friendship'], 'love'),
+  row('Cuddle?', 'Cuddle?', ['Hug', 'Love'], 'hug'), row('Kiss kiss', 'Kiss kiss', ['Love', 'Flirty'], 'love'), row('Thinking of you', 'Thinking of you', ['Miss You', 'Love'], 'affection'), row('Take a break', 'Take a break', ['Cozy', 'Tired'], 'tired'),
+  row('Cheer up', 'Cheer up', ['Motivation', 'Support'], 'support'), row('Homesick', 'Homesick', ['Sad', 'Miss You'], 'sad'), row('Thank youuu', 'Thank youuu', ['Thank You', 'Love'], 'thanks'), row('So proud', 'So proud', ['Proud', 'Celebrate'], 'praise'),
+  row('Stay cozy', 'Stay cozy', ['Cozy', 'Chill'], 'chill'), row('Be safe', 'Be safe', ['Support', 'Comfort'], 'support'), row('Text me', 'Text me', ['Friendship', 'Miss You'], 'affection'), row('See you', 'See you', ['Bye', 'Love'], 'bye')
+];
 const dinoRows = [
   row('Roarrr!', 'Roarrr!', ['Excited', 'Happy'], 'happy'), row('Yeeee!', 'Yeeee!', ['Happy', 'Celebrate'], 'happy'), row('Let’s go!', 'Let’s go!', ['Celebrate', 'Excited'], 'celebrate'), row('You got this!', 'You got this!', ['Support', 'Motivation'], 'support'),
   row('Nice!', 'Nice!', ['Proud', 'Happy'], 'happy'), row('Amazing!', 'Tuyệt vời!', ['Celebrate', 'Proud'], 'celebrate'), row('Time to eat!', 'Ăn thôiii!', ['Food', 'Hungry'], 'food'), row('Chill chill~', 'Chill chill~', ['Chill', 'Cozy'], 'chill'),
@@ -106,7 +139,12 @@ export const ACTIVE_STICKER_PACKS = [
   pack('cotton-lamb-socials', 'Cotton Lamb Socials', 'Cotton Lamb Socials', 'Soft social messages for hellos, thanks, and everyday care.', '#F5E8F7', lambRows),
   pack('jelly-blob-reactions', 'Jelly Blob Reactions', 'Jelly Blob Reactions', 'Playful reactions for surprise, confusion, and drama.', '#EDE6FF', blobRows),
   pack('pudding-puppy-daily-life', 'Pudding Puppy Daily Life', 'Pudding Puppy Daily Life', 'Daily routines, small wins, and cozy activities.', '#FFF0CE', puppyRows),
-  pack('cloud-bear-care', 'Cloud Bear Care', 'Cloud Bear Care', 'Gentle comfort, wellness, and support for close friends.', '#E9E7FA', bearRows)
+  pack('cloud-bear-care', 'Cloud Bear Care', 'Cloud Bear Care', 'Gentle comfort, wellness, and support for close friends.', '#E9E7FA', bearRows),
+  pack('bunny-english-vibes', 'Bunny English Vibes', 'Bunny English Vibes', 'English-first bunny reactions for everyday feelings.', '#FBE7EE', bunnyEnglishRows, 'png'),
+  pack('cloud-bear-care-new', 'Cloud Bear Care', 'Cloud Bear Care', 'Soft English care messages for comfort and encouragement.', '#E8E5FA', cloudBearEnglishRows, 'png'),
+  pack('peach-kitty-mood', 'Peach Kitty Mood', 'Peach Kitty Mood', 'Peachy kitty moods for work, reactions, and affection.', '#FFE8DC', peachKittyRows, 'png'),
+  pack('tiny-duck-chaos', 'Tiny Duck Chaos', 'Tiny Duck Chaos', 'Bright little duck reactions for playful chat moments.', '#FFF1C9', duckRows, 'png'),
+  pack('sheepy-sweet-love', 'Sheepy Sweet Love', 'Sheepy Sweet Love', 'Warm sheepy messages for closeness and care.', '#F2E6F5', sheepyRows, 'png')
 ];
 
 export const LOCAL_STICKER_PACKS = ACTIVE_STICKER_PACKS;
@@ -116,6 +154,6 @@ export const STICKER_PACK_BY_ID = Object.fromEntries(LOCAL_STICKER_PACKS.map(pac
 export const normalizeStickerSearch = (value = '') => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/(.)\1{2,}/g, '$1$1').trim();
 export const stickerMatchesSearch = (item, query) => {
   const term = normalizeStickerSearch(query); if (!term || !item) return !term;
-  const haystack = normalizeStickerSearch([item.name, item.label, item.labelVi, item.pack, item.characterId, ...(item.tags?.en || []), ...(item.tags?.vi || []), ...(item.triggers || [])].join(' '));
+  const haystack = normalizeStickerSearch([item.name, item.label, item.labelVi, item.pack, item.characterId, ...(item.tags?.en || []), ...(item.tags?.vi || []), ...(item.triggers || []), ...(item.aliases || []), ...(item.relatedKeywords || [])].join(' '));
   return haystack.includes(term) || term.split(/\s+/).every(token => haystack.includes(token));
 };
