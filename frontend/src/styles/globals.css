@@ -2379,6 +2379,10 @@ body.dark .sticker-emoji-btn:hover { background: #3A2D50; border-color: #C9A6E0;
 .store-pack-grid .store-pack-cover { width: 100%; height: auto; min-height: 0; aspect-ratio: 1 / 1; overflow: hidden; display: block; }
 .store-pack-grid .store-pack-sheet-card { display: block; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; object-position: center; }
 .store-pack-cover-lg { width: 112px; height: 112px; overflow: hidden; }
+.store-preview-grid { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; align-content: start; }
+.store-preview-item { min-width: 0; width: 100%; aspect-ratio: 1; overflow: hidden; padding: 2px; }
+.store-preview-item .sticker-display { width: 100% !important; height: 100% !important; background: transparent !important; border-radius: 8px !important; }
+.store-preview-item .sticker-display img { width: 100%; height: 100%; object-fit: contain; padding: 1px !important; }
 
 @media (min-width: 700px) {
   .gif-picker { max-height: min(600px, 72vh); }
