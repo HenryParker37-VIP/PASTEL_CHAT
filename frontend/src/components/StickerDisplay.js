@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const StickerDisplay = ({ emoji, imageUrl, label, size = 'medium', allowEmojiFallback = true }) => {
+const StickerDisplay = ({ emoji, imageUrl, label, size = 'medium', allowEmojiFallback = true, className = '' }) => {
   const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(!!imageUrl);
 
@@ -17,6 +17,7 @@ const StickerDisplay = ({ emoji, imageUrl, label, size = 'medium', allowEmojiFal
   if (imageUrl && !imageError) {
     return (
       <div
+        className={`sticker-display sticker-display-${size} ${className}`.trim()}
         style={{
           width: style.width,
           height: style.height,
@@ -68,12 +69,13 @@ const StickerDisplay = ({ emoji, imageUrl, label, size = 'medium', allowEmojiFal
   }
 
   if (imageUrl && !allowEmojiFallback) {
-    return <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#f5f5f5', color: '#999', fontSize: 11 }} title={label}>Unavailable</div>;
+    return <div className={`sticker-display sticker-display-${size} ${className}`.trim()} style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#f5f5f5', color: '#999', fontSize: 11 }} title={label}>Unavailable</div>;
   }
 
   // Legacy emoji messages remain supported independently of image stickers.
   return (
     <div
+      className={`sticker-display sticker-display-${size} ${className}`.trim()}
       style={{
         width: style.width,
         height: style.height,

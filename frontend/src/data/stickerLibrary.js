@@ -1,4 +1,4 @@
-// Active sticker catalog. Artwork is sourced from the five user-provided
+// Active sticker catalog. Artwork is sourced from the ten user-provided
 // contact sheets and kept separate from the existing legacy catalog.
 export const STICKER_CATEGORIES = [
   'Love', 'Happy', 'Laugh', 'Cute', 'Sad', 'Cry', 'Angry', 'Annoyed', 'Shocked', 'Confused', 'Shy', 'Embarrassed', 'Sorry', 'Thank You', 'Hug', 'Miss You', 'Sleep', 'Tired', 'Good Morning', 'Good Night', 'Study', 'Work', 'Celebrate', 'Clap', 'Wow', 'OMG', 'LOL', 'Support', 'Comfort', 'Motivation', 'Food', 'Busy', 'Waiting', 'Okay', 'No', 'Yes', 'Hello', 'Bye', 'Thinking', 'Bored', 'Sick', 'Gaming', 'Music', 'Heartbreak', 'Friendship', 'Birthday', 'Special Moments', 'Jealous', 'Nervous', 'Proud', 'Excited', 'Awkward', 'Facepalm', 'Please', 'Begging', 'Hungry', 'Coffee', 'Rainy Day', 'Cozy', 'Working Late', 'Finished', 'Panic', 'Chill', 'Flirty', 'Good Luck'
@@ -21,7 +21,7 @@ const sticker = (pack, number, label, labelVi, categories, en, vi) => {
 
 const pack = (id, name, nameVi, description, coverColor, rows) => {
   const descriptor = { id, name, nameVi, description, coverColor };
-  return { ...descriptor, packId: id, characterId: id, featured: id === 'pastel-bunny-final', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
+  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.webp`, packId: id, characterId: id, featured: id === 'pastel-bunny-final', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
 };
 
 const EN = {
@@ -51,6 +51,36 @@ const kittyRows = [
   row('Bored…', 'Chán quá…', ['Bored', 'Sad'], 'sad'), row('So tired…', 'Mệt xỉu…', ['Tired', 'Sleep'], 'tired'), row('Crying…', 'Khóc rùi…', ['Cry', 'Sad'], 'cry'), row('Want a hug…', 'Muốn ôm…', ['Hug', 'Comfort'], 'hug'),
   row('What?!', 'Háaa??', ['Shocked', 'Confused'], 'shock'), row('Thinking…', 'Suy suy…', ['Thinking', 'Confused'], 'thinking'), row('Haha~', 'Haha~', ['Laugh', 'LOL'], 'laugh'), row('Love you!', 'Iu lắm!', ['Love', 'Flirty'], 'love')
 ];
+const foxRows = [
+  row('Angry', 'Giận', ['Angry', 'Annoyed'], 'shock'), row('Jealous', 'Ghen', ['Jealous', 'Annoyed'], 'sad'), row('Shy', 'Ngại', ['Shy', 'Embarrassed'], 'cute'), row('Worried', 'Lo quá', ['Nervous', 'Panic'], 'sad'),
+  row('Sorry', 'Có lỗi', ['Sorry', 'Sad'], 'sad'), row('Lonely', 'Cô đơn', ['Lonely', 'Sad'], 'sad'), row('Heartbroken', 'Đau lòng', ['Heartbreak', 'Sad'], 'sad'), row('Suspicious', 'Nghi ngờ', ['Suspicious', 'Thinking'], 'thinking'),
+  row('Confused', 'Bối rối', ['Confused', 'Nervous'], 'thinking'), row('Embarrassed', 'Xấu hổ', ['Embarrassed', 'Shy'], 'sad'), row('Fed up', 'Mệt lòng', ['Tired', 'Annoyed'], 'tired'), row('Panicked', 'Hoảng hốt', ['Panic', 'Shocked'], 'shock'),
+  row('Disappointed', 'Hụt hẫng', ['Sad', 'Heartbreak'], 'sad'), row('Unsure', 'Khó xử', ['Awkward', 'Nervous'], 'thinking'), row('Dizzy', 'Ngơ ngác', ['Confused', 'Sick'], 'shock'), row('Giving up', 'Bó tay', ['Annoyed', 'Tired'], 'sad')
+];
+const lambRows = [
+  row('Sorry', 'Xin lỗi', ['Sorry', 'Sad'], 'sad'), row('Thank you', 'Cảm ơn', ['Thank You', 'Happy'], 'support'), row('Hello', 'Chào nha', ['Hello', 'Cute'], 'hello'), row('Goodbye', 'Tạm biệt', ['Bye', 'Friendship'], 'bye'),
+  row('Miss you', 'Nhớ quá', ['Miss You', 'Love'], 'love'), row('Congratulations', 'Chúc mừng', ['Celebrate', 'Special Moments'], 'celebrate'), row('Welcome', 'Chào mừng', ['Hello', 'Friendship'], 'hello'), row('Hug', 'Ôm nè', ['Hug', 'Comfort'], 'hug'),
+  row('Good night', 'Ngủ ngon', ['Good Night', 'Sleep'], 'tired'), row('Good morning', 'Chào ngày mới', ['Good Morning', 'Happy'], 'hello'), row('Good luck', 'May mắn', ['Good Luck', 'Support'], 'support'), row('Take care', 'Giữ gìn', ['Support', 'Comfort'], 'support'),
+  row('See you', 'Hẹn gặp', ['Bye', 'Waiting'], 'bye'), row('I’m back', 'Về rồi', ['Hello', 'Special Moments'], 'hello'), row('Cheer up', 'Cố lên', ['Motivation', 'Support'], 'support'), row('Love you', 'Thương nhiều', ['Love', 'Friendship'], 'love')
+];
+const blobRows = [
+  row('Shocked', 'Sốc', ['Shocked', 'Panic'], 'shock'), row('Look!', 'Ơ kìa', ['Shocked', 'Wow'], 'shock'), row('Huh?', 'Ủa?', ['Confused', 'Shocked'], 'shock'), row('Wow', 'Wow', ['Wow', 'Excited'], 'celebrate'),
+  row('Confused', 'Khó hiểu', ['Confused', 'Thinking'], 'thinking'), row('Annoyed', 'Lườm nhẹ', ['Annoyed', 'Angry'], 'sad'), row('Facepalm', 'Trời ạ', ['Facepalm', 'Annoyed'], 'sad'), row('Seriously?!', 'Thiệt hả', ['Shocked', 'Angry'], 'shock'),
+  row('Suspicious', 'Nghi quá', ['Suspicious', 'Thinking'], 'thinking'), row('Frozen', 'Đứng hình', ['Shocked', 'Confused'], 'shock'), row('Dizzy', 'Rối não', ['Confused', 'Panic'], 'thinking'), row('Speechless', 'Hết nói', ['Awkward', 'Annoyed'], 'sad'),
+  row('Overwhelmed', 'Hoang mang', ['Nervous', 'Panic'], 'sad'), row('Amazed', 'Ghê ta', ['Wow', 'Excited'], 'celebrate'), row('Unbelievable', 'Không thể tin', ['Shocked', 'Wow'], 'shock'), row('Crying hard', 'Ối trời', ['Cry', 'Panic'], 'cry')
+];
+const puppyRows = [
+  row('Eating', 'Ăn nè', ['Food', 'Hungry'], 'food'), row('Drinking water', 'Uống nước', ['Food', 'Support'], 'food'), row('Sleeping', 'Ngủ đấy', ['Sleep', 'Cozy'], 'tired'), row('Working', 'Làm việc', ['Work', 'Busy'], 'work'),
+  row('Studying', 'Học bài', ['Study', 'Work'], 'work'), row('Wait a bit', 'Đợi chút', ['Waiting', 'Thinking'], 'thinking'), row('Celebrating', 'Ăn mừng', ['Celebrate', 'Happy'], 'celebrate'), row('Waving', 'Vẫy tay', ['Hello', 'Bye'], 'hello'),
+  row('Busy', 'Bận xỉu', ['Busy', 'Work'], 'work'), row('Running late', 'Trễ rồi', ['Waiting', 'Panic'], 'sad'), row('Finished', 'Xong rồi', ['Finished', 'Happy'], 'okay'), row('Coffee', 'Cà phê', ['Coffee', 'Chill'], 'coffee'),
+  row('Listening to music', 'Nghe nhạc', ['Music', 'Chill'], 'chill'), row('Gaming', 'Chơi game', ['Gaming', 'Happy'], 'happy'), row('On my way', 'Đi thôi', ['Waiting', 'Celebrate'], 'celebrate'), row('Cleaning', 'Dọn dẹp', ['Finished', 'Work'], 'work')
+];
+const bearRows = [
+  row('Sick', 'Ốm quá', ['Sick', 'Sad'], 'sad'), row('Get well soon', 'Mau khỏe', ['Sick', 'Support'], 'support'), row('Rest', 'Nghỉ ngơi', ['Sleep', 'Cozy'], 'tired'), row('Don’t worry', 'Đừng lo', ['Comfort', 'Support'], 'support'),
+  row('Comfort', 'An ủi nè', ['Comfort', 'Hug'], 'hug'), row('I’m here', 'Ở đây nè', ['Support', 'Friendship'], 'support'), row('You can do it', 'Cố lên nha', ['Motivation', 'Support'], 'support'), row('Stay calm', 'Bình tĩnh', ['Chill', 'Comfort'], 'chill'),
+  row('Birthday', 'Sinh nhật vui', ['Birthday', 'Celebrate'], 'celebrate'), row('Proud', 'Tự hào', ['Proud', 'Celebrate'], 'celebrate'), row('Love you', 'Thương lắm', ['Love', 'Hug'], 'love'), row('Stay healthy', 'Nhớ giữ sức', ['Support', 'Sick'], 'support'),
+  row('Take medicine', 'Uống thuốc', ['Sick', 'Support'], 'support'), row('Warm hug', 'Ấm áp nè', ['Comfort', 'Hug'], 'hug'), row('Cheer up', 'Vui lên', ['Happy', 'Support'], 'happy'), row('It’s okay', 'Ổn thôi', ['Okay', 'Comfort'], 'okay')
+];
 const dinoRows = [
   row('Roarrr!', 'Roarrr!', ['Excited', 'Happy'], 'happy'), row('Yeeee!', 'Yeeee!', ['Happy', 'Celebrate'], 'happy'), row('Let’s go!', 'Let’s go!', ['Celebrate', 'Excited'], 'celebrate'), row('You got this!', 'You got this!', ['Support', 'Motivation'], 'support'),
   row('Nice!', 'Nice!', ['Proud', 'Happy'], 'happy'), row('Amazing!', 'Tuyệt vời!', ['Celebrate', 'Proud'], 'celebrate'), row('Time to eat!', 'Ăn thôiii!', ['Food', 'Hungry'], 'food'), row('Chill chill~', 'Chill chill~', ['Chill', 'Cozy'], 'chill'),
@@ -69,7 +99,12 @@ export const ACTIVE_STICKER_PACKS = [
   pack('mini-bean-crew', 'Mini Bean Crew', 'Mini Bean Crew', 'Friendly, expressive bean reactions for everyday chats.', '#E4F4FC', beanRows),
   pack('mocha-kitty', 'Mocha Kitty', 'Mocha Kitty', 'Cozy kitty moods for work, study, coffee, and love.', '#EEE8FB', kittyRows),
   pack('dino-and-friends', 'Dino & Friends', 'Dino & Friends', 'Playful dino energy for encouragement and fun.', '#DDF7EA', dinoRows),
-  pack('cloud-pals', 'Cloud Pals', 'Cloud Pals', 'Dreamy cloud and star reactions for soft support.', '#FFF3C9', cloudRows)
+  pack('cloud-pals', 'Cloud Pals', 'Cloud Pals', 'Dreamy cloud and star reactions for soft support.', '#FFF3C9', cloudRows),
+  pack('peach-fox-feelings', 'Peach Fox Feelings', 'Peach Fox Feelings', 'A warm fox pack for nuanced feelings and reactions.', '#FFE6D9', foxRows),
+  pack('cotton-lamb-socials', 'Cotton Lamb Socials', 'Cotton Lamb Socials', 'Soft social messages for hellos, thanks, and everyday care.', '#F5E8F7', lambRows),
+  pack('jelly-blob-reactions', 'Jelly Blob Reactions', 'Jelly Blob Reactions', 'Playful reactions for surprise, confusion, and drama.', '#EDE6FF', blobRows),
+  pack('pudding-puppy-daily-life', 'Pudding Puppy Daily Life', 'Pudding Puppy Daily Life', 'Daily routines, small wins, and cozy activities.', '#FFF0CE', puppyRows),
+  pack('cloud-bear-care', 'Cloud Bear Care', 'Cloud Bear Care', 'Gentle comfort, wellness, and support for close friends.', '#E9E7FA', bearRows)
 ];
 
 export const LOCAL_STICKER_PACKS = ACTIVE_STICKER_PACKS;
