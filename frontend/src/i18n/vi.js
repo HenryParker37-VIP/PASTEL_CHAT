@@ -233,6 +233,7 @@ const vi = {
 
   // Install guide
   homeInstall: 'Cài đặt trên màn hình chính',
+  addToHomeScreen: 'Thêm vào màn hình chính',
   homeInstallDesc: 'Lưu ứng dụng vào điện thoại để truy cập nhanh.',
   homeSharedPhotos: 'Chia sẻ Ảnh',
   homeSharedPhotosDesc: 'Chia sẻ và xem ảnh với bạn bè thân thiết theo thời gian thực.',

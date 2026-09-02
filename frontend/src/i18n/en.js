@@ -233,6 +233,7 @@ const en = {
 
   // Install guide
   homeInstall: 'Install on home screen',
+  addToHomeScreen: 'Add to home screen',
   homeInstallDesc: 'Save the app to your phone for quick access anytime.',
   homeSharedPhotos: 'Shared Photos',
   homeSharedPhotosDesc: 'Share and view photos with your close friends in real-time.',
