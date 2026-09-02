@@ -25,7 +25,7 @@ const sticker = (pack, number, label, labelVi, categories, en, vi, primaryIntent
 
 const pack = (id, name, nameVi, description, coverColor, rows, assetExtension = 'webp') => {
   const descriptor = { id, name, nameVi, description, coverColor, assetExtension };
-  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.${assetExtension}`, packId: id, characterId: id, featured: id === 'bunny-english-vibes', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
+  return { ...descriptor, cover: `/stickers/source-packs/${id}/cover.${assetExtension}`, packId: id, characterId: id, featured: id === 'pastel-daily-feelings', active: true, isLegacy: false, categories: [], stickerIds: rows.map((_, index) => `${id}-${String(index + 1).padStart(2, '0')}`), stickers: rows.map((row, index) => sticker(descriptor, index + 1, ...row)) };
 };
 
 const EN = {
@@ -130,6 +130,39 @@ const cloudRows = [
   row('Good night~', 'Ngủ ngon~', ['Good Night', 'Sleep'], 'tired'), row('What??', 'Hảa??', ['Shocked', 'Confused'], 'shock'), row('Cute!', 'Cutee!', ['Cute', 'Love'], 'cute'), row('Love you~', 'Iu lắm~', ['Love', 'Flirty'], 'love')
 ];
 
+const GRID_INTENT_RULES = [
+  [/huhu|hic|buồn|chán|cry|khóc|sorrow|sob|nooo|dead|tired|mệt|low energy/i, ['Sad', 'Cry'], 'sad'],
+  [/giận|angry|wtf|rly|really|bruh|facepalm|annoy|nope/i, ['Angry', 'Annoyed'], 'shock'],
+  [/omg|sốc|shocked|what|hả|confus|mind blown|wow|why|aaaah|help|help me|hoang mang/i, ['Shocked', 'Confused'], 'shock'],
+  [/iu|yêu|love|thương|nhớ|miss|hug|ôm|cuddle|kiss|heart|affection|sweet/i, ['Love', 'Hug'], 'love'],
+  [/sorry|xin lỗi|xin lũi|my bad|regret/i, ['Sorry', 'Sad'], 'apology'],
+  [/thank|thanks|cảm ơn|appreciate/i, ['Thank You', 'Happy'], 'thanks'],
+  [/học|study|work|làm việc|deadline|busy|bận|meeting|office|plan|note|check list|brain|fighting/i, ['Study', 'Work'], 'work'],
+  [/ăn|đói|food|pizza|burger|fries|cake|coffee|tea|snack|noodle|chocolate|donut|candy|yummy/i, ['Food', 'Hungry'], 'food'],
+  [/sleep|ngủ|nghỉ|rest|chill|relax|cozy|tired|break|calm|yên bình/i, ['Sleep', 'Chill'], 'tired'],
+  [/good morning|morning|chào ngày mới/i, ['Good Morning', 'Happy'], 'morning'],
+  [/yay|haha|lol|lmao|hehe|funny|clap|vỗ tay|yess|happy|enjoy|smile|nice|good vibes/i, ['Happy', 'Celebrate'], 'happy'],
+  [/ok|oke|oki|done|xong|finished|completion|promise|you can|got this|positivity|proud/i, ['Okay', 'Support'], 'approval'],
+  [/let.?s go|đi chơi|travel|check in|selfie|shopping|lifestyle|party|fun|out/i, ['Celebrate', 'Excited'], 'celebrate'],
+  [/meow|woof|mimi|oink|quack|bunny|bear|panda|cat|dog|koala|fox|penguin|otter|hedgehog|seal|frog|dino|lion|tiger|cow|elephant|giraffe/i, ['Cute', 'Friendship'], 'cute']
+];
+const gridRows = (labels, fallbackCategories = ['Cute', 'Happy']) => labels.map(label => {
+  const rule = GRID_INTENT_RULES.find(([pattern]) => pattern.test(label));
+  const categories = rule?.[1] || fallbackCategories;
+  const key = rule?.[2] || 'cute';
+  return row(label, label, categories, key);
+});
+
+const pastelDailyRows = gridRows(['huhu', 'hiccc', 'buồn', 'giận', 'mệt', 'chán', 'hả?', 'omg', 'wtf', 'sốc luôn', 'xỉu…', 'khóc đây', 'iu', 'yêu', 'nhớ', 'ok', 'oke', 'oki', 'xong rồi', 'done', 'yayyy', 'vỗ tay', 'hehe', 'haha', 'lol'], ['Happy', 'Support']);
+const pastelSleepyRows = gridRows(['ngủ đấy', 'đi ngủ', 'good night', 'ngủ ngon', 'sweet dreams', 'good morning', 'chào ngày mới', 'morninggg', 'dậy thôi', 'lets go!', 'coffeeee', 'relax', 'chill nè', 'take a break', 'thư giãn', 'nghỉ xíu', 'nằm đây', 'bật mode lười', 'không làm gì', 'ngày mai làm', 'đang sạc pin', 'low energy', 'tired…', 'so tired', 'cần ôm'], ['Sleep', 'Chill']);
+const pastelLoveRows = gridRows(['iu', 'yêu', 'thương', 'nhớ', 'nhớ bạn', 'miss you', 'thinking of you', 'love you', 'muahh', 'xoxo', 'ôm', 'ôm cái nào', 'hug you', 'mãi bên nhau', 'my love', 'cutie', 'cute', 'dễ thương', 'dễ thưn', 'dễ thùn', 'heart', 'so sweet', 'bé iu', 'baby', 'honey'], ['Love', 'Hug']);
+const pastelStudyRows = gridRows(['học', 'học bài nè', 'cố lên', 'you can do it', 'fighting', 'kiểm tra', 'thi thôi', 'ôn bài', 'làm bài', 'deadline', 'tập trung', 'đang bận', 'làm việc', 'work hard', 'busy', 'brain lag', 'đau đầu quá', 'cần ý tưởng', 'note nè', 'check list', 'hoàn thành', 'kế hoạch', 'call me', 'on meeting', 'out of office'], ['Study', 'Work']);
+const pastelThanksRows = gridRows(['cảm ơn', 'thank you', 'thanks', 'biết ơn', 'tuyệt vời', 'xin lỗi', 'xin lũi', 'sorry', 'my bad', 'lỗi mình', 'không sao đâu', 'bỏ qua đi', 'no worries', "it's okay", 'tha lỗi nha', 'sorryyy', 'huhu sorry', 'cho xin lỗi', 'lần sau sửa', 'promise', 'cảm ơn nha', 'thank youuuu', "you're the best", 'appreciate it', 'mãi iu'], ['Thank You', 'Sorry']);
+const pastelFoodRows = gridRows(['ăn thôi', 'đói quá', 'bụng đói', 'ăn gì đây', 'thèm quá', 'yummy', 'ngon quá', 'delicious', 'mlem mlem', 'tasty', 'pizza', 'burger', 'fries', 'ice cream', 'candy', 'bubble tea', 'coffee', 'milk tea', 'cake', 'donut', 'snack time', 'chill snack', 'ăn nhẹ', 'noodle', 'chocolate'], ['Food', 'Hungry']);
+const pastelFunRows = gridRows(['đi chơi', "let's go", 'yayyy', 'party time', 'fun time', 'du lịch', 'check in', 'selfie', 'đẹp quá', 'wowww', 'shopping', 'mua sắm', 'đã quá', 'thích ghê', 'niceee', 'happy', 'good vibes', 'positivity', 'stay happy', 'smile', 'cuộc sống tốt', 'bình yên', 'enjoy life', 'thảnh thơi', 'love life'], ['Happy', 'Celebrate']);
+const pastelAnimalsRows = gridRows(['meow', 'woof', 'mimi', 'oink', 'quack', 'bunny', 'bear', 'panda', 'hamster', 'shiba', 'cat', 'dog', 'koala', 'fox', 'penguin', 'otter', 'hedgehog', 'seal', 'frog', 'dino', 'lion', 'tiger', 'cow', 'elephant', 'giraffe'], ['Cute', 'Friendship']);
+const pastelUltimateRows = gridRows(['!!!', '???', 'omg', 'rly?', 'really?', 'confusing', 'mind blown', 'nooo', 'screaming', 'help meee', 'screaming', 'aaaah', 'ohhh', 'mind blown', 'help', "can't stop", 'dead', 'lolol', 'crying', 'sob sob', 'lmao', 'rofl', 'too funny', 'bruh', 'facepalm'], ['Shocked', 'Confused']);
+
 const ALL_STICKER_PACKS = [
   pack('pastel-bunny-final', 'Pastel Bunny', 'Pastel Bunny', 'The original Pastel Bunny sheet, now in a clean 16-sticker pack.', '#FCE2EA', bunnyRows),
   pack('mini-bean-crew', 'Mini Bean Crew', 'Mini Bean Crew', 'Friendly, expressive bean reactions for everyday chats.', '#E4F4FC', beanRows),
@@ -145,15 +178,28 @@ const ALL_STICKER_PACKS = [
   pack('cloud-bear-care-new', 'Cloud Bear Care', 'Cloud Bear Care', 'Soft English care messages for comfort and encouragement.', '#E8E5FA', cloudBearEnglishRows, 'png'),
   pack('peach-kitty-mood', 'Peach Kitty Mood', 'Peach Kitty Mood', 'Peachy kitty moods for work, reactions, and affection.', '#FFE8DC', peachKittyRows, 'png'),
   pack('tiny-duck-chaos', 'Tiny Duck Chaos', 'Tiny Duck Chaos', 'Bright little duck reactions for playful chat moments.', '#FFF1C9', duckRows, 'png'),
-  pack('sheepy-sweet-love', 'Sheepy Sweet Love', 'Sheepy Sweet Love', 'Warm sheepy messages for closeness and care.', '#F2E6F5', sheepyRows, 'png')
+  pack('sheepy-sweet-love', 'Sheepy Sweet Love', 'Sheepy Sweet Love', 'Warm sheepy messages for closeness and care.', '#F2E6F5', sheepyRows, 'png'),
+  pack('pastel-daily-feelings', 'Pastel Daily Feelings', 'Cảm Xúc Hằng Ngày', 'Soft reactions for everyday moods and feelings.', '#FCE2EA', pastelDailyRows, 'png'),
+  pack('pastel-sleepy-chill', 'Pastel Sleepy & Chill', 'Ngủ Nghỉ & Thư Giãn', 'Cozy stickers for rest, calm, and slow moments.', '#EDE6FF', pastelSleepyRows, 'png'),
+  pack('pastel-love-affection', 'Pastel Love & Affection', 'Yêu Thương & Tình Cảm', 'Warm little stickers for love and closeness.', '#FFE4EC', pastelLoveRows, 'png'),
+  pack('pastel-study-work', 'Pastel Study & Work', 'Học Hành & Công Việc', 'Gentle motivation for study and work days.', '#DDF7EA', pastelStudyRows, 'png'),
+  pack('pastel-thanks-sorry', 'Pastel Thanks & Sorry', 'Cảm Ơn & Xin Lỗi', 'Thoughtful stickers for thanks, apologies, and repair.', '#E8E5FA', pastelThanksRows, 'png'),
+  pack('pastel-foodie-moments', 'Pastel Foodie Moments', 'Đồ Ăn & Thức Uống', 'Cute food and drink reactions for chat.', '#FFE8D2', pastelFoodRows, 'png'),
+  pack('pastel-fun-lifestyle', 'Pastel Fun & Lifestyle', 'Đi Chơi & Cuộc Sống', 'Bright stickers for fun, outings, and good vibes.', '#EDE6FF', pastelFunRows, 'png'),
+  pack('pastel-cute-animals', 'Pastel Cute Animals', 'Động Vật Siêu Cute', 'A friendly roll call of cute animal reactions.', '#F3ECFF', pastelAnimalsRows, 'png'),
+  pack('pastel-ultimate-reactions', 'Pastel Ultimate Reactions', 'Reaction Siêu Đỉnh', 'Big expressive reactions for unforgettable moments.', '#EDE6FF', pastelUltimateRows, 'png')
 ];
 
 export const ACTIVE_STICKER_PACK_IDS = [
-  'bunny-english-vibes',
-  'cloud-bear-care-new',
-  'peach-kitty-mood',
-  'tiny-duck-chaos',
-  'sheepy-sweet-love'
+  'pastel-daily-feelings',
+  'pastel-sleepy-chill',
+  'pastel-love-affection',
+  'pastel-study-work',
+  'pastel-thanks-sorry',
+  'pastel-foodie-moments',
+  'pastel-fun-lifestyle',
+  'pastel-cute-animals',
+  'pastel-ultimate-reactions'
 ];
 
 const ACTIVE_PACK_ID_SET = new Set(ACTIVE_STICKER_PACK_IDS);
