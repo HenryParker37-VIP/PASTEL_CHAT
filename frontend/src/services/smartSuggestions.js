@@ -61,7 +61,7 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
     const directPhraseMatches = [...(item.tags?.en || []), ...(item.tags?.vi || [])]
       .filter(tag => tag.length > 2 && analysis.normalized.includes(normalizeMessage(tag))).length;
     const directPhraseMatch = directPhraseMatches * 5;
-    const firstPartyBonus = item.style === 'pastel-bunny' && overlap > 0 ? 12 : 0;
+    const firstPartyBonus = ['pastel-bunny', 'pastel-bunny-final'].includes(item.pack) && overlap > 0 ? 12 : 0;
     return overlap + directPhraseMatch + firstPartyBonus + (favoriteIds.includes(item.id) ? 4 : 0) + (recentIds.includes(item.id) ? 2 : 0) + (item.intensity >= 4 && analysis.normalized.length > 30 ? 1 : 0);
   };
   const ranked = stickers.map(item => ({ item, score: score(item) })).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score);
@@ -70,11 +70,11 @@ export const getSmartSuggestions = (message, { stickers = [], recentIds = [], fa
   const packCounts = new Map();
   const needsVisualVariants = analysis.concepts.some(({ intent }) => intent === 'greeting' || intent === 'farewell');
   const preferredBunnyIds = {
-    greeting: ['bunny_hello', 'bunny_xinchao'], farewell: ['bunny_byebye', 'bunny_seeyou'],
-    laughter: ['bunny_laugh'], joy: ['bunny_laugh'], sadness: ['bunny_cry'], anger: ['bunny_angry'],
-    surprise: ['bunny_shocked'], affection: ['bunny_love', 'bunny_imissyou', 'bunny_nhoyou'], approval: ['bunny_thumbsup'], celebrate: ['bunny_celebrate'], celebration: ['bunny_celebrate']
+    greeting: ['pastel-bunny-final-01'], farewell: ['pastel-bunny-final-01'],
+    laughter: ['pastel-bunny-final-16'], joy: ['pastel-bunny-final-16', 'pastel-bunny-final-05'], sadness: ['pastel-bunny-final-09', 'pastel-bunny-final-10'], sleep: ['pastel-bunny-final-12'], anger: [],
+    surprise: ['pastel-bunny-final-15'], affection: ['pastel-bunny-final-03', 'pastel-bunny-final-04'], approval: ['pastel-bunny-final-06'], celebrate: ['pastel-bunny-final-05'], celebration: ['pastel-bunny-final-05']
   };
-  const extraPreferred = /\b(yay|let's go|gooo)\b/.test(analysis.normalized) ? ['bunny_celebrate'] : [];
+  const extraPreferred = /\b(yay|let's go|gooo)\b/.test(analysis.normalized) ? ['pastel-bunny-final-05'] : [];
   const preferred = [...analysis.concepts.flatMap(concept => preferredBunnyIds[concept.id] || []), ...extraPreferred]
     .map(id => stickers.find(item => item.id === id)).filter(Boolean);
   for (const item of preferred) {
