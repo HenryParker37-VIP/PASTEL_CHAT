@@ -25,7 +25,7 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, highlight }) => {
+const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, highlight, conversationIdentity }) => {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -37,7 +37,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
   const senderAvatar = sender?.avatar;
   const senderIdentity = getPastelIdentity(sender?._id || message.senderId);
   const bubbleIdentity = isOwn
-    ? (getPastelColor(user?.chatColor) || getPastelIdentity(user?._id))
+    ? (conversationIdentity || getPastelColor(user?.chatColor) || getPastelIdentity(user?._id))
     : (getPastelColor(peer?.chatColor) || senderIdentity);
 
   const replyRef = message.replyTo;
