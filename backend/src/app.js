@@ -22,6 +22,7 @@ const stickerRoutes = require('./routes/stickers');
 const webrtcRoutes = require('./routes/webrtc');
 const setupSocket = require('./socket');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
+const { appVersion, buildId, deployedAt } = require('./version');
 
 const app = express();
 const server = http.createServer(app);
@@ -99,6 +100,13 @@ app.get('/health', (_, res) => res.json({
   storage: storeDb.isDurableStorageEnabled() ? 'mongodb' : 'local-ephemeral',
   timestamp: new Date()
 }));
+
+app.get('/api/version', (_, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.json({ version: appVersion, buildId, deployedAt });
+});
 
 // Fallback to index.html for client-side routing
 app.get('*', (req, res) => {

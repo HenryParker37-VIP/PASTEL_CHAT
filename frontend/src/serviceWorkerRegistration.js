@@ -1,6 +1,11 @@
 import { syncExistingSubscription } from './services/push';
 
 const SW_URL = `${process.env.PUBLIC_URL}/sw.js`;
+let activeRegistration = null;
+
+export function getRegistration() {
+  return activeRegistration;
+}
 
 export function register(config) {
   if (!('serviceWorker' in navigator)) return;
@@ -11,6 +16,7 @@ export function register(config) {
       navigator.serviceWorker
         .register(SW_URL)
         .then((registration) => {
+          activeRegistration = registration;
           // Only sync existing push subscription if permission was already granted
           const syncPush = () => {
             if (localStorage.getItem('token')) syncExistingSubscription(registration);

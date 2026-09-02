@@ -1,6 +1,6 @@
 {
   "name": "pastel-chat-frontend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "dependencies": {
     "@azure/msal-browser": "^5.10.1",
@@ -24,7 +24,7 @@
   "main": "public/electron.js",
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "node scripts/generate-build-meta.js && react-scripts build",
     "lint": "eslint src/App.js src/pages/Resume.js src/components/ResumePdfDocument.js src/data/resumeData.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
