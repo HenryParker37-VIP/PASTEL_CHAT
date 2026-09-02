@@ -63,6 +63,10 @@ const en = {
   profileChatColorDesc: 'Choose a soft pastel color for your messages.',
   profileChatColorAuto: 'Automatic pastel',
   profileChatColorSaved: 'Chat color saved.',
+  appUpdateTitle: 'PastelChat has been updated',
+  appUpdateMessage: 'A new version is ready. Refresh to update.',
+  appUpdateRefresh: 'Refresh',
+  appUpdateRefreshing: 'Refreshing...',
 
   // Login
   loginTitle: 'Pastel Chat',

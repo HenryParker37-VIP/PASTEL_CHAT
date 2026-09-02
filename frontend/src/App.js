@@ -37,6 +37,7 @@ import VideoCallScreen from './components/VideoCallScreen';
 import HappyBirthdayOverlay from './components/HappyBirthdayOverlay';
 import GlobalChecker from './components/GlobalChecker';
 import PastelIcon from './components/PastelIcon';
+import AppUpdateNotice from './components/AppUpdateNotice';
 
 // Rendered inside the Microsoft OAuth popup window — nothing else in the app runs here.
 //
@@ -274,6 +275,7 @@ const App = () => {
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
     <ThemeProvider>
       <LangProvider>
+        <AppUpdateNotice />
         <AuthProvider>
           <ToastProvider>
             <SocketProvider>

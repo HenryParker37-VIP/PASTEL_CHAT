@@ -2231,3 +2231,72 @@ body.dark .avatar-type-btn { background: #2A1F3D; color: #E8D5F0; border-color: 
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+.app-update-notice {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(440px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border: 1px solid rgba(221, 160, 221, 0.38);
+  border-radius: 16px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 10px 30px rgba(100, 70, 120, 0.18);
+  animation: appUpdateIn 220ms ease-out;
+}
+.app-update-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 12px;
+  color: #9b69b5;
+  background: #f5effb;
+}
+.app-update-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #e49ab0;
+  animation: appUpdateFloat 1.4s ease-in-out infinite;
+}
+.app-update-dot--one { top: 5px; right: 7px; }
+.app-update-dot--two { top: 10px; right: 3px; background: #9fcac5; animation-delay: 120ms; }
+.app-update-dot--three { top: 2px; right: 14px; background: #acb9dc; animation-delay: 220ms; }
+.app-update-copy { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.app-update-copy strong { color: var(--text, #4d3b52); font-size: 13px; line-height: 1.25; }
+.app-update-copy span { color: var(--subtext, #777); font-size: 12px; line-height: 1.35; }
+.app-update-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(135deg, #d79bb6, #b79ad8);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.app-update-button:disabled { opacity: 0.65; cursor: wait; }
+@keyframes appUpdateIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes appUpdateFloat { 0%, 100% { transform: translateY(1px); opacity: 0.55; } 50% { transform: translateY(-3px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .app-update-notice, .app-update-dot { animation: none; }
+}
+@media (max-width: 520px) {
+  .app-update-notice { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); gap: 9px; padding: 11px; }
+  .app-update-icon { width: 32px; height: 32px; flex-basis: 32px; border-radius: 10px; }
+  .app-update-copy strong { font-size: 12px; }
+  .app-update-copy span { font-size: 11px; }
+  .app-update-button { min-height: 34px; padding: 0 10px; }
+}

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 
@@ -10,7 +10,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
-  self.skipWaiting();
 });
 
 // ── Activate ──────────────────────────────────────────────────────────────────
