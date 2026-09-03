@@ -1607,8 +1607,19 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .chat-contact { flex: 0 0 auto !important; gap: 0 !important; }
   .chat-contact > button,
   .chat-contact > div:not(.chat-actions) { display: none !important; }
-  .chat-actions { gap: 3px !important; }
-  .chat-actions > button { width: 29px !important; height: 29px !important; }
+  /* Keep the four existing actions in the same visual band as the brand.
+     Absolute placement prevents the legacy flex row from pushing them away. */
+  .chat-actions {
+    position: absolute !important;
+    top: calc(env(safe-area-inset-top) + 11px);
+    right: 8px;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    gap: 3px !important;
+    pointer-events: auto;
+  }
+  .chat-actions > button { width: 29px !important; height: 29px !important; flex: 0 0 29px !important; }
   .chat-actions > button .pastel-icon { width: 15px !important; height: 15px !important; }
 }
 
