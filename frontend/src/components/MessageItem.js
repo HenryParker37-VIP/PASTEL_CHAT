@@ -50,6 +50,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
   const reactions = message.reactions || {};
   const hasReactions = Object.keys(reactions).length > 0;
   const deliveryStatus = message.deliveryStatus || 'sent';
+  const toolbarIsVertical = Boolean(message.media?.type);
 
   const handleRecall = async () => {
     const accepted = await confirm({ title: t('chatRecall'), message: t('chatRecallConfirm'), confirmLabel: t('chatRecall'), tone: 'danger', icon: 'trash' });
@@ -228,7 +229,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
 
           {/* Floating action toolbar — appears on hover */}
           {!message.isRecalled && showActions && (
-            <div className={`msg-toolbar ${isOwn ? 'toolbar-left' : 'toolbar-right'}`}>
+            <div className={`msg-toolbar ${toolbarIsVertical ? 'msg-toolbar--vertical' : 'msg-toolbar--horizontal'} ${isOwn ? 'toolbar-left' : 'toolbar-right'}`}>
               {/* Reaction trigger */}
               <button
                 title="React"
