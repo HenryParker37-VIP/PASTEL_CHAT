@@ -211,14 +211,6 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
       {/* Input row */}
       <div className={`input-row${isTyping ? ' typing-mode' : ''}`}>
-        {/* Sticker / GIF picker */}
-        <button
-          className={`icon-btn composer-control ${showGifPicker ? 'active' : ''}`}
-          onClick={() => { setShowGifPicker(v => !v); }}
-          title="Stickers & GIFs"
-          type="button"
-        ><PastelIcon name="smile" size={21} /></button>
-
         {/* GIF / Sticker */}
         <button
           className={`icon-btn gif-icon-btn composer-control composer-utility ${showGifPicker ? 'active' : ''}`}

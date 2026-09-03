@@ -862,9 +862,12 @@ html.home-card-route-transition #root > .chat-layout {
 .chat-input-area {
   position: relative;
   /* The composer owns the bottom edge of a conversation screen. */
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
   padding:
-    8px max(12px, var(--sar))
-    max(8px, var(--sab))
+    6px max(12px, var(--sar))
+    max(6px, var(--sab))
     max(12px, var(--sal));
   background: white;
   border-top: 1px solid #F0E6F0;
@@ -1630,10 +1633,10 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); max-height: 190px; }
   .btn { padding: 10px 16px; font-size: 14px; }
   .chat-input-area {
-    padding-top: 8px;
+    padding-top: 6px;
     padding-left: max(10px, var(--sal));
     padding-right: max(10px, var(--sar));
-    padding-bottom: max(8px, calc(7px + var(--sab)));
+    padding-bottom: max(6px, var(--sab));
   }
   .input-row { gap: 4px; }
   .icon-btn,
@@ -1644,7 +1647,7 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
 }
 
 @media (max-width: 700px) {
-  .chat-input-area { padding-top: 8px; }
+  .chat-input-area { height: auto; min-height: 0; padding-top: 6px; padding-bottom: max(6px, var(--sab)); }
   .input-row { gap: 4px; }
   .composer-control { transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
   .input-row.typing-mode { gap: 4px; }
