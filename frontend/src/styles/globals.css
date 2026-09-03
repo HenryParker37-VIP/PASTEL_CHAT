@@ -1545,6 +1545,44 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .login-card { padding: 28px 20px 24px; }
   /* Hide the date/time in chat header on small screens to prevent overlap */
   .header-datetime { display: none; }
+
+  /* Mobile chat uses one shared top band: brand on the left, conversation
+     toolbar on the right. The desktop header/menu remains unchanged. */
+  .chat-shell { top: 0 !important; }
+  .app-header {
+    height: calc(52px + env(safe-area-inset-top)) !important;
+    padding: env(safe-area-inset-top) 8px 0 10px !important;
+    background: linear-gradient(135deg, #FFB6C1 0%, #DDA0DD 50%, #ADD8E6 100%) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.09) !important;
+    z-index: 12 !important;
+    pointer-events: none;
+  }
+  .app-brand, .app-user-menu { pointer-events: auto; }
+  .app-brand { gap: 6px !important; min-width: 118px; }
+  .app-brand > img { width: 28px !important; height: 28px !important; border-radius: 7px !important; }
+  .app-brand > div:last-child > div:first-child { font-size: 13px !important; }
+  .app-brand > div:last-child > div:last-child { gap: 4px !important; }
+  .app-brand > div:last-child > div:last-child span { font-size: 9px !important; }
+  .app-user-menu { display: none; }
+  .chat-main { width: 100%; }
+  .chat-toolbar {
+    min-height: calc(52px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 8px 0 124px !important;
+    gap: 0 !important;
+    position: relative;
+    z-index: 11;
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255,255,255,0.28) !important;
+  }
+  .chat-toolbar > button { display: none; }
+  .chat-contact { gap: 6px !important; }
+  .chat-contact > button img { width: 30px !important; height: 30px !important; }
+  .chat-contact > div:not(.chat-actions) { max-width: 76px; }
+  .chat-contact > div:not(.chat-actions) span:first-child { font-size: 12px !important; }
+  .chat-contact > div:not(.chat-actions) span:last-child { font-size: 10px !important; }
+  .chat-actions { gap: 3px !important; }
+  .chat-actions > button { width: 29px !important; height: 29px !important; }
+  .chat-actions > button .pastel-icon { width: 15px !important; height: 15px !important; }
 }
 
 @media (max-width: 420px) {
@@ -1553,15 +1591,43 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .avatar-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); max-height: 190px; }
   .btn { padding: 10px 16px; font-size: 14px; }
   .chat-input-area {
+    padding-top: 8px;
     padding-left: max(10px, var(--sal));
     padding-right: max(10px, var(--sar));
+    padding-bottom: max(8px, calc(7px + var(--sab)));
   }
-  .input-row { gap: 6px; }
+  .input-row { gap: 4px; }
   .icon-btn,
   .send-btn { width: 40px; height: 40px; }
   .message-textarea { min-height: 40px; padding: 9px 12px; }
   /* Hide "Home" label text in chat header, keep just the arrow */
   .back-label { display: none; }
+}
+
+@media (max-width: 700px) {
+  .chat-input-area { padding-top: 8px; }
+  .input-row { gap: 4px; }
+  .composer-control { transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
+  .input-row.typing-mode { gap: 3px; }
+  .input-row.typing-mode .composer-control { width: 31px; transform: translateX(-2px); }
+  .input-row.typing-mode .gif-icon-btn { width: 31px !important; min-width: 31px; padding: 0 3px; }
+  .input-row.typing-mode .gif-btn-label { font-size: 10px; letter-spacing: 0.2px; }
+  .input-row .send-btn { width: 40px; min-width: 40px; }
+  .input-pill { min-width: 72px; }
+}
+
+@media (max-width: 380px) {
+  .app-brand { min-width: 106px; }
+  .chat-toolbar { padding-left: 108px !important; }
+  .chat-contact { gap: 4px !important; }
+  .chat-contact > div:not(.chat-actions) { max-width: 48px; }
+  .chat-actions { gap: 2px !important; }
+  .chat-actions > button { width: 26px !important; height: 29px !important; }
+  .chat-actions > button .pastel-icon { width: 14px !important; height: 14px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-control { transition: none !important; }
 }
 
 /* ---------- Happy Birthday confetti ---------- */

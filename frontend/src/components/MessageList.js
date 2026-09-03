@@ -4,7 +4,7 @@ import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 import PastelIcon from './PastelIcon';
 
-const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId, conversationIdentity }) => {
+const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId, conversationIdentity, onConversationTap }) => {
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -36,6 +36,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
   return (
     <div
       ref={containerRef}
+      onPointerDown={onConversationTap}
       style={{
         flex: 1,
         overflowY: 'auto',
