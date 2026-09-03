@@ -2191,8 +2191,22 @@ body.dark .sticker-pack-tab.active { background: #3A2D50; border-color: #C9A6E0;
   gap: 6px !important;
 }
 
-.sticker-library-controls { flex: 0 0 auto; min-width: 0; }
-.sticker-library-scroll { overscroll-behavior: contain; }
+.sticker-library-controls {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  background: inherit;
+}
+.sticker-library-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .sticker-category-tabs {
   display: flex;
   gap: 6px;
@@ -2464,7 +2478,7 @@ body.dark .sticker-emoji-btn:hover { background: #3A2D50; border-color: #C9A6E0;
 .sticker-store-shortcut:hover { background: #F7EFF8; color: #B080CC; }
 
 /* PastelChat sticker library refresh: scroll belongs to one panel, not nested cards. */
-.sticker-library-nav { display: flex; gap: 6px; padding: 8px 12px 3px; overflow-x: auto; scrollbar-width: none; }
+.sticker-library-nav { display: flex; gap: 6px; padding: 8px 12px 3px; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 3; }
 .sticker-library-nav::-webkit-scrollbar { display: none; }
 .sticker-library-nav button { flex: 0 0 auto; min-height: 34px; padding: 0 12px; border: 1px solid #ead9ef; border-radius: 999px; background: #fffafd; color: #806b86; font-size: 11px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 .sticker-library-nav button.active { background: #ead9f0; color: #5d4163; border-color: #cdaed8; }

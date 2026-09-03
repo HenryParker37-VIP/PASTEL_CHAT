@@ -11,7 +11,12 @@ const router = express.Router();
 
 const normalizeSharedWith = (sharedWith, ownerId) => {
   if (!Array.isArray(sharedWith)) return [];
-  const recipientIds = [...new Set(sharedWith.map((recipient) => String(recipient?._id || recipient || '').trim()).filter(Boolean))]
+  const recipientIds = [...new Set(sharedWith.map((recipient) => {
+    const id = recipient && typeof recipient === 'object'
+      ? (recipient._id || recipient.id || recipient.userId)
+      : recipient;
+    return String(id || '').trim();
+  }).filter(Boolean))]
     .filter((recipientId) => recipientId !== String(ownerId));
   if (recipientIds.some((recipientId) => !findFriendship(ownerId, recipientId))) {
     const error = new Error('Notes can only be shared with current friends');

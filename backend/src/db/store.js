@@ -410,7 +410,9 @@ function getFriends(userId) {
     .filter(Boolean);
 }
 function findFriendship(userId, friendId) {
-  return store.friendships.find((f) => f.userId === userId && f.friendId === friendId);
+  const ownerId = String(userId);
+  const targetId = String(friendId);
+  return store.friendships.find((f) => String(f.userId) === ownerId && String(f.friendId) === targetId);
 }
 function addFriend(userId, friendId, customNickname) {
   if (userId === friendId) return null;
@@ -694,7 +696,12 @@ function findNote(noteId) {
 function getUserNotes(userId) {
   const normalizedUserId = String(userId);
   return store.notes
-    .filter((note) => String(note.userId) === normalizedUserId || (Array.isArray(note.sharedWith) && note.sharedWith.some((recipient) => String(recipient?._id || recipient) === normalizedUserId)))
+    .filter((note) => String(note.userId) === normalizedUserId || (Array.isArray(note.sharedWith) && note.sharedWith.some((recipient) => {
+      const recipientId = recipient && typeof recipient === 'object'
+        ? (recipient._id || recipient.id || recipient.userId)
+        : recipient;
+      return recipientId != null && String(recipientId) === normalizedUserId;
+    })))
     .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 }
 function deleteNote(noteId) {
