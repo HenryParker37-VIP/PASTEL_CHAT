@@ -47,7 +47,7 @@ const Header = () => {
   };
 
   return (
-    <header style={{
+    <header className="app-header" style={{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -63,7 +63,7 @@ const Header = () => {
       zIndex: 100
     }}>
       {/* Left: back button + logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="app-brand" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button
           onClick={() => navigate('/home')}
           title="Back to dashboard"
@@ -121,7 +121,7 @@ const Header = () => {
       </div>
 
       {/* User menu */}
-      <div style={{ position: 'relative' }}>
+      <div className="app-user-menu" style={{ position: 'relative' }}>
         <button
           onClick={() => setShowMenu(!showMenu)}
           style={{

@@ -29,6 +29,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const [suggestedGifQuery, setSuggestedGifQuery] = useState('');
   const [sending, setSending] = useState(false);
   const [media, setMedia] = useState(null); // { type, dataUrl, name, size, preview }
+  const [typingMode, setTypingMode] = useState(() => text.length > 0);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimerRef = useRef(null);
@@ -51,6 +52,8 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
   const handleChange = (e) => {
     const nextText = e.target.value;
+    if (text.length === 0 && nextText.length > 0) setTypingMode(true);
+    if (nextText.length === 0) setTypingMode(false);
     setText(nextText);
     try {
       if (draftKey && nextText) localStorage.setItem(draftKey, nextText);
@@ -98,6 +101,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         : null;
       await onSend(content, mediaPayload);
       setText('');
+      setTypingMode(false);
       try { if (draftKey) localStorage.removeItem(draftKey); } catch { /* private mode */ }
       setMedia(null);
       if (textareaRef.current) {
@@ -163,6 +167,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const next = text.slice(0, start) + emoji + text.slice(end);
+    if (text.length === 0 && next.length > 0) setTypingMode(true);
     setText(next);
     setShowEmoji(false);
     setTimeout(() => {
@@ -238,10 +243,10 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
       />
 
       {/* Input row */}
-      <div className="input-row">
+      <div className={`input-row${typingMode ? ' typing-mode' : ''}`}>
         {/* Emoji */}
         <button
-          className={`icon-btn ${showEmoji ? 'active' : ''}`}
+          className={`icon-btn composer-control ${showEmoji ? 'active' : ''}`}
           onClick={() => { setShowEmoji(v => !v); setShowGifPicker(false); }}
           title="Emoji"
           type="button"
@@ -249,7 +254,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
         {/* GIF / Sticker */}
         <button
-          className={`icon-btn gif-icon-btn ${showGifPicker ? 'active' : ''}`}
+          className={`icon-btn gif-icon-btn composer-control ${showGifPicker ? 'active' : ''}`}
           onClick={() => { setShowGifPicker(v => !v); setShowEmoji(false); }}
           title="GIFs & Stickers"
           type="button"
@@ -260,7 +265,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
         {/* File attach */}
         <button
-          className="icon-btn"
+          className="icon-btn composer-control"
           onClick={() => fileInputRef.current?.click()}
           title="Attach file or image"
           type="button"

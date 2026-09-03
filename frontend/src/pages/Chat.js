@@ -293,7 +293,7 @@ const Chat = () => {
       <Header />
 
       {/* The bounded shell shrinks to visualViewport.height when the keyboard opens. */}
-      <div style={{
+      <div className="chat-shell" style={{
         position: 'absolute',
         top: 'calc(60px + env(safe-area-inset-top))',
         left: 0, right: 0, bottom: 0,
@@ -302,7 +302,7 @@ const Chat = () => {
       }}>
         {/* Sidebar */}
         {sidebarOpen && (
-          <div style={{
+          <div className="chat-main" style={{
             display: 'flex',
             flexDirection: 'column',
             width: isMobile() ? '100%' : '220px',
@@ -337,7 +337,7 @@ const Chat = () => {
         {/* Main chat area */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0, position: 'relative' }}>
           {/* Toolbar */}
-          <div style={{
+          <div className="chat-toolbar" style={{
             display: 'flex',
             alignItems: 'center',
             padding: '6px 12px',
@@ -371,7 +371,7 @@ const Chat = () => {
             </button>
 
             {friend && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+              <div className="chat-contact" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                 {/* Clickable avatar — opens profile card */}
                 <button
                   onClick={() => setProfileOpen(v => !v)}
@@ -398,7 +398,7 @@ const Chat = () => {
                 </div>
 
                 {/* Action buttons */}
-                <div ref={colorPickerRef} style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', position: 'relative' }}>
+                <div className="chat-actions" ref={colorPickerRef} style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', position: 'relative' }}>
                   {/* Search toggle */}
                   <button
                     onClick={() => setSearchOpen(v => !v)}
@@ -633,6 +633,10 @@ const Chat = () => {
             onReaction={handleReaction}
             highlightId={highlightId}
             conversationIdentity={friendIdentity}
+            onConversationTap={() => {
+              if (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA') return;
+              document.activeElement.blur();
+            }}
           />
 
           <MessageInput
