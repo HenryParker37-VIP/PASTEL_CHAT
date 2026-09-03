@@ -195,6 +195,7 @@ const AppRoutes = () => {
 
   return (
     <>
+      {user && <AppUpdateNotice />}
       {user && <GlobalSocketListener onHappyBirthday={handleHappyBirthday} />}
       {user && <CallOverlays />}
       {user && <GlobalChecker onBirthdayToday={handleBirthdayToday} />}
@@ -285,7 +286,6 @@ const App = () => {
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
     <ThemeProvider>
       <LangProvider>
-        <AppUpdateNotice />
         <AuthProvider>
           <ToastProvider>
             <ConfirmProvider>
