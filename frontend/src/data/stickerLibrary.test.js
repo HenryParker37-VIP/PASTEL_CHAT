@@ -2,10 +2,10 @@ import { ACTIVE_STICKER_PACK_IDS, ARCHIVED_STICKER_PACKS, LOCAL_STICKER_PACKS, L
 
 describe('active PastelChat sticker library', () => {
   test('contains first-party characters and the full category vocabulary', () => {
-    expect(LOCAL_STICKER_PACKS).toHaveLength(9);
+    expect(LOCAL_STICKER_PACKS).toHaveLength(12);
     expect(LOCAL_STICKER_PACKS.every(pack => pack.stickers.length === 25)).toBe(true);
     expect(LOCAL_STICKER_PACKS.map(pack => pack.id)).toEqual(ACTIVE_STICKER_PACK_IDS);
-    expect(LOCAL_STICKERS).toHaveLength(225);
+    expect(LOCAL_STICKERS).toHaveLength(300);
     expect(LOCAL_STICKER_PACKS.every(pack => pack.cover.endsWith('/cover.png'))).toBe(true);
     expect(ARCHIVED_STICKER_PACKS).toHaveLength(15);
     expect(ARCHIVED_STICKER_PACKS.every(pack => pack.active === false && pack.deprecated === true)).toBe(true);
@@ -18,5 +18,8 @@ describe('active PastelChat sticker library', () => {
     expect(stickerMatchesSearch(LOCAL_STICKERS.find(sticker => sticker.id === 'pastel-daily-feelings-01'), 'huhu')).toBe(true);
     expect(stickerMatchesSearch(LOCAL_STICKERS.find(sticker => sticker.id === 'pastel-foodie-moments-11'), 'pizza')).toBe(true);
     expect(stickerMatchesSearch(LOCAL_STICKERS.find(sticker => sticker.id === 'pastel-cute-animals-20'), 'dino')).toBe(true);
+    expect(stickerMatchesSearch(LOCAL_STICKERS.find(sticker => sticker.id === 'pastel-bro-daily-mood-04'), 'giận')).toBe(true);
+    expect(stickerMatchesSearch(LOCAL_STICKERS.find(sticker => sticker.id === 'pastel-bro-chill-power-12'), 'work hard')).toBe(true);
+    expect(stickerMatchesSearch(LOCAL_STICKERS.find(sticker => sticker.id === 'pastel-bro-reactions-11'), 'mind blown')).toBe(true);
   });
 });
