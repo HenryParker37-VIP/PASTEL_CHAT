@@ -880,6 +880,15 @@ html.home-card-route-transition #root > .chat-layout {
   min-width: 0;
 }
 
+.composer-control,
+.composer-utility {
+  flex: 0 0 auto;
+}
+.composer-utility {
+  transition: width 190ms cubic-bezier(0.16, 1, 0.3, 1), min-width 190ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 140ms ease, transform 190ms cubic-bezier(0.16, 1, 0.3, 1), padding 190ms ease;
+}
+
 .input-pill {
   flex: 1;
   min-width: 0;
@@ -1521,6 +1530,8 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
 
 /* ---------- Responsive ---------- */
 
+.mobile-chat-peer { display: none; }
+
 @media (max-width: 700px) {
   /* Only conversation routes apply this class. Keep document scrolling out of
      the keyboard interaction; MessageList owns vertical scrolling instead. */
@@ -1560,14 +1571,32 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .app-brand, .app-user-menu { pointer-events: auto; }
   .app-brand { gap: 6px !important; min-width: 118px; }
   .app-brand > img { width: 28px !important; height: 28px !important; border-radius: 7px !important; }
-  .app-brand > div:last-child > div:first-child { font-size: 13px !important; }
-  .app-brand > div:last-child > div:last-child { gap: 4px !important; }
-  .app-brand > div:last-child > div:last-child span { font-size: 9px !important; }
+  .app-brand-copy > div:first-child { font-size: 13px !important; }
+  .app-brand-copy > div:last-child { gap: 4px !important; }
+  .app-brand-copy > div:last-child span { font-size: 9px !important; }
+  .mobile-chat-peer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    margin-left: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: white;
+    text-align: left;
+    cursor: pointer;
+  }
+  .mobile-chat-peer img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.7); flex: 0 0 auto; }
+  .mobile-chat-peer span { display: grid; min-width: 0; max-width: 62px; }
+  .mobile-chat-peer strong, .mobile-chat-peer small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-chat-peer strong { font-size: 10px; line-height: 1.15; }
+  .mobile-chat-peer small { font-size: 9px; line-height: 1.15; }
   .app-user-menu { display: none; }
   .chat-main { width: 100%; }
   .chat-toolbar {
     min-height: calc(52px + env(safe-area-inset-top));
-    padding: env(safe-area-inset-top) 8px 0 124px !important;
+    padding: env(safe-area-inset-top) 8px 0 0 !important;
     gap: 0 !important;
     position: relative;
     z-index: 11;
@@ -1575,11 +1604,9 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     border-bottom: 1px solid rgba(255,255,255,0.28) !important;
   }
   .chat-toolbar > button { display: none; }
-  .chat-contact { gap: 6px !important; }
-  .chat-contact > button img { width: 30px !important; height: 30px !important; }
-  .chat-contact > div:not(.chat-actions) { max-width: 76px; }
-  .chat-contact > div:not(.chat-actions) span:first-child { font-size: 12px !important; }
-  .chat-contact > div:not(.chat-actions) span:last-child { font-size: 10px !important; }
+  .chat-contact { flex: 0 0 auto !important; gap: 0 !important; }
+  .chat-contact > button,
+  .chat-contact > div:not(.chat-actions) { display: none !important; }
   .chat-actions { gap: 3px !important; }
   .chat-actions > button { width: 29px !important; height: 29px !important; }
   .chat-actions > button .pastel-icon { width: 15px !important; height: 15px !important; }
@@ -1608,27 +1635,24 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .chat-input-area { padding-top: 8px; }
   .input-row { gap: 4px; }
   .composer-control { transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
-  .input-row.typing-mode { gap: 3px; }
-  .input-row.typing-mode .composer-control { width: 31px; transform: translateX(-2px); }
-  .input-row.typing-mode .gif-icon-btn { width: 31px !important; min-width: 31px; padding: 0 3px; }
-  .input-row.typing-mode .gif-btn-label { font-size: 10px; letter-spacing: 0.2px; }
+  .input-row.typing-mode { gap: 4px; }
+  .input-row.typing-mode .composer-utility { width: 0 !important; min-width: 0 !important; padding-left: 0 !important; padding-right: 0 !important; opacity: 0; transform: translateX(-6px) scale(0.82); pointer-events: none; }
   .input-row .send-btn { width: 40px; min-width: 40px; }
   .input-pill { min-width: 72px; }
 }
 
 @media (max-width: 380px) {
   .app-brand { min-width: 106px; }
-  .chat-toolbar { padding-left: 108px !important; }
-  .chat-contact { gap: 4px !important; }
-  .chat-contact > div:not(.chat-actions) { max-width: 48px; }
+  .mobile-chat-peer span { display: none; }
   .chat-actions { gap: 2px !important; }
   .chat-actions > button { width: 26px !important; height: 29px !important; }
   .chat-actions > button .pastel-icon { width: 14px !important; height: 14px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .composer-control { transition: none !important; }
+  .composer-control, .composer-utility { transition: none !important; }
 }
+
 
 /* ---------- Happy Birthday confetti ---------- */
 

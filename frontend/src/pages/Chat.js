@@ -290,7 +290,11 @@ const Chat = () => {
       overflow: 'hidden',
       background: 'var(--cream)'
     }}>
-      <Header />
+      <Header
+        friend={friend}
+        friendIdentity={friendIdentity}
+        onOpenProfile={() => setProfileOpen(v => !v)}
+      />
 
       {/* The bounded shell shrinks to visualViewport.height when the keyboard opens. */}
       <div className="chat-shell" style={{
