@@ -7,7 +7,7 @@ import PastelIcon from './PastelIcon';
 import { useConfirm } from './Toast';
 import { useLang } from '../i18n';
 
-const Header = () => {
+const Header = ({ friend, friendIdentity, onOpenProfile }) => {
   const { user, logout } = useAuth();
   const { onlineUsers, connected } = useSocket();
   const navigate = useNavigate();
@@ -87,7 +87,7 @@ const Header = () => {
           alt="Pastel Chat"
           style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0 }}
         />
-        <div>
+        <div className="app-brand-copy">
           <div style={{ fontWeight: 700, fontSize: '16px', color: 'white', lineHeight: 1.2 }}>
             Pastel Chat
           </div>
@@ -102,6 +102,22 @@ const Header = () => {
             </span>
           </div>
         </div>
+        {friend && (
+          <button
+            className="mobile-chat-peer"
+            type="button"
+            onClick={onOpenProfile}
+            aria-label={`View ${friend.name}'s profile`}
+          >
+            <img src={friend.avatar} alt="" style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }} />
+            <span>
+              <strong>{friend.name}</strong>
+              <small style={{ color: friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb') }}>
+                {friend.status || (friend.isOnline ? 'Online' : 'Offline')}
+              </small>
+            </span>
+          </button>
+        )}
       </div>
 
       {/* DateTime */}
