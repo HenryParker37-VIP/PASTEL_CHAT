@@ -91,7 +91,7 @@ const Header = ({ friend, friendIdentity, onOpenProfile }) => {
           <div style={{ fontWeight: 700, fontSize: '16px', color: 'white', lineHeight: 1.2 }}>
             Pastel Chat
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div className="app-online-status" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <div style={{
               width: '7px', height: '7px', borderRadius: '50%',
               background: connected ? '#4CAF50' : '#FFA0A0',
@@ -101,23 +101,23 @@ const Header = ({ friend, friendIdentity, onOpenProfile }) => {
               {onlineUsers.length} online
             </span>
           </div>
+          {friend && (
+            <button
+              className="mobile-chat-peer"
+              type="button"
+              onClick={onOpenProfile}
+              aria-label={`View ${friend.name}'s profile`}
+            >
+              <img src={friend.avatar} alt="" style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }} />
+              <span>
+                <strong>{friend.name}</strong>
+                <small style={{ color: friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb') }}>
+                  {friend.status || (friend.isOnline ? 'Online' : 'Offline')}
+                </small>
+              </span>
+            </button>
+          )}
         </div>
-        {friend && (
-          <button
-            className="mobile-chat-peer"
-            type="button"
-            onClick={onOpenProfile}
-            aria-label={`View ${friend.name}'s profile`}
-          >
-            <img src={friend.avatar} alt="" style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }} />
-            <span>
-              <strong>{friend.name}</strong>
-              <small style={{ color: friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb') }}>
-                {friend.status || (friend.isOnline ? 'Online' : 'Offline')}
-              </small>
-            </span>
-          </button>
-        )}
       </div>
 
       {/* DateTime */}
