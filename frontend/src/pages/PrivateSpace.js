@@ -331,6 +331,7 @@ const PrivateSpace = () => {
                 <NoteCard
                   key={note._id}
                   note={note}
+                  canEdit={note.userId === user?._id}
                   onUpdate={handleUpdateNote}
                   onDelete={handleDeleteNote}
                 />

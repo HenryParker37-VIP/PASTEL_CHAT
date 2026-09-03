@@ -19,6 +19,7 @@ const notificationRoutes = require('./routes/notifications');
 const releaseRoutes = require('./routes/releases');
 const adminReleaseRoutes = require('./routes/admin-releases');
 const stickerRoutes = require('./routes/stickers');
+const gifRoutes = require('./routes/gifs');
 const webrtcRoutes = require('./routes/webrtc');
 const setupSocket = require('./socket');
 const securityHeaders = require('./middleware/security');
@@ -54,7 +55,10 @@ function corsOrigin(origin, callback) {
 }
 
 const io = new Server(server, {
-  cors: { origin: corsOrigin, methods: ['GET', 'POST'], credentials: true }
+  cors: { origin: corsOrigin, methods: ['GET', 'POST'], credentials: true },
+  // Shared media is transported through the existing authenticated socket flow.
+  // Route-level limits still cap images at 5 MB and videos at 8 MB.
+  maxHttpBufferSize: 12 * 1024 * 1024
 });
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
@@ -99,6 +103,7 @@ app.use('/notifications', notificationRoutes);
 app.use('/releases', releaseRoutes);
 app.use('/admin/releases', adminReleaseRoutes);
 app.use('/stickers', stickerRoutes);
+app.use('/api/gifs', rateLimit({ name: 'gifs', windowMs: 60_000, max: 60 }), gifRoutes);
 app.use('/api/webrtc', webrtcRoutes);
 
 app.get('/health', (_, res) => res.json({

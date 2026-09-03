@@ -677,7 +677,9 @@ function createNote(userId, { title, content, sharedWith = [], images = [] }) {
     userId,
     title: (title || '').slice(0, 120),
     content: (content || '').slice(0, 5000),
-    sharedWith: Array.isArray(sharedWith) ? sharedWith : [],
+    sharedWith: Array.isArray(sharedWith)
+      ? [...new Set(sharedWith.map((recipient) => String(recipient?._id || recipient || '').trim()).filter(Boolean))]
+      : [],
     images: Array.isArray(images) ? images : [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -690,7 +692,10 @@ function findNote(noteId) {
   return store.notes.find(n => n._id === noteId);
 }
 function getUserNotes(userId) {
-  return store.notes.filter(n => n.userId === userId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const normalizedUserId = String(userId);
+  return store.notes
+    .filter((note) => String(note.userId) === normalizedUserId || (Array.isArray(note.sharedWith) && note.sharedWith.some((recipient) => String(recipient?._id || recipient) === normalizedUserId)))
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 }
 function deleteNote(noteId) {
   const idx = store.notes.findIndex(n => n._id === noteId);
@@ -706,7 +711,11 @@ function updateNote(noteId, updates) {
   if (!n) return null;
   if (updates.title !== undefined) n.title = (updates.title || '').slice(0, 120);
   if (updates.content !== undefined) n.content = (updates.content || '').slice(0, 5000);
-  if (updates.sharedWith !== undefined) n.sharedWith = updates.sharedWith;
+  if (updates.sharedWith !== undefined) {
+    n.sharedWith = Array.isArray(updates.sharedWith)
+      ? [...new Set(updates.sharedWith.map((recipient) => String(recipient?._id || recipient || '').trim()).filter(Boolean))]
+      : [];
+  }
   if (updates.images !== undefined) n.images = Array.isArray(updates.images) ? updates.images : [];
   n.updatedAt = new Date().toISOString();
   persist();
@@ -773,22 +782,53 @@ function deleteBirthday(birthdayId) {
   return false;
 }
 
-// ===== Shared Photos =====
-function addSharedPhoto({ _id, dataUrl, caption, uploadedBy, createdAt, isHidden = false }) {
-  const photo = { _id, dataUrl, caption, uploadedBy, createdAt, isHidden: !!isHidden };
+// ===== Shared media =====
+const SHARED_MEDIA_EXPIRATIONS = Object.freeze({ never: null, '1h': 60 * 60 * 1000, '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000 });
+function resolveSharedMediaExpiry(expiration = 'never') {
+  if (!Object.prototype.hasOwnProperty.call(SHARED_MEDIA_EXPIRATIONS, expiration)) return undefined;
+  const duration = SHARED_MEDIA_EXPIRATIONS[expiration];
+  return duration ? new Date(Date.now() + duration).toISOString() : null;
+}
+function isSharedMediaExpired(photo, now = Date.now()) {
+  return Boolean(photo?.expiresAt && new Date(photo.expiresAt).getTime() <= now);
+}
+function purgeExpiredSharedMedia(now = Date.now()) {
+  const before = store.sharedPhotos.length;
+  store.sharedPhotos = store.sharedPhotos.filter((photo) => !isSharedMediaExpired(photo, now));
+  const removed = before - store.sharedPhotos.length;
+  if (removed) persist();
+  return removed;
+}
+function addSharedPhoto({ _id, dataUrl, caption, uploadedBy, createdAt, isHidden = false, mediaType = 'image', expiresAt = null }) {
+  purgeExpiredSharedMedia();
+  const photo = { _id, dataUrl, caption, uploadedBy, createdAt, isHidden: !!isHidden, mediaType: mediaType === 'video' ? 'video' : 'image', expiresAt: expiresAt || null };
   store.sharedPhotos.unshift(photo);
   if (store.sharedPhotos.length > 200) store.sharedPhotos = store.sharedPhotos.slice(0, 200);
   persist();
   return photo;
 }
-function getSharedPhotos() {
-  return store.sharedPhotos.slice(0, 50);
+function getSharedPhotos(userId) {
+  purgeExpiredSharedMedia();
+  const normalizedUserId = String(userId);
+  return store.sharedPhotos
+    .filter((photo) => String(photo.uploadedBy?._id) === normalizedUserId || Boolean(findFriendship(photo.uploadedBy?._id, normalizedUserId) || findFriendship(normalizedUserId, photo.uploadedBy?._id)))
+    .slice(0, 50);
 }
 function togglePhotoEncryption(photoId, userId, isHidden) {
   const photo = store.sharedPhotos.find(p => p._id === photoId);
   if (!photo) return null;
   if (photo.uploadedBy._id !== userId) return null;
   photo.isHidden = !!isHidden;
+  persist();
+  return photo;
+}
+function deleteSharedPhoto(photoId, userId) {
+  purgeExpiredSharedMedia();
+  const index = store.sharedPhotos.findIndex((photo) => String(photo._id) === String(photoId));
+  if (index < 0) return null;
+  const photo = store.sharedPhotos[index];
+  if (String(photo.uploadedBy?._id) !== String(userId)) return false;
+  store.sharedPhotos.splice(index, 1);
   persist();
   return photo;
 }
@@ -1002,7 +1042,8 @@ module.exports = {
   createNote, findNote, getUserNotes, deleteNote, updateNote,
   createReminder, getUserReminders, findReminder, deleteReminder,
   createBirthday, getUserBirthdays, findBirthday, deleteBirthday,
-  addSharedPhoto, getSharedPhotos, togglePhotoEncryption,
+  addSharedPhoto, getSharedPhotos, togglePhotoEncryption, deleteSharedPhoto,
+  resolveSharedMediaExpiry, isSharedMediaExpired, purgeExpiredSharedMedia,
   storePushSubscription, removePushSubscription, getPushSubscriptions, getPushLanguage,
   createNotification, getUserNotifications, getUnreadNotificationCount,
   markNotificationRead, markAllNotificationsRead,

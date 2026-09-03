@@ -1,20 +1,36 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
 const {
-  createNote, getUserNotes, deleteNote, updateNote,
+  createNote, getUserNotes, deleteNote, updateNote, findFriendship, getFriends,
   createReminder, getUserReminders, deleteReminder,
   createBirthday, getUserBirthdays, deleteBirthday,
-  getSharedPhotos, togglePhotoEncryption
+  getSharedPhotos, togglePhotoEncryption, deleteSharedPhoto
 } = require('../db/store');
 
 const router = express.Router();
+
+const normalizeSharedWith = (sharedWith, ownerId) => {
+  if (!Array.isArray(sharedWith)) return [];
+  const recipientIds = [...new Set(sharedWith.map((recipient) => String(recipient?._id || recipient || '').trim()).filter(Boolean))]
+    .filter((recipientId) => recipientId !== String(ownerId));
+  if (recipientIds.some((recipientId) => !findFriendship(ownerId, recipientId))) {
+    const error = new Error('Notes can only be shared with current friends');
+    error.status = 403;
+    throw error;
+  }
+  return recipientIds;
+};
 
 // ===== Notes =====
 router.post('/notes', authMiddleware, (req, res) => {
   const { title, content, sharedWith, images } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'title and content required' });
-  const note = createNote(req.user._id, { title, content, sharedWith: sharedWith || [], images: images || [] });
-  res.json(note);
+  try {
+    const note = createNote(req.user._id, { title, content, sharedWith: normalizeSharedWith(sharedWith, req.user._id), images: images || [] });
+    res.json(note);
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message || 'Could not share note' });
+  }
 });
 
 router.get('/notes', authMiddleware, (req, res) => {
@@ -38,7 +54,13 @@ router.put('/notes/:id', authMiddleware, (req, res) => {
   const updates = {};
   if (title !== undefined) updates.title = title;
   if (content !== undefined) updates.content = content;
-  if (sharedWith !== undefined) updates.sharedWith = sharedWith;
+  if (sharedWith !== undefined) {
+    try {
+      updates.sharedWith = normalizeSharedWith(sharedWith, req.user._id);
+    } catch (error) {
+      return res.status(error.status || 400).json({ error: error.message || 'Could not share note' });
+    }
+  }
   if (images !== undefined) updates.images = images;
   const note = updateNote(req.params.id, updates);
   if (!note) return res.status(404).json({ error: 'not found' });
@@ -90,7 +112,7 @@ router.delete('/birthdays/:id', authMiddleware, (req, res) => {
 // ===== Shared Photos =====
 router.get('/shared-photos', authMiddleware, (req, res) => {
   const userId = req.user._id;
-  const photos = getSharedPhotos().map(photo => {
+  const photos = getSharedPhotos(userId).map(photo => {
     if (photo.isHidden && photo.uploadedBy._id !== userId) {
       return {
         _id: photo._id,
@@ -104,6 +126,17 @@ router.get('/shared-photos', authMiddleware, (req, res) => {
     return photo;
   });
   res.json(photos);
+});
+
+router.delete('/shared-photos/:id', authMiddleware, (req, res) => {
+  const deleted = deleteSharedPhoto(req.params.id, req.user._id);
+  if (deleted === false) return res.status(403).json({ error: 'Only the owner can delete shared media' });
+  if (!deleted) return res.status(404).json({ error: 'Shared media not found' });
+
+  const recipientIds = new Set([deleted.uploadedBy._id, ...getFriends(deleted.uploadedBy._id).map((friend) => friend.friendId)]);
+  const io = req.app?.get('io');
+  recipientIds.forEach((recipientId) => io?.emit(`shared_media_deleted:${recipientId}`, { _id: deleted._id }));
+  res.json({ ok: true, _id: deleted._id });
 });
 
 // POST /private-space/shared-photos/:id/toggle-visibility — Google users only
