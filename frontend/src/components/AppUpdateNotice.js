@@ -1,19 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLang } from '../i18n';
 import PastelIcon from './PastelIcon';
 import api from '../services/api';
 import { CURRENT_APP_VERSION, RUNNING_BUILD_ID, compareVersions } from '../releaseVersion';
 import { getRegistration } from '../serviceWorkerRegistration';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // The build marker is intentionally checked independently of release notes.
 // Keep this component's update check available to already-open clients.
 
 const AppUpdateNotice = () => {
   const { t, lang } = useLang();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [registration, setRegistration] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [latestRelease, setLatestRelease] = useState(null);
   const [buildUpdateAvailable, setBuildUpdateAvailable] = useState(false);
+  const pendingHomePaintRef = useRef(null);
+
+  // Resolve the update only after Home has rendered and its route transition
+  // has settled for two frames. This prevents reloading a conversation page.
+  useEffect(() => {
+    if (location.pathname !== '/home' || !pendingHomePaintRef.current) return;
+    const settleHome = pendingHomePaintRef.current;
+    pendingHomePaintRef.current = null;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.setTimeout(settleHome, 60));
+    });
+  }, [location.pathname]);
 
   useEffect(() => {
     let checking = false;
@@ -89,9 +104,25 @@ const AppUpdateNotice = () => {
   const hasReleaseUpdate = latestRelease && compareVersions(latestRelease.version, CURRENT_APP_VERSION) > 0;
   const summaryItems = latestRelease ? [...(lang === 'vi' ? (latestRelease.featuresVi || latestRelease.features || []) : (latestRelease.features || [])), ...(lang === 'vi' ? (latestRelease.fixesVi || latestRelease.fixes || []) : (latestRelease.fixes || []))].slice(0, 3) : [];
 
-  const refreshApp = () => {
+  const waitForHome = () => new Promise((resolve) => {
+    const settle = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => window.setTimeout(resolve, 60));
+      });
+    };
+    if (location.pathname === '/home') {
+      settle();
+      return;
+    }
+    pendingHomePaintRef.current = settle;
+    // Replace the active conversation in history so reload starts at Home.
+    navigate('/home', { replace: true, state: null });
+  });
+
+  const refreshApp = async () => {
     if (refreshing) return;
     setRefreshing(true);
+    await waitForHome();
     const waiting = registration?.waiting;
     if (!waiting) {
       window.location.reload();
