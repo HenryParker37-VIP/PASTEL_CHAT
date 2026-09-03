@@ -51,7 +51,11 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
       else if (draftKey) localStorage.removeItem(draftKey);
     } catch { /* private mode or storage unavailable */ }
     e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+    // Keep a single-line draft at the compact row height. On iPhone, the
+    // browser can report a stale/max scrollHeight after keyboard resize.
+    const lineCount = nextText.split('\n').length;
+    const nextHeight = lineCount === 1 ? 40 : Math.min(e.target.scrollHeight, 120);
+    e.target.style.height = Math.max(40, nextHeight) + 'px';
     emitTyping(true);
     clearTimeout(typingTimerRef.current);
     typingTimerRef.current = setTimeout(() => emitTyping(false), 2000);
