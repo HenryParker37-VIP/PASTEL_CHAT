@@ -82,6 +82,12 @@ test('Legacy valid sharedWith data remains visible to its recipient', () => {
   assert.ok(response.body.some((note) => note._id === 'legacy-shared-note'));
 });
 
+test('Existing recipient object shapes remain private to the selected recipient', () => {
+  store.notes.push({ _id: 'legacy-id-shared-note', userId: accountA._id, title: 'Legacy ID', content: 'Still private', sharedWith: [{ id: accountB._id }], images: [], createdAt: new Date().toISOString() });
+  assert.ok(runHandler(getNotes, { user: accountB }).body.some((note) => note._id === 'legacy-id-shared-note'));
+  assert.ok(!runHandler(getNotes, { user: accountC }).body.some((note) => note._id === 'legacy-id-shared-note'));
+});
+
 const media = addSharedPhoto({
   _id: 'media-active', dataUrl: 'data:image/jpeg;base64,AA==', caption: 'expires later',
   uploadedBy: { _id: accountA._id, name: accountA.name, avatar: '' }, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString()
