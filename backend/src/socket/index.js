@@ -5,6 +5,9 @@ const {
   getFriends,
   findGroup,
   createMessage,
+  findMessage,
+  markMessageDelivered,
+  markMessageRead,
   populateMessage,
   addSharedPhoto,
   resolveSharedMediaExpiry,
@@ -85,6 +88,34 @@ const setupSocket = (io) => {
           io.emit(`typing:${to}`, { ...payload, isTyping: false });
         }, 3000);
       }
+    });
+
+    const acknowledgeMessage = (messageId, markReceipt, status) => {
+      const message = findMessage(messageId);
+      if (!message || String(message.senderId) === String(user._id)) return;
+      if (message.groupId) {
+        const group = findGroup(message.groupId);
+        if (!group?.members.includes(user._id)) return;
+      } else if (String(message.receiverId) !== String(user._id)) {
+        return;
+      }
+      const updated = markReceipt(message._id, user._id);
+      if (!updated) return;
+      const groupReceipt = updated.deliveryReceipts?.[user._id] || {};
+      emitToUser(updated.senderId, 'message_status', {
+        messageId: updated._id,
+        clientMessageId: updated.clientMessageId,
+        status,
+        deliveredAt: updated.deliveredAt || groupReceipt.deliveredAt || null,
+        readAt: updated.readAt || groupReceipt.readAt || null
+      });
+    };
+
+    socket.on('message:delivered', ({ messageId }) => {
+      acknowledgeMessage(messageId, markMessageDelivered, 'delivered');
+    });
+    socket.on('message:read', ({ messageId }) => {
+      acknowledgeMessage(messageId, markMessageRead, 'read');
     });
 
     // Send private message via socket

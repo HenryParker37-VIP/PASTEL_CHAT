@@ -34,6 +34,8 @@ const vi = {
   homeLoginCodeHint: 'Giữ an toàn mã này — đây là cách duy nhất để đăng nhập lại.',
   connected: 'Đã kết nối',
   connecting: 'Đang kết nối...',
+  networkOffline: 'Không có kết nối mạng. Tin nhắn sẽ tiếp tục được thử gửi.',
+  networkWeak: 'Kết nối yếu. Tin nhắn có thể gửi lâu hơn.',
   notificationsTitle: 'Thông báo',
   notificationsDesc: 'Cập nhật về tin nhắn, bạn bè và hoạt động trong Pastel Chat.',
   notificationsMarkAllRead: 'Đánh dấu đã đọc',

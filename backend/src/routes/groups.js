@@ -4,7 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const {
   createGroup, findGroup, getGroupsForUser, groupPublic,
   addGroupMember, removeGroupMember, updateGroup, getGroupConversation,
-  createMessage, populateMessage, findUserById, findMessage, updateMessage, toggleReaction
+  createMessage, findMessageByClientMessageId, populateMessage, findUserById, findMessage, updateMessage, toggleReaction
 } = require('../db/store');
 const { notifyInApp } = require('../services/inAppNotifications');
 
@@ -95,7 +95,7 @@ router.get('/:id/messages', authMiddleware, (req, res) => {
   if (!group) return res.status(404).json({ message: 'Not found' });
   if (!group.members.includes(req.user._id)) return res.status(403).json({ message: 'Not a member' });
   const { limit = 100, before } = req.query;
-  const msgs = getGroupConversation(group._id, { limit: Math.min(Number(limit) || 100, 500), before });
+  const msgs = getGroupConversation(group._id, { limit: Math.min(Number(limit) || 100, 500), before, viewerId: req.user._id });
   res.json(msgs);
 });
 
@@ -105,8 +105,12 @@ router.post('/:id/messages', authMiddleware, (req, res) => {
   if (!group) return res.status(404).json({ message: 'Not found' });
   if (!group.members.includes(req.user._id)) return res.status(403).json({ message: 'Not a member' });
 
-  const { content, media } = req.body;
+  const { content, media, clientMessageId } = req.body;
   if ((!content || !content.trim()) && !media) return res.status(400).json({ message: 'Content or media required' });
+  if (clientMessageId) {
+    const existing = findMessageByClientMessageId(req.user._id, String(clientMessageId).slice(0, 120));
+    if (existing && existing.groupId === group._id) return res.status(200).json(populateMessage(existing, req.user._id));
+  }
 
   let validMedia = null;
   if (media?.type === 'sticker' && media?.imageUrl) {
@@ -134,10 +138,11 @@ router.post('/:id/messages', authMiddleware, (req, res) => {
     senderId: req.user._id,
     receiverId: null,
     groupId: group._id,
+    clientMessageId: clientMessageId ? String(clientMessageId).slice(0, 120) : null,
     content: (content || '').trim().slice(0, 2000),
     media: validMedia
   });
-  const populated = populateMessage(msg);
+  const populated = populateMessage(msg, req.user._id);
 
   const io = req.app.get('io');
   // emit to all group members

@@ -10,13 +10,15 @@ import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
+import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
 
 const isMobile = () => window.innerWidth <= 700;
+const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 };
 
 const Chat = () => {
   const { friendId } = useParams();
   const { user, updateProfile } = useAuth();
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
   const { startCall, activeCall } = useCall();
   const navigate = useNavigate();
 
@@ -30,6 +32,10 @@ const Chat = () => {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const typingRef = useRef({});
   const colorPickerRef = useRef(null);
+  const deliveredAckRef = useRef(new Set());
+  const readAckRef = useRef(new Set());
+  const recoveredPendingRef = useRef(new Set());
+  const pendingSendInFlightRef = useRef(new Set());
 
   const chatColorStorageKey = user?._id && friendId ? `pastel-chat-color:${user._id}:${friendId}` : null;
 
@@ -83,6 +89,54 @@ const Chat = () => {
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
+  const sendPendingMessage = useCallback(async (pending) => {
+    if (pendingSendInFlightRef.current.has(pending.clientMessageId)) return;
+    pendingSendInFlightRef.current.add(pending.clientMessageId);
+    try {
+      const { data } = await api.post('/messages', {
+        receiverId: friendId,
+        content: pending.content,
+        media: pending.media,
+        replyTo: pending.replyToId || null,
+        clientMessageId: pending.clientMessageId
+      });
+      setMessages((current) => current.map((message) => (
+        message.clientMessageId === pending.clientMessageId
+          ? { ...data, deliveryStatus: data.deliveryStatus || 'sent' }
+          : message
+      )));
+      removePendingMessage(user?._id, pending.clientMessageId);
+    } catch (err) {
+      console.error('Send failed:', err.message);
+      savePendingMessage(user?._id, { ...pending, deliveryStatus: 'failed' });
+      setMessages((current) => current.map((message) => (
+        message.clientMessageId === pending.clientMessageId
+          ? { ...message, deliveryStatus: 'failed' }
+          : message
+      )));
+    } finally {
+      pendingSendInFlightRef.current.delete(pending.clientMessageId);
+    }
+  }, [friendId, user?._id]);
+
+  useEffect(() => {
+    if (!connected || !user?._id || !friendId) return;
+    loadPendingMessages(user._id)
+      .filter((message) => message.receiverId === friendId)
+      .forEach((message) => void sendPendingMessage(message));
+  }, [connected, friendId, sendPendingMessage, user?._id]);
+
+  useEffect(() => {
+    if (!user?._id || !friendId || loading) return;
+    const pending = loadPendingMessages(user._id).filter((message) => message.receiverId === friendId);
+    pending.forEach((message) => {
+      if (recoveredPendingRef.current.has(message.clientMessageId)) return;
+      recoveredPendingRef.current.add(message.clientMessageId);
+      setMessages((current) => current.some((item) => item.clientMessageId === message.clientMessageId) ? current : [...current, message]);
+      void sendPendingMessage(message);
+    });
+  }, [friendId, loading, sendPendingMessage, user?._id]);
+
   // Socket listeners — scoped to this conversation
   useEffect(() => {
     if (!socket || !friendId || !user) return;
@@ -91,10 +145,33 @@ const Chat = () => {
     const reverseKey = `${friendId}:${user._id}`;
 
     const onMessage = (msg) => {
+      const senderId = msg.senderId?._id || msg.senderId;
       setMessages((prev) => {
-        if (prev.find((m) => m._id === msg._id)) return prev;
+        const existing = prev.find((m) => m._id === msg._id || (
+          msg.clientMessageId && m.clientMessageId === msg.clientMessageId
+        ));
+        if (existing) {
+          return prev.map((message) => message === existing
+            ? { ...msg, deliveryStatus: message.deliveryStatus === 'failed' ? 'failed' : 'sent' }
+            : message);
+        }
         return [...prev, msg];
       });
+      if (senderId !== user._id && document.visibilityState === 'visible') {
+        if (!deliveredAckRef.current.has(msg._id)) {
+          deliveredAckRef.current.add(msg._id);
+          socket.emit('message:delivered', { messageId: msg._id });
+        }
+      }
+    };
+
+    const onMessageStatus = ({ messageId, clientMessageId, status, deliveredAt, readAt }) => {
+      setMessages((prev) => prev.map((message) => {
+        if (message._id !== messageId && (!clientMessageId || message.clientMessageId !== clientMessageId)) return message;
+        const currentStatus = message.deliveryStatus || 'sent';
+        if ((DELIVERY_RANK[status] ?? 0) < (DELIVERY_RANK[currentStatus] ?? 0)) return message;
+        return { ...message, deliveryStatus: status, deliveredAt: deliveredAt || message.deliveredAt, readAt: readAt || message.readAt };
+      }));
     };
 
     const onRecall = ({ messageId }) => {
@@ -136,6 +213,7 @@ const Chat = () => {
     socket.on(`msg_reaction:${roomKey}`, onReaction);
     socket.on(`msg_reaction:${reverseKey}`, onReaction);
     socket.on(`typing:${user._id}`, onTyping);
+    socket.on('message_status', onMessageStatus);
     // Re-fetch on socket reconnect to catch messages missed while disconnected
     socket.on('connect', fetchMessages);
 
@@ -161,9 +239,22 @@ const Chat = () => {
       socket.off(`msg_reaction:${roomKey}`, onReaction);
       socket.off(`msg_reaction:${reverseKey}`, onReaction);
       socket.off(`typing:${user._id}`, onTyping);
+      socket.off('message_status', onMessageStatus);
       socket.off('connect', fetchMessages);
     };
   }, [socket, friendId, user, fetchMessages]);
+
+  // A fetched message has reached this client even if it arrived while the
+  // recipient was offline. Delivery is acknowledged once per message.
+  useEffect(() => {
+    if (!socket || !user || document.visibilityState !== 'visible') return;
+    messages.forEach((message) => {
+      const senderId = message.senderId?._id || message.senderId;
+      if (senderId === user._id || deliveredAckRef.current.has(message._id)) return;
+      deliveredAckRef.current.add(message._id);
+      socket.emit('message:delivered', { messageId: message._id });
+    });
+  }, [messages, socket, user]);
 
   // Collapse sidebar on resize to mobile
   useEffect(() => {
@@ -230,19 +321,46 @@ const Chat = () => {
     setTimeout(() => setHighlightId(null), 2500);
   };
 
-  const handleSend = async (content, media) => {
-    try {
-      if (replyingTo) {
-        await api.post(`/messages/${replyingTo._id}/reply`, { content });
-        setReplyingTo(null);
-      } else {
-        await api.post('/messages', { receiverId: friendId, content, media });
-      }
-    } catch (err) {
-      console.error('Send failed:', err.message);
-      throw err;
-    }
-  };
+  const handleSend = useCallback(async (content, media) => {
+    const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const pending = {
+      _id: clientMessageId,
+      clientMessageId,
+      senderId: user._id,
+      receiverId: friendId,
+      content: content || '',
+      media: media || null,
+      replyToId: replyingTo?._id || null,
+      timestamp: new Date().toISOString(),
+      deliveryStatus: 'sending',
+      isRecalled: false,
+      isPinned: false,
+      reactions: {}
+    };
+    setMessages((current) => [...current, pending]);
+    savePendingMessage(user._id, pending);
+    setReplyingTo(null);
+    void sendPendingMessage(pending);
+  }, [friendId, replyingTo, sendPendingMessage, user?._id]);
+
+  const handleRetry = useCallback((message) => {
+    if (!message.clientMessageId) return;
+    const pending = {
+      ...message,
+      replyToId: message.replyTo?._id || null,
+      deliveryStatus: 'sending'
+    };
+    savePendingMessage(user._id, pending);
+    setMessages((current) => current.map((item) => item._id === message._id ? pending : item));
+    void sendPendingMessage(pending);
+  }, [sendPendingMessage, user?._id]);
+
+  const handleMessageVisible = useCallback((message) => {
+    const senderId = message.senderId?._id || message.senderId;
+    if (!socket || !user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
+    readAckRef.current.add(message._id);
+    socket.emit('message:read', { messageId: message._id });
+  }, [socket, user]);
 
   const handleRecall = (messageId) => {
     setMessages((prev) =>
@@ -283,7 +401,7 @@ const Chat = () => {
   };
 
   return (
-    <div style={{
+    <div className="chat-page-shell" style={{
       position: 'fixed',
       top: 'var(--visual-offset-top, 0px)', left: 0, right: 0,
       height: 'var(--visual-height, 100dvh)',
@@ -629,18 +747,17 @@ const Chat = () => {
           )}
 
           <MessageList
+            key={friendId}
             messages={messages}
             loading={loading}
             typingUsers={typingUsers}
             onReply={(msg) => setReplyingTo(msg)}
             onRecall={handleRecall}
             onReaction={handleReaction}
+            onRetry={handleRetry}
             highlightId={highlightId}
             conversationIdentity={friendIdentity}
-            onConversationTap={() => {
-              if (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA') return;
-              document.activeElement.blur();
-            }}
+            onMessageVisible={handleMessageVisible}
           />
 
           <MessageInput
