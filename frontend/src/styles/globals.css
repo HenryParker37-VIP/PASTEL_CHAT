@@ -1648,6 +1648,10 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
 
 @media (max-width: 700px) {
   .chat-input-area { height: auto; min-height: 0; padding-top: 6px; padding-bottom: max(6px, calc(var(--sab) - var(--keyboard-height))); }
+  /* The focused composer sits directly above the keyboard accessory bar. The
+     accessory already owns the device bottom edge, so the footer must not
+     reserve a second safe-area block while typing. */
+  .chat-input-area.composer-focused { padding-bottom: 6px; }
   .input-row { gap: 4px; }
   .composer-control { transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
   .input-row.typing-mode { gap: 4px; }

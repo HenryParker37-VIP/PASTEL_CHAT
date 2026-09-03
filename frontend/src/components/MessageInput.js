@@ -22,6 +22,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [suggestedGifQuery, setSuggestedGifQuery] = useState('');
   const [sending, setSending] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
   const [media, setMedia] = useState(null); // { type, dataUrl, name, size, preview }
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -51,11 +52,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
       else if (draftKey) localStorage.removeItem(draftKey);
     } catch { /* private mode or storage unavailable */ }
     e.target.style.height = 'auto';
-    // Keep a single-line draft at the compact row height. On iPhone, the
-    // browser can report a stale/max scrollHeight after keyboard resize.
-    const lineCount = nextText.split('\n').length;
-    const nextHeight = lineCount === 1 ? 40 : Math.min(e.target.scrollHeight, 120);
-    e.target.style.height = Math.max(40, nextHeight) + 'px';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
     emitTyping(true);
     clearTimeout(typingTimerRef.current);
     typingTimerRef.current = setTimeout(() => emitTyping(false), 2000);
@@ -159,7 +156,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const isTyping = text.trim().length > 0;
 
   return (
-    <div className="chat-input-area">
+    <div className={`chat-input-area${composerFocused ? ' composer-focused' : ''}`}>
       {/* Reply preview bar */}
       {replyingTo && (
         <div className="reply-bar">
@@ -248,6 +245,8 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
             value={text}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onFocus={() => setComposerFocused(true)}
+            onBlur={() => setComposerFocused(false)}
             placeholder={replyingTo ? 'Write a reply…' : 'Message…'}
             disabled={disabled || sending}
             rows={1}
