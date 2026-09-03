@@ -162,6 +162,9 @@ const pastelFoodRows = gridRows(['ăn thôi', 'đói quá', 'bụng đói', 'ăn
 const pastelFunRows = gridRows(['đi chơi', "let's go", 'yayyy', 'party time', 'fun time', 'du lịch', 'check in', 'selfie', 'đẹp quá', 'wowww', 'shopping', 'mua sắm', 'đã quá', 'thích ghê', 'niceee', 'happy', 'good vibes', 'positivity', 'stay happy', 'smile', 'cuộc sống tốt', 'bình yên', 'enjoy life', 'thảnh thơi', 'love life'], ['Happy', 'Celebrate']);
 const pastelAnimalsRows = gridRows(['meow', 'woof', 'mimi', 'oink', 'quack', 'bunny', 'bear', 'panda', 'hamster', 'shiba', 'cat', 'dog', 'koala', 'fox', 'penguin', 'otter', 'hedgehog', 'seal', 'frog', 'dino', 'lion', 'tiger', 'cow', 'elephant', 'giraffe'], ['Cute', 'Friendship']);
 const pastelUltimateRows = gridRows(['!!!', '???', 'omg', 'rly?', 'really?', 'confusing', 'mind blown', 'nooo', 'screaming', 'help meee', 'screaming', 'aaaah', 'ohhh', 'mind blown', 'help', "can't stop", 'dead', 'lolol', 'crying', 'sob sob', 'lmao', 'rofl', 'too funny', 'bruh', 'facepalm'], ['Shocked', 'Confused']);
+const pastelBroDailyMoodRows = gridRows(['huhu', 'hicc', 'buồn', 'giận', 'mệt', 'chán', 'hả?', 'omg', 'wtf', 'sốc luôn', 'bro...', 'ổn mà', 'cố lên', 'ok', 'oke', 'oki', 'xong rồi', 'done', 'haha', 'lol', 'nice', 'chill', 'tự tin', 'mạnh lên', "let's go"]);
+const pastelBroChillPowerRows = gridRows(['good morning', 'cà phê', 'wake up', 'ngủ đấy', 'good night', 'relax', 'chill nè', 'take a break', 'low energy', 'so tired', 'gym time', 'work hard', 'deadline', 'đang bận', 'on meeting', 'call me', 'gaming', 'music on', 'focus', 'study', 'bro ok', 'ổn áp', 'cố lên bro', 'keep going', 'weekend'], ['Chill', 'Support']);
+const pastelBroReactionsRows = gridRows(['!!!', '???', 'omg bro', 'wtf', 'really?', 'bruh', 'seriously?', 'nooo', 'help meee', 'confusing', 'mind blown', 'shock', 'lmao', 'rofl', 'too funny', 'crying', 'sob sob', 'facepalm', 'dead', "can't stop", 'bro what?', 'nah', 'ok bro', 'got it', "let's move"], ['Shocked', 'Confused']);
 
 const ALL_STICKER_PACKS = [
   pack('pastel-bunny-final', 'Pastel Bunny', 'Pastel Bunny', 'The original Pastel Bunny sheet, now in a clean 16-sticker pack.', '#FCE2EA', bunnyRows),
@@ -187,7 +190,10 @@ const ALL_STICKER_PACKS = [
   pack('pastel-foodie-moments', 'Pastel Foodie Moments', 'Đồ Ăn & Thức Uống', 'Cute food and drink reactions for chat.', '#FFE8D2', pastelFoodRows, 'png'),
   pack('pastel-fun-lifestyle', 'Pastel Fun & Lifestyle', 'Đi Chơi & Cuộc Sống', 'Bright stickers for fun, outings, and good vibes.', '#EDE6FF', pastelFunRows, 'png'),
   pack('pastel-cute-animals', 'Pastel Cute Animals', 'Động Vật Siêu Cute', 'A friendly roll call of cute animal reactions.', '#F3ECFF', pastelAnimalsRows, 'png'),
-  pack('pastel-ultimate-reactions', 'Pastel Ultimate Reactions', 'Reaction Siêu Đỉnh', 'Big expressive reactions for unforgettable moments.', '#EDE6FF', pastelUltimateRows, 'png')
+  pack('pastel-ultimate-reactions', 'Pastel Ultimate Reactions', 'Reaction Siêu Đỉnh', 'Big expressive reactions for unforgettable moments.', '#EDE6FF', pastelUltimateRows, 'png'),
+  pack('pastel-bro-daily-mood', 'Pastel Bro Daily Mood', 'Cảm Xúc Nam', 'Masculine pastel moods for everyday conversations.', '#E5EEF9', pastelBroDailyMoodRows, 'png'),
+  pack('pastel-bro-chill-power', 'Pastel Bro Chill & Power', 'Thư Giãn & Năng Lượng', 'Chill, focus, and motivation for everyday momentum.', '#E9E5FA', pastelBroChillPowerRows, 'png'),
+  pack('pastel-bro-reactions', 'Pastel Bro Reactions', 'Reaction Mạnh Mẽ', 'Big expressive reactions for high-energy moments.', '#E5ECFA', pastelBroReactionsRows, 'png')
 ];
 
 export const ACTIVE_STICKER_PACK_IDS = [
@@ -199,7 +205,10 @@ export const ACTIVE_STICKER_PACK_IDS = [
   'pastel-foodie-moments',
   'pastel-fun-lifestyle',
   'pastel-cute-animals',
-  'pastel-ultimate-reactions'
+  'pastel-ultimate-reactions',
+  'pastel-bro-daily-mood',
+  'pastel-bro-chill-power',
+  'pastel-bro-reactions'
 ];
 
 const ACTIVE_PACK_ID_SET = new Set(ACTIVE_STICKER_PACK_IDS);
