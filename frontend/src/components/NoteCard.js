@@ -36,7 +36,7 @@ const fmtRelative = (iso) => {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-const NoteCard = ({ note, onUpdate, onDelete }) => {
+const NoteCard = ({ note, onUpdate, onDelete, canEdit = true }) => {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
@@ -59,6 +59,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
   useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   const doSave = useCallback(async (t, c, imgs) => {
+    if (!canEdit) return;
     setSaving(true);
     try {
       const { data } = await api.put(`/private-space/notes/${note._id}`, {
@@ -74,7 +75,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
     } finally {
       setSaving(false);
     }
-  }, [note._id, onUpdate]);
+  }, [canEdit, note._id, onUpdate]);
 
   const schedSave = useCallback((t, c, imgs) => {
     clearTimeout(saveTimer.current);
@@ -116,10 +117,10 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
   return (
     <>
       <div
-        onDragOver={(e) => { if (expanded) { e.preventDefault(); setDragOver(true); } }}
+        onDragOver={(e) => { if (expanded && canEdit) { e.preventDefault(); setDragOver(true); } }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
-          if (!expanded) return;
+          if (!expanded || !canEdit) return;
           e.preventDefault();
           setDragOver(false);
           handleImageUpload(Array.from(e.dataTransfer.files));
@@ -148,7 +149,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              {expanded ? (
+              {expanded && canEdit ? (
                 <input
                   value={title}
                   onClick={(e) => e.stopPropagation()}
@@ -207,7 +208,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                   padding: '2px 7px', borderRadius: 20,
                 }}>📷 {images.length}</span>
               )}
-              <button
+              {canEdit && <button
                 onClick={(e) => { e.stopPropagation(); onDelete(note._id); }}
                 style={{
                   background: 'rgba(255,100,100,0.1)',
@@ -215,7 +216,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                   borderRadius: 8, color: '#ff8888',
                   padding: '3px 8px', fontSize: 12, cursor: 'pointer',
                 }}
-              >✕</button>
+              >✕</button>}
               <span style={{
                 fontSize: 14, color: '#9b87bb',
                 display: 'inline-block',
@@ -231,6 +232,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
             {note.sharedWith?.length > 0 && (
               <span>👥 {note.sharedWith.length}</span>
             )}
+            {!canEdit && <span>Shared with you</span>}
           </div>
         </div>
 
@@ -243,7 +245,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
         }}>
           <div style={{ padding: '4px 18px 20px', borderTop: '1px solid rgba(221,160,221,0.1)' }}>
             {/* Content textarea */}
-            <textarea
+            {canEdit ? <textarea
               value={content}
               onChange={(e) => { setContent(e.target.value); schedSave(title, e.target.value, images); }}
               placeholder="Write your thoughts…"
@@ -264,7 +266,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                 boxSizing: 'border-box',
                 whiteSpace: 'pre-wrap',
               }}
-            />
+            /> : <p style={{ margin: '14px 0 0', color: '#e8dcff', fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{content}</p>}
 
             {/* Image gallery */}
             {images.length > 0 && (
@@ -295,7 +297,7 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                       pointerEvents: 'none',
                     }} />
                     {/* Annotate button */}
-                    <button
+                    {canEdit && <button
                       onClick={() => setAnnotatingIdx(idx)}
                       title="Draw / annotate"
                       style={{
@@ -304,9 +306,9 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                         borderRadius: 6, color: 'white',
                         padding: '3px 7px', fontSize: 12, cursor: 'pointer',
                       }}
-                    >✏️</button>
+                    >✏️</button>}
                     {/* Remove button */}
-                    <button
+                    {canEdit && <button
                       onClick={() => removeImage(idx)}
                       title="Remove image"
                       style={{
@@ -315,14 +317,14 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                         borderRadius: 6, color: 'white',
                         padding: '3px 7px', fontSize: 11, cursor: 'pointer',
                       }}
-                    >✕</button>
+                    >✕</button>}
                   </div>
                 ))}
               </div>
             )}
 
             {/* Upload area / drop hint */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {canEdit && <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 style={{
@@ -349,13 +351,13 @@ const NoteCard = ({ note, onUpdate, onDelete }) => {
                 style={{ display: 'none' }}
                 onChange={(e) => { handleImageUpload(e.target.files); e.target.value = ''; }}
               />
-            </div>
+            </div>}
           </div>
         </div>
       </div>
 
       {/* Annotation modal */}
-      {annotatingIdx !== null && images[annotatingIdx] && (
+      {canEdit && annotatingIdx !== null && images[annotatingIdx] && (
         <ImageAnnotationCanvas
           imageUrl={images[annotatingIdx].dataUrl}
           onSave={(url) => saveAnnotation(annotatingIdx, url)}

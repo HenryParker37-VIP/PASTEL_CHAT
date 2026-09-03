@@ -7,6 +7,7 @@ const {
   createMessage,
   populateMessage,
   addSharedPhoto,
+  resolveSharedMediaExpiry,
   genId,
   findFriendship
 } = require('../db/store');
@@ -219,11 +220,19 @@ const setupSocket = (io) => {
       });
     });
 
-    // Share a photo — persist to store then broadcast to all friends
-    socket.on('share_photo', ({ dataUrl, caption }) => {
-      if (!dataUrl || !dataUrl.startsWith('data:image/')) return;
+    // Shared media is stored with a server-calculated expiry and sent only to friends.
+    socket.on('share_photo', ({ dataUrl, caption, expiration = 'never', durationMs }, acknowledge = () => {}) => {
+      const respond = typeof acknowledge === 'function' ? acknowledge : () => {};
+      const mediaType = dataUrl?.startsWith('data:video/') ? 'video' : dataUrl?.startsWith('data:image/') ? 'image' : null;
+      if (!mediaType) return respond({ ok: false, error: 'Unsupported media type' });
       const sizeBytes = Math.round((dataUrl.length * 3) / 4);
-      if (sizeBytes > 5 * 1024 * 1024) return; // 5 MB cap
+      const sizeLimit = mediaType === 'video' ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
+      if (sizeBytes > sizeLimit) return respond({ ok: false, error: mediaType === 'video' ? 'Video must be 8 MB or smaller' : 'Photo must be 5 MB or smaller' });
+      if (mediaType === 'video' && (durationMs == null || !Number.isFinite(Number(durationMs)) || Number(durationMs) < 0 || Number(durationMs) > 5000)) {
+        return respond({ ok: false, error: 'Video must be 5 seconds or shorter' });
+      }
+      const expiresAt = resolveSharedMediaExpiry(expiration);
+      if (expiresAt === undefined) return respond({ ok: false, error: 'Invalid expiration setting' });
       const friends = getFriends(user._id);
       const payload = {
         _id: genId(),
@@ -231,7 +240,9 @@ const setupSocket = (io) => {
         caption: caption ? String(caption).slice(0, 200) : '',
         uploadedBy: { _id: user._id, name: user.name, avatar: user.avatar, loginMethod: user.loginMethod || 'code' },
         createdAt: new Date().toISOString(),
-        isHidden: false
+        isHidden: false,
+        mediaType,
+        expiresAt
       };
       addSharedPhoto(payload);
       // Deliver to every friend (online or offline — they'll see it on load)
@@ -240,6 +251,7 @@ const setupSocket = (io) => {
       });
       // Echo back to sender so it appears in their own feed immediately
       socket.emit(`new_photo_shared:${user._id}`, payload);
+      respond({ ok: true, photo: payload });
     });
 
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay

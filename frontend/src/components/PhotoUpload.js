@@ -4,7 +4,7 @@ import PastelIcon from './PastelIcon';
 import { useToast } from './Toast';
 import { useLang } from '../i18n';
 
-const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
+const PhotoUpload = ({ isGoogleUser, onPhotoShared, expiration = 'never' }) => {
   const { socket } = useSocket();
   const { push } = useToast();
   const { t } = useLang();
@@ -30,14 +30,27 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
       return;
     }
     setUploading(true);
-    socket.emit('share_photo', { dataUrl: preview, caption });
-    setTimeout(() => {
+    let settled = false;
+    const uploadTimeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
       setUploading(false);
+      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
+    }, 12000);
+    socket.emit('share_photo', { dataUrl: preview, caption, expiration }, (response) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(uploadTimeout);
+      setUploading(false);
+      if (!response?.ok) {
+        push({ icon: 'alert', title: response?.error || t('feedbackSomethingWrong'), tone: 'error' });
+        return;
+      }
       setPreview(null);
       setCaption('');
-      if (onPhotoShared) onPhotoShared();
+      onPhotoShared?.(response.photo);
       push({ icon: 'check', title: t('feedbackPhotoUploaded'), tone: 'success' });
-    }, 800);
+    });
   };
 
   const handleCancel = () => {
@@ -60,7 +73,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
           onClick={() => fileRef.current.click()}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', borderRadius: 20, border: 'none',
+            minHeight: 44, padding: '8px 16px', borderRadius: 20, border: 'none',
             background: isGoogleUser
               ? 'linear-gradient(135deg, #4285F4, #34A853)'
               : 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
@@ -94,6 +107,9 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
               fontSize: 13, boxSizing: 'border-box'
             }}
           />
+          <p style={{ margin: '8px 0 0', color: '#76557d', fontSize: 12 }}>
+            {expiration === 'never' ? 'Visible until you delete it.' : `Expires ${expiration === '1h' ? 'in 1 hour' : expiration === '24h' ? 'in 24 hours' : 'in 7 days'}.`}
+          </p>
 
           {isGoogleUser && (
             <div style={{
@@ -110,7 +126,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
             <button
               onClick={handleCancel}
               style={{
-                flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid #E8D5F0',
+                flex: 1, minHeight: 44, padding: '8px 0', borderRadius: 10, border: '1.5px solid #E8D5F0',
                 background: 'white', fontSize: 13, cursor: 'pointer', color: '#888'
               }}
             >
@@ -120,7 +136,7 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared }) => {
               onClick={handleShare}
               disabled={uploading}
               style={{
-                flex: 2, padding: '8px 0', borderRadius: 10, border: 'none',
+                flex: 2, minHeight: 44, padding: '8px 0', borderRadius: 10, border: 'none',
                 background: uploading ? '#ccc' : 'linear-gradient(135deg, #FFB6C1, #DDA0DD)',
                 color: 'white', fontWeight: 700, fontSize: 13,
                 cursor: uploading ? 'default' : 'pointer'

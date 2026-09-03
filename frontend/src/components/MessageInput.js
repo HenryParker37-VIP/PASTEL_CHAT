@@ -6,11 +6,6 @@ import PastelIcon from './PastelIcon';
 import { useToast } from './Toast';
 import { useLang } from '../i18n';
 
-const EMOJI_LIST = ['😀','😂','🥰','😍','🤩','😎','🥳','🤗','😊','😉',
-  '❤️','💕','💖','💗','🌸','🌺','✨','🌟','💫','⭐',
-  '🎉','🎊','🎈','🎀','🌈','🦋','🌻','🍀','🌙','☀️',
-  '👍','🙌','👏','🤝','💪','🫶','🥺','😭','😅','🤣'];
-
 const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB
 
 function formatBytes(bytes) {
@@ -24,7 +19,6 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
   const [text, setText] = useState(() => {
     try { return draftKey ? localStorage.getItem(draftKey) || '' : ''; } catch { return ''; }
   });
-  const [showEmoji, setShowEmoji] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [suggestedGifQuery, setSuggestedGifQuery] = useState('');
   const [sending, setSending] = useState(false);
@@ -121,6 +115,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
   const handleGifSelect = async ({ type, url, preview, previewUrl, width, height, provider, sourceId, stickerId, emoji, label, imageUrl, name }) => {
     setShowGifPicker(false);
+    setSuggestedGifQuery('');
     setSending(true);
     try {
       if (type === 'sticker') {
@@ -153,22 +148,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
   const handleSuggestedGif = (query) => {
     setSuggestedGifQuery(query);
-    setShowEmoji(false);
     setShowGifPicker(true);
-  };
-
-  const insertEmoji = (emoji) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const next = text.slice(0, start) + emoji + text.slice(end);
-    setText(next);
-    setShowEmoji(false);
-    setTimeout(() => {
-      ta.focus();
-      ta.selectionStart = ta.selectionEnd = start + emoji.length;
-    }, 0);
   };
 
   const hasContent = text.trim().length > 0 || !!media;
@@ -212,15 +192,6 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
         </div>
       )}
 
-      {/* Emoji picker */}
-      {showEmoji && (
-        <div className="emoji-picker">
-          {EMOJI_LIST.map((e) => (
-            <button key={e} onClick={() => insertEmoji(e)} className="emoji-btn">{e}</button>
-          ))}
-        </div>
-      )}
-
       {/* GIF / Sticker picker */}
       {showGifPicker && (
         <GifStickerPicker
@@ -240,18 +211,18 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
       {/* Input row */}
       <div className={`input-row${isTyping ? ' typing-mode' : ''}`}>
-        {/* Emoji */}
+        {/* Sticker / GIF picker */}
         <button
-          className={`icon-btn composer-control ${showEmoji ? 'active' : ''}`}
-          onClick={() => { setShowEmoji(v => !v); setShowGifPicker(false); }}
-          title="Emoji"
+          className={`icon-btn composer-control ${showGifPicker ? 'active' : ''}`}
+          onClick={() => { setShowGifPicker(v => !v); }}
+          title="Stickers & GIFs"
           type="button"
         ><PastelIcon name="smile" size={21} /></button>
 
         {/* GIF / Sticker */}
         <button
           className={`icon-btn gif-icon-btn composer-control composer-utility ${showGifPicker ? 'active' : ''}`}
-          onClick={() => { setShowGifPicker(v => !v); setShowEmoji(false); }}
+          onClick={() => { setShowGifPicker(v => !v); }}
           title="GIFs & Stickers"
           type="button"
           disabled={disabled || sending}
