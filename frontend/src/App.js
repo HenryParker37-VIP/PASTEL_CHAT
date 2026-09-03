@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useMobileViewport } from './hooks/useMobileViewport';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -39,6 +39,7 @@ import GlobalChecker from './components/GlobalChecker';
 import PastelIcon from './components/PastelIcon';
 import AppUpdateNotice from './components/AppUpdateNotice';
 import ReleaseNotes from './pages/ReleaseNotes';
+import NetworkStatusBanner from './components/NetworkStatusBanner';
 
 // Rendered inside the Microsoft OAuth popup window — nothing else in the app runs here.
 //
@@ -159,7 +160,7 @@ const CallOverlays = () => {
   const { incomingCall, activeCall } = useCall();
   return (
     <>
-      {incomingCall && <IncomingCallAlert />}
+      {incomingCall && !incomingCall.nativeCallKit && <IncomingCallAlert />}
       {activeCall?.callType === 'voice' && <VoiceCallScreen />}
       {activeCall?.callType === 'video' && <VideoCallScreen />}
     </>
@@ -172,6 +173,30 @@ const AppRoutes = () => {
   const location = useLocation();
 
   const navigate = useNavigate();
+  const previousPathRef = useRef(location.pathname);
+
+  // Animate only the conversation surface. The app root itself is not
+  // transformed, so fixed mobile viewport/keyboard geometry remains stable.
+  useEffect(() => {
+    const previousPath = previousPathRef.current;
+    const currentPath = location.pathname;
+    const wasConversation = previousPath.startsWith('/chat/') || previousPath.startsWith('/group/');
+    const isConversation = currentPath.startsWith('/chat/') || currentPath.startsWith('/group/');
+    const openingConversation = isConversation && (!wasConversation || previousPath !== currentPath);
+    const returningHome = currentPath === '/home' && wasConversation;
+    const root = document.documentElement;
+
+    root.classList.remove('pastel-chat-route-enter', 'pastel-chat-route-back');
+    if (openingConversation) root.classList.add('pastel-chat-route-enter');
+    if (returningHome) root.classList.add('pastel-chat-route-back');
+    previousPathRef.current = currentPath;
+
+    if (!openingConversation && !returningHome) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      root.classList.remove('pastel-chat-route-enter', 'pastel-chat-route-back');
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [location.pathname]);
 
   // Listen for navigation messages from Service Worker notification clicks
   useEffect(() => {
@@ -196,6 +221,7 @@ const AppRoutes = () => {
   return (
     <>
       {user && <AppUpdateNotice />}
+      {user && <NetworkStatusBanner />}
       {user && <GlobalSocketListener onHappyBirthday={handleHappyBirthday} />}
       {user && <CallOverlays />}
       {user && <GlobalChecker onBirthdayToday={handleBirthdayToday} />}

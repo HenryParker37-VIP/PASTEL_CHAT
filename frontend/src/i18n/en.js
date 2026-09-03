@@ -34,6 +34,8 @@ const en = {
   homeLoginCodeHint: "Keep this safe — it's how you get back in.",
   connected: 'Connected',
   connecting: 'Connecting...',
+  networkOffline: 'No internet connection. Messages will keep trying to send.',
+  networkWeak: 'Connection is weak. Messages may take longer to send.',
   notificationsTitle: 'Notifications',
   notificationsDesc: 'Updates about messages, friends, and activity in Pastel Chat.',
   notificationsMarkAllRead: 'Mark all as read',

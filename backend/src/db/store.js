@@ -502,12 +502,58 @@ function createMessage(doc) {
     isPinned: false,
     replyTo: null,
     reactions: {}, // { emoji: [userId, ...] }
+    clientMessageId: null,
+    deliveredAt: null,
+    readAt: null,
+    deliveryReceipts: {}, // group recipients: { userId: { deliveredAt, readAt } }
     media: null,   // { type: 'image'|'file', dataUrl, name, size }
     ...doc
   };
   store.messages.push(msg);
   persist();
   return msg;
+}
+
+function findMessageByClientMessageId(senderId, clientMessageId) {
+  if (!senderId || !clientMessageId) return null;
+  return store.messages.find((message) => (
+    String(message.senderId) === String(senderId) &&
+    String(message.clientMessageId || '') === String(clientMessageId)
+  ));
+}
+
+function markMessageDelivered(messageId, recipientId) {
+  const message = findMessage(messageId);
+  if (!message || !recipientId || String(message.senderId) === String(recipientId)) return null;
+  const now = new Date().toISOString();
+  if (message.groupId) {
+    message.deliveryReceipts = message.deliveryReceipts || {};
+    const receipt = message.deliveryReceipts[recipientId] || {};
+    if (!receipt.deliveredAt) receipt.deliveredAt = now;
+    message.deliveryReceipts[recipientId] = receipt;
+  } else if (!message.deliveredAt) {
+    message.deliveredAt = now;
+  }
+  persist();
+  return message;
+}
+
+function markMessageRead(messageId, readerId) {
+  const message = findMessage(messageId);
+  if (!message || !readerId || String(message.senderId) === String(readerId)) return null;
+  const now = new Date().toISOString();
+  if (message.groupId) {
+    message.deliveryReceipts = message.deliveryReceipts || {};
+    const receipt = message.deliveryReceipts[readerId] || {};
+    if (!receipt.deliveredAt) receipt.deliveredAt = now;
+    if (!receipt.readAt) receipt.readAt = now;
+    message.deliveryReceipts[readerId] = receipt;
+  } else {
+    if (!message.deliveredAt) message.deliveredAt = now;
+    if (!message.readAt) message.readAt = now;
+  }
+  persist();
+  return message;
 }
 
 // Toggle a reaction — add if not present, remove if already there
@@ -531,14 +577,20 @@ function updateMessage(id, updates) {
   if (m) { Object.assign(m, updates); persist(); }
   return m;
 }
-function populateMessage(msg) {
+function populateMessage(msg, viewerId = null) {
   if (!msg) return null;
   const sender = findUserById(msg.senderId);
   const receiver = findUserById(msg.receiverId);
+  const groupReceipts = Object.values(msg.deliveryReceipts || {});
+  const groupRead = groupReceipts.some((receipt) => receipt.readAt);
+  const groupDelivered = groupReceipts.some((receipt) => receipt.deliveredAt);
   const populated = {
     ...msg,
     senderId: userPublic(sender),
-    receiverId: userPublic(receiver)
+    receiverId: userPublic(receiver),
+    deliveryStatus: String(msg.senderId) === String(viewerId)
+      ? (msg.readAt || groupRead ? 'read' : msg.deliveredAt || groupDelivered ? 'delivered' : 'sent')
+      : 'sent'
   };
   if (msg.replyTo) {
     const reply = findMessage(msg.replyTo);
@@ -567,7 +619,7 @@ function getConversation(userA, userB, { limit = 100, before = null } = {}) {
   }
   msgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   msgs = msgs.slice(0, limit);
-  return msgs.map(populateMessage).reverse();
+  return msgs.map((message) => populateMessage(message, userA)).reverse();
 }
 function getPinnedMessages(userA, userB) {
   return store.messages
@@ -661,7 +713,7 @@ function updateGroup(groupId, updates) {
   persist();
   return g;
 }
-function getGroupConversation(groupId, { limit = 100, before = null } = {}) {
+function getGroupConversation(groupId, { limit = 100, before = null, viewerId = null } = {}) {
   let msgs = store.messages.filter(m => m.groupId === groupId);
   if (before) {
     const cutoff = new Date(before);
@@ -669,7 +721,7 @@ function getGroupConversation(groupId, { limit = 100, before = null } = {}) {
   }
   msgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   msgs = msgs.slice(0, limit);
-  return msgs.map(m => populateMessage(m)).reverse();
+  return msgs.map(m => populateMessage(m, viewerId)).reverse();
 }
 
 // ===== Private Space: Notes =====
@@ -1042,7 +1094,8 @@ module.exports = {
   createReport, updateReport, createAuditLog, createAnnouncement, getStorageStatus,
   getFriends, findFriendship, addFriend, updateFriend, removeFriend,
   createRequest, findRequest, findRequestById, removeRequest, getRequests,
-  findMessage, createMessage, updateMessage, populateMessage, toggleReaction,
+  findMessage, findMessageByClientMessageId, createMessage, updateMessage, populateMessage, toggleReaction,
+  markMessageDelivered, markMessageRead,
   getConversation, getPinnedMessages, searchMessages, clearConversation,
   createGroup, findGroup, getGroupsForUser, groupPublic,
   addGroupMember, removeGroupMember, updateGroup, getGroupConversation,

@@ -5,6 +5,9 @@ const { sendMessagePush } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
 const {
   createMessage,
+  findMessageByClientMessageId,
+  markMessageDelivered,
+  markMessageRead,
   updateMessage,
   findMessage,
   getConversation,
@@ -65,13 +68,17 @@ router.delete('/clear/:friendId', authMiddleware, (req, res) => {
 // POST /messages - Send new message { receiverId, content, replyTo, media }
 router.post('/', authMiddleware, (req, res) => {
   try {
-    const { receiverId, content, replyTo, media } = req.body;
+    const { receiverId, content, replyTo, media, clientMessageId } = req.body;
     if (!receiverId) return res.status(400).json({ message: 'receiverId required' });
     // Allow empty content if media is present
     if ((!content || !content.trim()) && !media) return res.status(400).json({ message: 'Content or media required' });
     const receiver = findUserById(receiverId);
     if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
     if (!canAccessConversation(req.user._id, receiverId)) return res.status(403).json({ message: 'You can only message a friend' });
+    if (clientMessageId) {
+      const existing = findMessageByClientMessageId(req.user._id, String(clientMessageId).slice(0, 120));
+      if (existing && String(existing.receiverId) === String(receiverId)) return res.status(200).json(populateMessage(existing, req.user._id));
+    }
     if (replyTo) {
       const original = findMessage(replyTo);
       if (!original || ![original.senderId, original.receiverId].includes(req.user._id) || ![original.senderId, original.receiverId].includes(receiverId)) return res.status(400).json({ message: 'Invalid reply target' });
@@ -120,11 +127,12 @@ router.post('/', authMiddleware, (req, res) => {
     const msg = createMessage({
       senderId: req.user._id,
       receiverId,
+      clientMessageId: clientMessageId ? String(clientMessageId).slice(0, 120) : null,
       content: (content || '').trim().slice(0, 2000),
       replyTo: replyTo || null,
       media: validMedia
     });
-    const populated = populateMessage(msg);
+    const populated = populateMessage(msg, req.user._id);
 
     const io = req.app.get('io');
     // Emit to both participants only
@@ -152,6 +160,25 @@ router.post('/', authMiddleware, (req, res) => {
     console.error('[Messages] Send error:', e.message);
     res.status(500).json({ message: 'Failed to send' });
   }
+});
+
+// Recipient acknowledgements are authenticated and persisted server-side.
+router.post('/:id/delivered', authMiddleware, (req, res) => {
+  const message = findMessage(req.params.id);
+  if (!message || String(message.receiverId) !== String(req.user._id)) return res.status(404).json({ message: 'Message not found' });
+  const updated = markMessageDelivered(message._id, req.user._id);
+  const io = req.app.get('io');
+  io.emit(`message_status:${message.senderId}`, { messageId: message._id, clientMessageId: message.clientMessageId, status: 'delivered', deliveredAt: updated.deliveredAt });
+  res.json({ success: true, messageId: message._id, status: 'delivered', deliveredAt: updated.deliveredAt });
+});
+
+router.post('/:id/read', authMiddleware, (req, res) => {
+  const message = findMessage(req.params.id);
+  if (!message || String(message.receiverId) !== String(req.user._id)) return res.status(404).json({ message: 'Message not found' });
+  const updated = markMessageRead(message._id, req.user._id);
+  const io = req.app.get('io');
+  io.emit(`message_status:${message.senderId}`, { messageId: message._id, clientMessageId: message.clientMessageId, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt });
+  res.json({ success: true, messageId: message._id, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt });
 });
 
 // DELETE /messages/:id - Recall

@@ -256,7 +256,12 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
 
         <button
           className={`send-btn ${hasContent ? 'active' : ''}`}
-          onClick={handleSend}
+          // Handle the first touch before iOS transfers focus and dismisses
+          // the keyboard. preventDefault keeps the textarea from losing focus.
+          onPointerDown={(event) => {
+            event.preventDefault();
+            handleSend();
+          }}
           disabled={!hasContent || sending || disabled}
           title="Send"
           type="button"

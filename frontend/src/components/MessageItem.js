@@ -27,7 +27,7 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, highlight, conversationIdentity }) => {
+const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRetry, highlight, conversationIdentity }) => {
   const { user } = useAuth();
   const { t } = useLang();
   const { push } = useToast();
@@ -49,6 +49,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
   const emojiOnly = !message.isRecalled && isEmojiOnly(message.content);
   const reactions = message.reactions || {};
   const hasReactions = Object.keys(reactions).length > 0;
+  const deliveryStatus = message.deliveryStatus || 'sent';
 
   const handleRecall = async () => {
     const accepted = await confirm({ title: t('chatRecall'), message: t('chatRecallConfirm'), confirmLabel: t('chatRecall'), tone: 'danger', icon: 'trash' });
@@ -294,6 +295,20 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, high
           <span style={{ fontSize: 10, color: '#BBBBBB', paddingInline: 4 }}>
             {formatTime(message.timestamp)}
           </span>
+        )}
+
+        {isOwn && (
+          <div className={`message-delivery-status message-delivery-status--${deliveryStatus}`}>
+            {deliveryStatus === 'sending' && <span>Sending…</span>}
+            {deliveryStatus === 'failed' && (
+              <button type="button" onClick={() => onRetry?.(message)}>
+                <PastelIcon name="alert" size={11} /> Failed to send · Retry
+              </button>
+            )}
+            {deliveryStatus === 'sent' && <PastelIcon name="check" size={12} title="Sent" />}
+            {deliveryStatus === 'delivered' && <><PastelIcon name="check" size={12} title="Delivered" /><PastelIcon name="check" size={12} title="Delivered" /></>}
+            {deliveryStatus === 'read' && <><PastelIcon name="check" size={12} title="Read" /><PastelIcon name="check" size={12} title="Read" /></>}
+          </div>
         )}
       </div>
 

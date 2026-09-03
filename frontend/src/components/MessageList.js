@@ -1,19 +1,109 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import MessageItem from './MessageItem';
 import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 import PastelIcon from './PastelIcon';
 
-const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, highlightId, conversationIdentity, onConversationTap }) => {
-  const bottomRef = useRef(null);
+const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, onRetry, highlightId, conversationIdentity, onMessageVisible }) => {
   const containerRef = useRef(null);
+  const initialPositionedRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
+  const nearBottomRef = useRef(true);
 
-  // Auto-scroll to bottom on new messages
+  const isNearBottom = (container) => (
+    container.scrollHeight - container.scrollTop - container.clientHeight < 80
+  );
+
+  // Position the first rendered batch before the browser paints. This avoids
+  // showing the top of a conversation and then visibly scrolling to the end.
+  useLayoutEffect(() => {
+    if (loading || initialPositionedRef.current || !containerRef.current) return;
+
+    containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    previousMessageCountRef.current = messages.length;
+    initialPositionedRef.current = true;
+  }, [loading, messages.length]);
+
+  // Keep the normal live-chat behavior for messages that arrive after the
+  // initial batch, but only when the user was already near the bottom.
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!initialPositionedRef.current || messages.length <= previousMessageCountRef.current) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    previousMessageCountRef.current = messages.length;
+    if (distanceFromBottom < 80) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages, typingUsers]);
+  }, [messages.length]);
+
+  // The flex layout reduces this container when the iPhone keyboard opens.
+  // Re-anchor only if the user was already reading the bottom; never move a
+  // user who intentionally scrolled upward.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+
+    const keepBottomAfterResize = () => {
+      if (initialPositionedRef.current && nearBottomRef.current) {
+        container.scrollTop = container.scrollHeight;
+      }
+    };
+    const resizeObserver = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(keepBottomAfterResize)
+      : null;
+    resizeObserver?.observe(container);
+
+    const visualViewport = window.visualViewport;
+    const handleViewportResize = () => {
+      if (!initialPositionedRef.current || !nearBottomRef.current) return;
+      window.requestAnimationFrame(keepBottomAfterResize);
+    };
+    visualViewport?.addEventListener('resize', handleViewportResize);
+
+    return () => {
+      resizeObserver?.disconnect();
+      visualViewport?.removeEventListener('resize', handleViewportResize);
+    };
+  }, []);
+
+  // A read receipt is driven by actual intersection with the visible message
+  // area, not merely by rendering the message somewhere in the DOM.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || loading || typeof IntersectionObserver !== 'function' || !onMessageVisible) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          const message = messages.find((item) => item._id === entry.target.id.replace('msg-', ''));
+          if (message) onMessageVisible(message);
+        }
+      });
+    }, { root: container, threshold: [0.6] });
+    messages.forEach((message) => {
+      const element = container.querySelector(`#msg-${CSS.escape(String(message._id))}`);
+      if (element) observer.observe(element);
+    });
+    return () => observer.disconnect();
+  }, [loading, messages, onMessageVisible]);
+
+  // Images and other media can increase scrollHeight after the initial
+  // layout. Preserve the bottom position when the user was already there.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+
+    const keepBottomOnAssetLoad = () => {
+      if (!initialPositionedRef.current) return;
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < 80) container.scrollTop = container.scrollHeight;
+    };
+
+    container.addEventListener('load', keepBottomOnAssetLoad, true);
+    return () => container.removeEventListener('load', keepBottomOnAssetLoad, true);
+  }, []);
 
   const groupByDate = (msgs) => {
     const groups = [];
@@ -36,7 +126,9 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
   return (
     <div
       ref={containerRef}
-      onPointerDown={onConversationTap}
+      onScroll={(event) => {
+        nearBottomRef.current = isNearBottom(event.currentTarget);
+      }}
       style={{
         flex: 1,
         overflowY: 'auto',
@@ -82,6 +174,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
             onReply={onReply}
             onRecall={onRecall}
             onReaction={onReaction}
+            onRetry={onRetry}
             highlight={highlightId === item.id}
             conversationIdentity={conversationIdentity}
           />
@@ -90,7 +183,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
 
       <TypingIndicator typingUsers={typingUsers} />
 
-      <div ref={bottomRef} style={{ height: '4px' }} />
+      <div style={{ height: '4px' }} />
     </div>
   );
 };

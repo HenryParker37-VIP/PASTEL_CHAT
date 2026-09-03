@@ -10,13 +10,15 @@ import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
 import { useConfirm, useToast } from '../components/Toast';
 import { getPastelIdentity } from '../utils/pastelIdentity';
+import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
 
 const isMobile = () => window.innerWidth <= 700;
+const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 };
 
 const GroupChat = () => {
   const { groupId } = useParams();
   const { user } = useAuth();
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
   const { t } = useLang();
   const { confirm } = useConfirm();
   const { push } = useToast();
@@ -34,6 +36,10 @@ const GroupChat = () => {
   const [inviteId, setInviteId] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
   const typingRef = useRef({});
+  const deliveredAckRef = useRef(new Set());
+  const readAckRef = useRef(new Set());
+  const recoveredPendingRef = useRef(new Set());
+  const pendingSendInFlightRef = useRef(new Set());
 
   const loadGroup = useCallback(async () => {
     try {
@@ -58,6 +64,52 @@ const GroupChat = () => {
 
   useEffect(() => { loadGroup(); fetchMessages(); }, [loadGroup, fetchMessages]);
 
+  const sendPendingMessage = useCallback(async (pending) => {
+    if (pendingSendInFlightRef.current.has(pending.clientMessageId)) return;
+    pendingSendInFlightRef.current.add(pending.clientMessageId);
+    try {
+      const { data } = await api.post(`/groups/${groupId}/messages`, {
+        content: pending.content,
+        media: pending.media,
+        clientMessageId: pending.clientMessageId
+      });
+      setMessages((current) => current.map((message) => (
+        message.clientMessageId === pending.clientMessageId
+          ? { ...data, deliveryStatus: data.deliveryStatus || 'sent' }
+          : message
+      )));
+      removePendingMessage(user?._id, pending.clientMessageId);
+    } catch (err) {
+      console.error('Group send failed:', err.message);
+      savePendingMessage(user?._id, { ...pending, deliveryStatus: 'failed' });
+      setMessages((current) => current.map((message) => (
+        message.clientMessageId === pending.clientMessageId
+          ? { ...message, deliveryStatus: 'failed' }
+          : message
+      )));
+    } finally {
+      pendingSendInFlightRef.current.delete(pending.clientMessageId);
+    }
+  }, [groupId, user?._id]);
+
+  useEffect(() => {
+    if (!connected || !user?._id || !groupId) return;
+    loadPendingMessages(user._id)
+      .filter((message) => message.groupId === groupId)
+      .forEach((message) => void sendPendingMessage(message));
+  }, [connected, groupId, sendPendingMessage, user?._id]);
+
+  useEffect(() => {
+    if (!user?._id || !groupId || loading) return;
+    const pending = loadPendingMessages(user._id).filter((message) => message.groupId === groupId);
+    pending.forEach((message) => {
+      if (recoveredPendingRef.current.has(message.clientMessageId)) return;
+      recoveredPendingRef.current.add(message.clientMessageId);
+      setMessages((current) => current.some((item) => item.clientMessageId === message.clientMessageId) ? current : [...current, message]);
+      void sendPendingMessage(message);
+    });
+  }, [groupId, loading, sendPendingMessage, user?._id]);
+
   useEffect(() => {
     const documentRoot = document.documentElement;
     const resetDocumentScroll = () => {
@@ -81,10 +133,28 @@ const GroupChat = () => {
     if (!socket || !user) return;
 
     const onMsg = (msg) => {
+      const senderId = msg.senderId?._id || msg.senderId;
       setMessages(prev => {
-        if (prev.find(m => m._id === msg._id)) return prev;
+        const existing = prev.find((message) => message._id === msg._id || (
+          msg.clientMessageId && message.clientMessageId === msg.clientMessageId
+        ));
+        if (existing) return prev.map((message) => message === existing
+          ? { ...msg, deliveryStatus: message.deliveryStatus === 'failed' ? 'failed' : 'sent' }
+          : message);
         return [...prev, msg];
       });
+      if (senderId !== user._id && document.visibilityState === 'visible' && !deliveredAckRef.current.has(msg._id)) {
+        deliveredAckRef.current.add(msg._id);
+        socket.emit('message:delivered', { messageId: msg._id });
+      }
+    };
+    const onMessageStatus = ({ messageId, clientMessageId, status, deliveredAt, readAt }) => {
+      setMessages((prev) => prev.map((message) => {
+        if (message._id !== messageId && (!clientMessageId || message.clientMessageId !== clientMessageId)) return message;
+        const currentStatus = message.deliveryStatus || 'sent';
+        if ((DELIVERY_RANK[status] ?? 0) < (DELIVERY_RANK[currentStatus] ?? 0)) return message;
+        return { ...message, deliveryStatus: status, deliveredAt: deliveredAt || message.deliveredAt, readAt: readAt || message.readAt };
+      }));
     };
     const onRecall = ({ messageId }) => {
       setMessages(prev => prev.map(m =>
@@ -111,6 +181,7 @@ const GroupChat = () => {
     socket.on(`msg_reaction:group:${groupId}:${user._id}`, onReaction);
     socket.on(`group:updated:${groupId}`, onGroupUpdated);
     socket.on(`typing:group:${groupId}:${user._id}`, onTyping);
+    socket.on('message_status', onMessageStatus);
 
     return () => {
       socket.off(`msg:group:${groupId}:${user._id}`, onMsg);
@@ -118,12 +189,54 @@ const GroupChat = () => {
       socket.off(`msg_reaction:group:${groupId}:${user._id}`, onReaction);
       socket.off(`group:updated:${groupId}`, onGroupUpdated);
       socket.off(`typing:group:${groupId}:${user._id}`, onTyping);
+      socket.off('message_status', onMessageStatus);
     };
   }, [socket, user, groupId]);
 
-  const handleSend = async (content, media) => {
-    await api.post(`/groups/${groupId}/messages`, { content, media });
-  };
+  useEffect(() => {
+    if (!socket || !user || document.visibilityState !== 'visible') return;
+    messages.forEach((message) => {
+      const senderId = message.senderId?._id || message.senderId;
+      if (senderId === user._id || deliveredAckRef.current.has(message._id)) return;
+      deliveredAckRef.current.add(message._id);
+      socket.emit('message:delivered', { messageId: message._id });
+    });
+  }, [messages, socket, user]);
+
+  const handleSend = useCallback(async (content, media) => {
+    const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const pending = {
+      _id: clientMessageId,
+      clientMessageId,
+      senderId: user._id,
+      groupId,
+      content: content || '',
+      media: media || null,
+      timestamp: new Date().toISOString(),
+      deliveryStatus: 'sending',
+      isRecalled: false,
+      isPinned: false,
+      reactions: {}
+    };
+    setMessages((current) => [...current, pending]);
+    savePendingMessage(user._id, pending);
+    void sendPendingMessage(pending);
+  }, [groupId, sendPendingMessage, user?._id]);
+
+  const handleRetry = useCallback((message) => {
+    if (!message.clientMessageId) return;
+    const pending = { ...message, deliveryStatus: 'sending' };
+    savePendingMessage(user._id, pending);
+    setMessages((current) => current.map((item) => item._id === message._id ? pending : item));
+    void sendPendingMessage(pending);
+  }, [sendPendingMessage, user?._id]);
+
+  const handleMessageVisible = useCallback((message) => {
+    const senderId = message.senderId?._id || message.senderId;
+    if (!socket || !user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
+    readAckRef.current.add(message._id);
+    socket.emit('message:read', { messageId: message._id });
+  }, [socket, user]);
 
   const handleRecall = (messageId) => {
     setMessages(prev => prev.map(m =>
@@ -179,7 +292,7 @@ const GroupChat = () => {
   const isCreator = group.creatorId === user?._id;
 
   return (
-    <div style={{
+    <div className="group-chat-page-shell" style={{
       position: 'fixed',
       top: 'var(--visual-offset-top, 0px)', left: 0, right: 0,
       height: 'var(--visual-height, 100dvh)',
@@ -291,14 +404,17 @@ const GroupChat = () => {
           )}
 
           <MessageList
+            key={groupId}
             messages={messages}
             loading={loading}
             typingUsers={typingUsers}
             onReply={msg => setReplyingTo(msg)}
             onRecall={handleRecall}
             onReaction={handleReaction}
+            onRetry={handleRetry}
             highlightId={highlightId}
             isGroup
+            onMessageVisible={handleMessageVisible}
           />
 
           <MessageInput
