@@ -19,101 +19,25 @@ const packs = [
   { id: 'pastel-ultimate-reactions', x: [28, 268, 506, 744, 983, 1227], y: [218, 422, 624, 824, 1024, 1227] }
 ];
 
-const INSET = 8;
-const BOTTOM_INSET = 3;
-const PADDING = 8;
-
-function backgroundLike(data, channels, pixel) {
-  const offset = pixel * channels;
-  const red = data[offset];
-  const green = data[offset + 1];
-  const blue = data[offset + 2];
-  return Math.min(red, green, blue) >= 216 && Math.max(red, green, blue) - Math.min(red, green, blue) <= 48;
-}
-
-function makeTransparentBackground(data, info) {
-  const pixelCount = info.width * info.height;
-  const alpha = new Uint8Array(pixelCount).fill(255);
-  const visited = new Uint8Array(pixelCount);
-  const queue = new Int32Array(pixelCount);
-  let head = 0;
-  let tail = 0;
-  const enqueue = (pixel) => {
-    if (visited[pixel] || !backgroundLike(data, info.channels, pixel)) return;
-    visited[pixel] = 1;
-    alpha[pixel] = 0;
-    queue[tail] = pixel;
-    tail += 1;
-  };
-  for (let x = 0; x < info.width; x += 1) {
-    enqueue(x);
-    enqueue((info.height - 1) * info.width + x);
-  }
-  for (let y = 1; y < info.height - 1; y += 1) {
-    enqueue(y * info.width);
-    enqueue(y * info.width + info.width - 1);
-  }
-  while (head < tail) {
-    const pixel = queue[head++];
-    const x = pixel % info.width;
-    if (x > 0) enqueue(pixel - 1);
-    if (x + 1 < info.width) enqueue(pixel + 1);
-    if (pixel >= info.width) enqueue(pixel - info.width);
-    if (pixel + info.width < pixelCount) enqueue(pixel + info.width);
-  }
-  return alpha;
-}
-
-function alphaBounds(alpha, width, height) {
-  let left = width;
-  let top = height;
-  let right = -1;
-  let bottom = -1;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (!alpha[y * width + x]) continue;
-      left = Math.min(left, x);
-      top = Math.min(top, y);
-      right = Math.max(right, x);
-      bottom = Math.max(bottom, y);
-    }
-  }
-  return right < 0 ? null : { left, top, right, bottom };
-}
+// Keep a narrow, fixed inset inside each measured cell. The source sheets use
+// light pixels for sticker skin and for the sheet background, so any automatic
+// background-removal pass can mistake white artwork for transparent pixels.
+// Opaque cell crops are deliberate: they preserve every part of the supplied
+// artwork and caption while excluding the measured grid dividers.
+const CELL_INSET = 8;
 
 async function extractSticker(source, bounds, output) {
   const crop = {
-    left: bounds.left + INSET,
-    top: bounds.top + INSET,
-    width: bounds.right - bounds.left - INSET * 2,
-    height: bounds.bottom - bounds.top - INSET - BOTTOM_INSET
+    left: bounds.left + CELL_INSET,
+    top: bounds.top + CELL_INSET,
+    width: bounds.right - bounds.left - CELL_INSET * 2,
+    height: bounds.bottom - bounds.top - CELL_INSET * 2
   };
-  const { data, info } = await sharp(source).extract(crop).raw().toBuffer({ resolveWithObject: true });
-  const alpha = makeTransparentBackground(data, info);
-  const content = alphaBounds(alpha, info.width, info.height);
-  if (!content) throw new Error(`Empty crop for ${output}`);
-  const cropLeft = Math.max(0, content.left - PADDING);
-  const cropTop = Math.max(0, content.top - PADDING);
-  const cropRight = Math.min(info.width - 1, content.right + PADDING);
-  const cropBottom = Math.min(info.height - 1, content.bottom + PADDING);
-  const outWidth = cropRight - cropLeft + 1;
-  const outHeight = cropBottom - cropTop + 1;
-  const rgba = Buffer.alloc(outWidth * outHeight * 4);
-  for (let y = 0; y < outHeight; y += 1) {
-    for (let x = 0; x < outWidth; x += 1) {
-      const sourcePixel = (cropTop + y) * info.width + cropLeft + x;
-      const sourceOffset = sourcePixel * info.channels;
-      const targetOffset = (y * outWidth + x) * 4;
-      rgba[targetOffset] = data[sourceOffset];
-      rgba[targetOffset + 1] = data[sourceOffset + 1];
-      rgba[targetOffset + 2] = data[sourceOffset + 2];
-      rgba[targetOffset + 3] = alpha[sourcePixel];
-    }
-  }
-  await sharp(rgba, { raw: { width: outWidth, height: outHeight, channels: 4 } })
+  await sharp(source)
+    .extract(crop)
     .png({ compressionLevel: 9 })
     .toFile(output);
-  return { width: outWidth, height: outHeight };
+  return { width: crop.width, height: crop.height };
 }
 
 async function extractPack(pack) {
