@@ -905,7 +905,6 @@ html.pastel-chat-route-back #root > .page-frame.page-fade-in {
 /* Floating action toolbar */
 .msg-toolbar {
   display: flex;
-  flex-direction: column;
   gap: 3px;
   background: white;
   border-radius: 12px;
@@ -913,6 +912,19 @@ html.pastel-chat-route-back #root > .page-frame.page-fade-in {
   padding: 4px;
   z-index: 5;
   flex-shrink: 0;
+}
+.msg-toolbar--vertical {
+  flex-direction: column;
+}
+.msg-toolbar--horizontal {
+  flex-direction: row;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  max-width: calc(100vw - 24px);
+  width: max-content;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 .msg-toolbar button {
   width: 30px;
@@ -925,6 +937,14 @@ html.pastel-chat-route-back #root > .page-frame.page-fade-in {
   transition: background 0.15s;
 }
 .msg-toolbar button:hover { background: var(--soft-pink); }
+@media (max-width: 479px) {
+  .msg-toolbar--horizontal {
+    bottom: calc(100% + 4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-toolbar button { transition: none; }
+}
 
 /* Date separator pill */
 .date-pill {
