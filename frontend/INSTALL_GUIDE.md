@@ -31,7 +31,7 @@ Click **More info** → **Run anyway**. This appears because the app is not yet 
 
 ### Login not working
 - Check your internet connection
-- The backend is at https://pastel-chat.onrender.com (free tier may take 30s to wake up)
+- The backend is hosted at https://pastel-chat.vercel.app
 
 ## Uninstall
 

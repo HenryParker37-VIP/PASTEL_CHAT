@@ -21,16 +21,16 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
-    // Use explicit backend URL instead of detection logic
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
-    console.log('[Socket] Connecting to:', BACKEND_URL);
+    // Connect to dedicated signaling server if configured, or current origin
+    const SIGNALING_URL = process.env.REACT_APP_SIGNALING_URL || process.env.REACT_APP_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    console.log('[Socket] Connecting to:', SIGNALING_URL || '(current origin)');
 
     const newSocket = io(
-      BACKEND_URL,
+      SIGNALING_URL,
       {
         auth: { token },
         transports: ['websocket', 'polling'],
-        reconnectionAttempts: 5,
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000
       }
     );
@@ -51,7 +51,26 @@ export const SocketProvider = ({ children }) => {
     socketRef.current = newSocket;
     setSocket(newSocket);
 
+    const reconnectOnResume = () => {
+      if (!newSocket.connected) newSocket.connect();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reconnectOnResume();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('online', reconnectOnResume);
+    let capacitorAppListener;
+    import('@capacitor/app')
+      .then(({ App }) => App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) reconnectOnResume();
+      }))
+      .then((listener) => { capacitorAppListener = listener; })
+      .catch(() => {});
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('online', reconnectOnResume);
+      capacitorAppListener?.remove?.();
       newSocket.close();
       socketRef.current = null;
     };

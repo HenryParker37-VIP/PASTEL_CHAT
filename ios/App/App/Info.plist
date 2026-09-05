@@ -54,6 +54,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Pastel Chat uses your local network to connect with other users</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pastel Chat uses your microphone for voice and video calls.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Pastel Chat uses your camera for video calls.</string>
 	<key>NSBonjourServiceTypes</key>
 	<array>
 		<string>_http._tcp</string>

@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkpastel_chat_frontend=globalThis.webpackChunkpastel_chat_frontend||[]).push([[914],{914(t,s,a){a.d(s,{PushNotifications:()=>h});const h=(0,a(344).F3)("PushNotifications",{})}}]);

@@ -10,7 +10,7 @@
 3. **Localhost Fallback**: The code fell back to `localhost:5001` when detection failed, which is unreachable from iOS
 
 **Fixes Applied:**
-1. **Explicit Backend URL**: Changed both `api.js` and `SocketContext.js` to use an explicit backend URL (`https://pastel-chat.onrender.com`) instead of trying to detect it
+1. **Explicit Backend URL**: Changed both `api.js` and `SocketContext.js` to use an explicit backend URL (`https://pastel-chat.vercel.app`) instead of trying to detect it
 2. **Removed Detection Logic**: Replaced the complex fallback chain with a single environment variable that defaults to the production backend URL
 3. **Added Debugging Logs**: Added console logs to track connection initialization:
    - `[App] Initialized` - App startup
@@ -25,7 +25,7 @@
 - `frontend/.env.example` - Updated with correct backend URL
 
 **Deployment Requirements:**
-- Set `REACT_APP_BACKEND_URL=https://pastel-chat.onrender.com` in Vercel environment variables
+- Set `REACT_APP_BACKEND_URL=https://pastel-chat.vercel.app` in Vercel environment variables
 - This applies to all environments: Production, Preview, and Development
 
 ---
@@ -63,7 +63,7 @@
 ### Testing the iPhone Standalone App Connection:
 1. Open DevTools (in browser version) and check:
    - `[App] Initialized` log appears
-   - `[Socket] Connecting to: https://pastel-chat.onrender.com` appears
+   - `[Socket] Connecting to: https://pastel-chat.vercel.app` appears
    - `[Socket] Connected to backend` appears (not `Connection error`)
 
 2. Test functionality:
@@ -88,7 +88,7 @@
 
 **Vercel Environment Variables** (set in Vercel dashboard):
 ```
-REACT_APP_BACKEND_URL=https://pastel-chat.onrender.com
+REACT_APP_BACKEND_URL=https://pastel-chat.vercel.app
 REACT_APP_TENOR_API_KEY=AIzaSyDYH8XWx_2AGH-D2wB9tXU67DZ7PaIL9ak
 REACT_APP_GOOGLE_CLIENT_ID=<your-google-oauth-id>
 REACT_APP_VAPID_PUBLIC_KEY=<your-vapid-public-key>
@@ -115,7 +115,7 @@ Frontend JavaScript (environment variable: REACT_APP_BACKEND_URL)
     ↓
 API Calls / Socket.io Connection
     ↓
-Backend (https://pastel-chat.onrender.com)
+Backend (https://pastel-chat.vercel.app)
 ```
 
 **Key Insight:** The standalone app runs in a web context with the built frontend code. All API and Socket connections must use the configured backend URL, not attempt to auto-detect from the domain.

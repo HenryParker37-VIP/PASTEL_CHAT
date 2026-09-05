@@ -1,9 +1,14 @@
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/offline.html'];
-const NEVER_CACHE   = ['/api/version', '/api/', '/socket.io/', 'chrome-extension'];
+const NEVER_CACHE   = [
+  '/api/', '/auth/', '/users/', '/friends/', '/messages/',
+  '/groups/', '/private-space/', '/feedback/', '/admin/',
+  '/push/', '/notifications/', '/releases/', '/stickers/',
+  '/health', '/telegram/', '/socket.io/', 'chrome-extension'
+];
 
 function safeAppUrl(value) {
   try {
@@ -61,7 +66,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   // ── External API requests (different domain) ──
-  // For requests to https://pastel-chat.onrender.com, always fetch from network
   if (url.hostname !== self.location.hostname && url.hostname !== 'localhost' && !url.hostname.startsWith('127.')) {
     event.respondWith(fetch(request).catch(err => {
       console.error('[SW] External fetch failed for:', request.url, err);

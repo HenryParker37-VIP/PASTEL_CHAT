@@ -76,13 +76,13 @@ app.on('web-contents-created', (_, contents) => {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self' file: https://pastel-chat.onrender.com wss://pastel-chat.onrender.com; " +
+          "default-src 'self' file: https://pastel-chat.vercel.app wss://pastel-chat.vercel.app; " +
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' file: https://accounts.google.com; " +
           "style-src 'self' 'unsafe-inline' file: https://fonts.googleapis.com; " +
           "font-src 'self' file: data: https://fonts.gstatic.com; " +
           "img-src 'self' file: data: blob: https:; " +
           "media-src 'self' file: blob:; " +
-          "connect-src 'self' file: https://pastel-chat.onrender.com wss://pastel-chat.onrender.com " +
+          "connect-src 'self' file: https://pastel-chat.vercel.app wss://pastel-chat.vercel.app " +
           "https://accounts.google.com https://api.giphy.com https://media.giphy.com;"
         ],
       },

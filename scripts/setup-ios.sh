@@ -29,16 +29,20 @@ echo "✓ Node $NODE_VERSION"
 
 echo ""
 echo "Installing npm dependencies..."
-cd frontend
-npm install
+npm ci
+(cd frontend && npm ci)
 
 echo ""
 echo "Building web app..."
 npm run build
 
 echo ""
-echo "Adding iOS platform..."
-npx cap add ios
+echo "Checking existing iOS platform..."
+if [ ! -f "ios/App/Podfile" ]; then
+  echo "❌ Existing ios/App platform is missing. Restore the native platform before running setup."
+  exit 1
+fi
+echo "✓ ios/App platform found"
 
 echo ""
 echo "Syncing to iOS..."

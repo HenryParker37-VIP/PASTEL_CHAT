@@ -33,14 +33,11 @@ const server = http.createServer(app);
 app.set('trust proxy', 1);
 if (process.env.NODE_ENV === 'production') assertAuthConfigured();
 
-// The frontend is deployed both on Vercel and alongside this Render web service.
-// Keep this an explicit production allowlist: OAuth POST requests carry an Origin
-// header even when the frontend and API share the Render host.
+// Production allowlist for Vercel deployment
 const productionOrigins = [
   'https://pastel-chat.vercel.app',
-  'https://pastel-chat.onrender.com',
-  process.env.RENDER_EXTERNAL_URL,
-];
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+].filter(Boolean);
 const allowedOrigins = (process.env.CLIENT_URL || '')
   .split(',')
   .map((s) => s.trim())
@@ -50,7 +47,8 @@ for (const origin of productionOrigins) {
 }
 
 function corsOrigin(origin, callback) {
-  if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+  // Allow requests with no origin (like mobile apps, curl, serverless same-origin) or matching allowlist
+  if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.endsWith('.vercel.app'))) return callback(null, true);
   callback(new Error('CORS origin not allowed'));
 }
 
@@ -283,21 +281,23 @@ const startTelegramPolling = () => {
   };
 
   // Clean up on process exit so nodemon restarts don't leave zombies
-  process.once('SIGTERM', () => { running = false; });
-  process.once('SIGINT',  () => { running = false; });
-
-  console.log('[Telegram] ✅ Bot polling started (@PastelChat_Notification_bot)');
-  poll();
+  // Start polling only if explicitly enabled or in standalone non-serverless node process
+  if (process.env.TELEGRAM_POLLING === 'true' || (!process.env.VERCEL && process.env.NODE_ENV !== 'test')) {
+    console.log('[Telegram] ✅ Bot polling started (@PastelChat_Notification_bot)');
+    poll();
+  }
 };
 
 const PORT = process.env.PORT || 5001;
-storeDb.ready.then(() => {
-  server.listen(PORT, () => {
-    console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);
+if (!process.env.VERCEL) {
+  storeDb.ready.then(() => {
+    server.listen(PORT, () => {
+      console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);
+    });
+  }).catch((error) => {
+    console.error('[PastelChat] Store initialization failed:', error.message);
+    process.exitCode = 1;
   });
-}).catch((error) => {
-  console.error('[PastelChat] Store initialization failed:', error.message);
-  process.exitCode = 1;
-});
+}
 
 module.exports = { app, server };

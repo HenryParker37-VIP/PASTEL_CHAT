@@ -27,12 +27,12 @@ The regular web version worked perfectly.
 
 **Solution:** Use explicit backend URL with env var fallback
 ```javascript
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.vercel.app';
 ```
 
 #### B. Service Worker Blocking API Requests (NEW FIX)
 **Issue:** Service worker only checked for `/api/` paths
-- Actual requests go to `https://pastel-chat.onrender.com/auth/register` (external domain)
+- Actual requests go to `https://pastel-chat.vercel.app/auth/register` (external domain)
 - Requests fell through to other handlers
 - networkFirstWithFallback would return offline.html on any error
 
@@ -71,7 +71,7 @@ throw err;
 **1. `frontend/src/services/api.js`**
 ```javascript
 // Explicit backend URL with fallback
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.vercel.app';
 
 const api = axios.create({
   baseURL: BACKEND_URL,
@@ -82,7 +82,7 @@ const api = axios.create({
 **2. `frontend/src/contexts/SocketContext.js`**
 ```javascript
 // Direct socket connection with logging
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.vercel.app';
 console.log('[Socket] Connecting to:', BACKEND_URL);
 
 const newSocket = io(BACKEND_URL, {
@@ -211,7 +211,7 @@ REACT_APP_TENOR_API_KEY=AIzaSyDYH8XWx_2AGH-D2wB9tXU67DZ7PaIL9ak
 Set these for **Production**, **Preview**, and **Development**:
 
 ```
-REACT_APP_BACKEND_URL=https://pastel-chat.onrender.com
+REACT_APP_BACKEND_URL=https://pastel-chat.vercel.app
 REACT_APP_TENOR_API_KEY=AIzaSyDYH8XWx_2AGH-D2wB9tXU67DZ7PaIL9ak
 REACT_APP_GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
 REACT_APP_VAPID_PUBLIC_KEY=<your-vapid-public-key>
@@ -257,8 +257,8 @@ REACT_APP_VAPID_PUBLIC_KEY=<your-vapid-public-key>
 Look for these success indicators:
 ```
 [App] Initialized
-[App] Backend URL: https://pastel-chat.onrender.com
-[Socket] Connecting to: https://pastel-chat.onrender.com
+[App] Backend URL: https://pastel-chat.vercel.app
+[Socket] Connecting to: https://pastel-chat.vercel.app
 [Socket] Connected to backend
 [Tenor] Fetching: /featured
 [Tenor] Got 20 results
@@ -303,7 +303,7 @@ Service Worker (Now Fixed)
     ↓ (Detects external domains & bypasses cache)
 Network
     ↓
-Backend (https://pastel-chat.onrender.com)
+Backend (https://pastel-chat.vercel.app)
     ↓
 MongoDB / Real-time Services
 ```

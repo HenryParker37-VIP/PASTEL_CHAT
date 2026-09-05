@@ -84,10 +84,14 @@ function persist() {
   }
 
   if (mongoConnected) {
-    clearTimeout(durableSaveTimer);
-    durableSaveTimer = setTimeout(() => {
+    if (process.env.VERCEL || process.env.SERVERLESS) {
       writeDurableSnapshot().catch((e) => console.error('[DB] Durable save error:', e.message));
-    }, 100);
+    } else {
+      clearTimeout(durableSaveTimer);
+      durableSaveTimer = setTimeout(() => {
+        writeDurableSnapshot().catch((e) => console.error('[DB] Durable save error:', e.message));
+      }, 100);
+    }
   }
 }
 
@@ -102,7 +106,7 @@ async function writeDurableSnapshot() {
 
 async function hydrateFromDurableStore() {
   if (!MONGODB_URI) {
-    console.warn('[DB] MONGODB_URI is not configured; local db.json is ephemeral on Render.');
+    console.warn('[DB] MONGODB_URI is not configured; using local JSON store.');
     return;
   }
 

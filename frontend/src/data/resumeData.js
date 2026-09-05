@@ -70,9 +70,9 @@ export const project = {
     'Microsoft OAuth'
   ],
   liveDemoLabel: 'View Live Demo',
-  liveDemoHref: 'https://pastel-chat.onrender.com/home',
+  liveDemoHref: 'https://pastel-chat.vercel.app/home',
   loginLabel: 'View Login Page',
-  loginHref: 'https://pastel-chat.onrender.com/login',
+  loginHref: 'https://pastel-chat.vercel.app/login',
   githubLabel: 'View GitHub Repository',
   githubHref: profile.pastelChatRepository,
   contributions: [

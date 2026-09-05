@@ -31,3 +31,11 @@ db.json
 
 # Electron build output (large .exe files — distribute via GitHub Releases)
 frontend/dist/
+
+# Scratch & cache directories
+.playwright-cli/
+.npm-cache/
+frontend/.npm-cache/
+output/
+.claude/
+
