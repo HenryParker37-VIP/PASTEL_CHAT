@@ -46,7 +46,7 @@ router.get('/notes', authMiddleware, (req, res) => {
 router.delete('/notes/:id', authMiddleware, (req, res) => {
   const note = require('../db/store').findNote(req.params.id);
   if (!note) return res.status(404).json({ error: 'not found' });
-  if (note.userId !== req.user._id) return res.status(403).json({ error: 'not allowed' });
+  if (String(note.userId) !== String(req.user._id)) return res.status(403).json({ error: 'not allowed' });
   if (!deleteNote(req.params.id)) return res.status(404).json({ error: 'not found' });
   res.json({ ok: true });
 });
@@ -55,7 +55,7 @@ router.put('/notes/:id', authMiddleware, (req, res) => {
   const { title, content, sharedWith, images } = req.body;
   const current = require('../db/store').findNote(req.params.id);
   if (!current) return res.status(404).json({ error: 'not found' });
-  if (current.userId !== req.user._id) return res.status(403).json({ error: 'not allowed' });
+  if (String(current.userId) !== String(req.user._id)) return res.status(403).json({ error: 'not allowed' });
   const updates = {};
   if (title !== undefined) updates.title = title;
   if (content !== undefined) updates.content = content;
@@ -82,13 +82,13 @@ router.post('/reminders', authMiddleware, (req, res) => {
 
 router.get('/reminders', authMiddleware, (req, res) => {
   const reminders = getUserReminders(req.user._id);
-  res.json(reminders);
+  res.json(reminders || []);
 });
 
 router.delete('/reminders/:id', authMiddleware, (req, res) => {
   const reminder = require('../db/store').findReminder(req.params.id);
   if (!reminder) return res.status(404).json({ error: 'not found' });
-  if (reminder.userId !== req.user._id) return res.status(403).json({ error: 'not allowed' });
+  if (String(reminder.userId) !== String(req.user._id)) return res.status(403).json({ error: 'not allowed' });
   if (!deleteReminder(req.params.id)) return res.status(404).json({ error: 'not found' });
   res.json({ ok: true });
 });
@@ -103,13 +103,13 @@ router.post('/birthdays', authMiddleware, (req, res) => {
 
 router.get('/birthdays', authMiddleware, (req, res) => {
   const birthdays = getUserBirthdays(req.user._id);
-  res.json(birthdays);
+  res.json(birthdays || []);
 });
 
 router.delete('/birthdays/:id', authMiddleware, (req, res) => {
   const birthday = require('../db/store').findBirthday(req.params.id);
   if (!birthday) return res.status(404).json({ error: 'not found' });
-  if (birthday.userId !== req.user._id) return res.status(403).json({ error: 'not allowed' });
+  if (String(birthday.userId) !== String(req.user._id)) return res.status(403).json({ error: 'not allowed' });
   if (!deleteBirthday(req.params.id)) return res.status(404).json({ error: 'not found' });
   res.json({ ok: true });
 });
