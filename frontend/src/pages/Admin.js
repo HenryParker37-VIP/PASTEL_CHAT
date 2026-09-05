@@ -11,25 +11,31 @@ const initialAnnouncement = { title: '', body: '', scope: 'test', pushEnabled: f
 const list = (value) => String(value || '').split(/\n|,/).map((item) => item.trim()).filter(Boolean);
 const formatDate = (value) => value ? new Date(value).toLocaleString() : '—';
 
-const AccessCodesPanel = ({ codes, label, setLabel, expiration, setExpiration, newCode, onCreate, onRevoke, l }) => (
-  <section className="admin-panel admin-access-codes">
-    <div className="admin-panel__heading"><div><span className="admin-eyebrow"><PastelIcon name="lock" size={15} /> {l('Access Codes', 'Mã truy cập')}</span><h2>{l('Demo Access', 'Quyền truy cập Demo')}</h2></div></div>
-    <div className="admin-access-codes__create">
-      <label>{l('Label / company', 'Nhãn / công ty')}<input value={label} onChange={(event) => setLabel(event.target.value)} maxLength="120" placeholder={l('Optional', 'Không bắt buộc')} /></label>
-      <label>{l('Expires', 'Hết hạn')}<select value={expiration} onChange={(event) => setExpiration(event.target.value)}><option value="1d">{l('1 day', '1 ngày')}</option><option value="7d">{l('7 days', '7 ngày')}</option><option value="30d">{l('30 days', '30 ngày')}</option><option value="never">{l('Never', 'Không bao giờ')}</option></select></label>
-      <button className="btn btn-blue" onClick={onCreate}>{l('Create Demo Code', 'Tạo mã Demo')}</button>
-    </div>
-    {newCode && <div className="admin-access-codes__new"><strong>{l('Copy this code now — it will not be shown again.', 'Hãy sao chép mã ngay — mã sẽ không hiển thị lại.')}</strong><code>{newCode}</code><button className="btn btn-ghost btn-small" onClick={() => navigator.clipboard?.writeText(newCode)}>{l('Copy', 'Sao chép')}</button></div>}
-    <div className="admin-access-codes__list">{codes.map((code) => <div className="admin-access-code" key={code._id}><div><strong>{code.maskedCode}</strong><small>{code.label || l('Demo access', 'Quyền truy cập Demo')} · {l('Expires', 'Hết hạn')} {code.expiresAt ? formatDate(code.expiresAt) : l('Never', 'Không bao giờ')}</small></div><span className={`tag tag--${code.status.toLowerCase()}`}>{code.status === 'Active' ? l('Active', 'Đang hoạt động') : code.status === 'Expired' ? l('Expired', 'Đã hết hạn') : l('Revoked', 'Đã thu hồi')}</span>{code.status === 'Active' && <button className="btn btn-ghost btn-small" onClick={() => onRevoke(code)}>{l('Revoke', 'Thu hồi')}</button>}</div>)}{!codes.length && <p className="admin-empty">{l('No demo codes yet.', 'Chưa có mã Demo nào.')}</p>}</div>
-  </section>
-);
+const AccessCodesPanel = ({ codes = [], label, setLabel, expiration, setExpiration, newCode, onCreate, onRevoke, l }) => {
+  const safeCodes = Array.isArray(codes) ? codes : [];
+  return (
+    <section className="admin-panel admin-access-codes">
+      <div className="admin-panel__heading"><div><span className="admin-eyebrow"><PastelIcon name="lock" size={15} /> {l('Access Codes', 'Mã truy cập')}</span><h2>{l('Demo Access', 'Quyền truy cập Demo')}</h2></div></div>
+      <div className="admin-access-codes__create">
+        <label>{l('Label / company', 'Nhãn / công ty')}<input value={label} onChange={(event) => setLabel(event.target.value)} maxLength="120" placeholder={l('Optional', 'Không bắt buộc')} /></label>
+        <label>{l('Expires', 'Hết hạn')}<select value={expiration} onChange={(event) => setExpiration(event.target.value)}><option value="1d">{l('1 day', '1 ngày')}</option><option value="7d">{l('7 days', '7 ngày')}</option><option value="30d">{l('30 days', '30 ngày')}</option><option value="never">{l('Never', 'Không bao giờ')}</option></select></label>
+        <button className="btn btn-blue" onClick={onCreate}>{l('Create Demo Code', 'Tạo mã Demo')}</button>
+      </div>
+      {newCode && <div className="admin-access-codes__new"><strong>{l('Copy this code now — it will not be shown again.', 'Hãy sao chép mã ngay — mã sẽ không hiển thị lại.')}</strong><code>{newCode}</code><button className="btn btn-ghost btn-small" onClick={() => navigator.clipboard?.writeText(newCode)}>{l('Copy', 'Sao chép')}</button></div>}
+      <div className="admin-access-codes__list">{safeCodes.map((code) => <div className="admin-access-code" key={code._id}><div><strong>{code.maskedCode}</strong><small>{code.label || l('Demo access', 'Quyền truy cập Demo')} · {l('Expires', 'Hết hạn')} {code.expiresAt ? formatDate(code.expiresAt) : l('Never', 'Không bao giờ')}</small></div><span className={`tag tag--${code.status.toLowerCase()}`}>{code.status === 'Active' ? l('Active', 'Đang hoạt động') : code.status === 'Expired' ? l('Expired', 'Đã hết hạn') : l('Revoked', 'Đã thu hồi')}</span>{code.status === 'Active' && <button className="btn btn-ghost btn-small" onClick={() => onRevoke(code)}>{l('Revoke', 'Thu hồi')}</button>}</div>)}{!safeCodes.length && <p className="admin-empty">{l('No demo codes yet.', 'Chưa có mã Demo nào.')}</p>}</div>
+    </section>
+  );
+};
 
-const DemoReleasePanel = ({ releases, l }) => (
-  <section className="admin-panel admin-demo-releases">
-    <div className="admin-panel__heading"><div><span className="admin-eyebrow"><PastelIcon name="sparkles" size={15} /> {l('What’s New', 'Có gì mới')}</span><h2>{l('Release history', 'Lịch sử phát hành')}</h2></div></div>
-    <div className="admin-demo-releases__list">{releases.map((release) => <article key={release._id || release.version}><div><strong>v{release.version}</strong><span>{release.title}</span></div><small>{formatDate(release.releasedAt)}</small><p>{release.summary || l('No summary provided.', 'Chưa có tóm tắt.')}</p></article>)}{!releases.length && <p className="admin-empty">{l('No releases yet.', 'Chưa có bản phát hành nào.')}</p>}</div>
-  </section>
-);
+const DemoReleasePanel = ({ releases = [], l }) => {
+  const safeReleases = Array.isArray(releases) ? releases : [];
+  return (
+    <section className="admin-panel admin-demo-releases">
+      <div className="admin-panel__heading"><div><span className="admin-eyebrow"><PastelIcon name="sparkles" size={15} /> {l('What’s New', 'Có gì mới')}</span><h2>{l('Release history', 'Lịch sử phát hành')}</h2></div></div>
+      <div className="admin-demo-releases__list">{safeReleases.map((release) => <article key={release._id || release.version}><div><strong>v{release.version}</strong><span>{release.title}</span></div><small>{formatDate(release.releasedAt)}</small><p>{release.summary || l('No summary provided.', 'Chưa có tóm tắt.')}</p></article>)}{!safeReleases.length && <p className="admin-empty">{l('No releases yet.', 'Chưa có bản phát hành nào.')}</p>}</div>
+    </section>
+  );
+};
 
 const Admin = () => {
   const { logout, user } = useAuth();

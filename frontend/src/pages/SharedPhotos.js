@@ -65,7 +65,7 @@ const SharedPhotos = () => {
 
   const isGoogleUser = user?.loginMethod === 'google' || user?.isGoogleVerified;
   const isExpired = useCallback((photo) => Boolean(photo?.expiresAt && new Date(photo.expiresAt).getTime() <= Date.now()), []);
-  const activeMedia = useCallback((items) => (items || []).filter((photo) => !isExpired(photo)), [isExpired]);
+  const activeMedia = useCallback((items) => (Array.isArray(items) ? items : []).filter((photo) => photo && !isExpired(photo)), [isExpired]);
 
   const handleToggleVisibility = useCallback(async (photo, e) => {
     e.stopPropagation();

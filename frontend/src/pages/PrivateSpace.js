@@ -103,12 +103,16 @@ const PrivateSpace = () => {
         api.get('/private-space/birthdays'),
         api.get('/friends')
       ]);
-      setNotes(notesRes.data || []);
-      setReminders(remindersRes.data || []);
-      setBirthdays(birthdaysRes.data || []);
-      setFriends(friendsRes.data || []);
+      setNotes(Array.isArray(notesRes.data) ? notesRes.data : []);
+      setReminders(Array.isArray(remindersRes.data) ? remindersRes.data : []);
+      setBirthdays(Array.isArray(birthdaysRes.data) ? birthdaysRes.data : []);
+      setFriends(Array.isArray(friendsRes.data) ? friendsRes.data : (Array.isArray(friendsRes.data?.friends) ? friendsRes.data.friends : []));
     } catch (e) {
       console.error('Failed to load private space data:', e);
+      setNotes([]);
+      setReminders([]);
+      setBirthdays([]);
+      setFriends([]);
     } finally {
       setLoading(false);
     }
