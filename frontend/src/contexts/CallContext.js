@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { getIceServers } from '../services/api';
 import { useToast } from '../components/Toast';
 import { useLang } from '../i18n';
+import { addCallKitListener, callKitInvoke } from '../services/callkit';
 
 const CallContext = createContext(null);
 export const useCall = () => useContext(CallContext);
@@ -14,6 +15,17 @@ const ICE_CONFIG = {
   iceTransportPolicy: 'all',
   bundlePolicy: 'max-bundle',
   rtcpMuxPolicy: 'require',
+};
+
+const createCallUUID = () => {
+  const cryptoApi = window.crypto;
+  if (typeof cryptoApi?.randomUUID === 'function') return cryptoApi.randomUUID();
+  const bytes = new Uint8Array(16);
+  cryptoApi?.getRandomValues?.(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
 export const CallProvider = ({ children }) => {
@@ -41,6 +53,7 @@ export const CallProvider = ({ children }) => {
   const pendingIceRef      = useRef([]);
   const disconnectTimerRef = useRef(null);
   const restartInFlightRef = useRef(false);
+  const callKitUUIDRef      = useRef(null);
 
   // Fetch short-lived/provider-managed TURN credentials only after auth.
   useEffect(() => {
@@ -101,6 +114,9 @@ export const CallProvider = ({ children }) => {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
   }, []);
+
+  const activateNativeAudio = useCallback(() =>
+    callKitInvoke('activateAudio'), []);
 
   const flushPendingCandidates = useCallback(async (pc) => {
     const buffered = pendingIceRef.current;
@@ -174,6 +190,7 @@ export const CallProvider = ({ children }) => {
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
+        if (activeCallRef.current) activateNativeAudio();
         if (activeCallRef.current?.callType === 'video') {
           enterPiP();
         }
@@ -184,11 +201,17 @@ export const CallProvider = ({ children }) => {
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [enterPiP, resumeAudio]);
+  }, [activateNativeAudio, enterPiP, resumeAudio]);
 
   // ── Cleanup ──────────────────────────────────────────────────────────────────
 
   const cleanupCall = useCallback(() => {
+    const callUUID = callKitUUIDRef.current;
+    if (callUUID) {
+      callKitInvoke('reportEnded', { uuid: callUUID, reason: 'remote' });
+      callKitUUIDRef.current = null;
+    }
+    callKitInvoke('deactivateAudio');
     clearTimeout(disconnectTimerRef.current);
     exitPiP();
     pcRef.current?.close();
@@ -276,6 +299,9 @@ export const CallProvider = ({ children }) => {
         setActiveCall(prev => prev ? { ...prev, status: 'connected', startTime: Date.now() } : prev);
         // Apply loudspeaker after connection (audio element now has a stream)
         applySpeaker(true);
+        if (callKitUUIDRef.current) {
+          callKitInvoke('reportConnected', { uuid: callKitUUIDRef.current });
+        }
         return;
       }
       if (state === 'disconnected') {
@@ -309,9 +335,18 @@ export const CallProvider = ({ children }) => {
     if (!socket || activeCallRef.current) return;
     try {
       await iceConfigReadyRef.current;
+      const callUUID = createCallUUID();
+      callKitUUIDRef.current = callUUID;
       setActiveCall({ peer, callType, status: 'calling', isMuted: false, isSpeaker: true, startTime: null, isOfferer: true });
+      callKitInvoke('startOutgoingCall', {
+        uuid: callUUID,
+        handle: peer._id,
+        displayName: peer.name,
+        hasVideo: callType === 'video',
+      });
       socket.emit('call:invite', { to: peer._id, callType });
 
+      await activateNativeAudio();
       const stream = await getMedia(callType);
       const pc     = createPC(peer._id);
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -327,7 +362,7 @@ export const CallProvider = ({ children }) => {
       push({ icon: 'alert', title: t('feedbackCallFailed'), body: err.message, tone: 'error' });
       cleanupCall();
     }
-  }, [socket, getMedia, createPC, cleanupCall, push, t]);
+  }, [socket, getMedia, createPC, cleanupCall, push, t, activateNativeAudio]);
 
   // ── Answer call ──────────────────────────────────────────────────────────────
 
@@ -337,11 +372,13 @@ export const CallProvider = ({ children }) => {
     const { from, callType } = incoming;
 
     setIncomingCall(null);
+    if (!callKitUUIDRef.current) callKitUUIDRef.current = createCallUUID();
     setActiveCall({ peer: from, callType, status: 'connecting', isMuted: false, isSpeaker: true, startTime: null, isOfferer: false });
     socket.emit('call:accept', { to: from._id });
 
     try {
       await iceConfigReadyRef.current;
+      await activateNativeAudio();
       const stream = await getMedia(callType);
       const pc     = createPC(from._id);
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -360,7 +397,7 @@ export const CallProvider = ({ children }) => {
       push({ icon: 'alert', title: t('feedbackCallFailed'), body: err.message, tone: 'error' });
       cleanupCall();
     }
-  }, [socket, getMedia, createPC, cleanupCall, flushPendingCandidates, push, t]);
+  }, [socket, getMedia, createPC, cleanupCall, flushPendingCandidates, push, t, activateNativeAudio]);
 
   // ── Reject / End ─────────────────────────────────────────────────────────────
 
@@ -368,6 +405,10 @@ export const CallProvider = ({ children }) => {
     const incoming = incomingCallRef.current;
     if (!incoming || !socket) return;
     socket.emit('call:reject', { to: incoming.from._id });
+    if (callKitUUIDRef.current) {
+      callKitInvoke('reportEnded', { uuid: callKitUUIDRef.current, reason: 'declined' });
+      callKitUUIDRef.current = null;
+    }
     setIncomingCall(null);
   }, [socket]);
 
@@ -380,7 +421,10 @@ export const CallProvider = ({ children }) => {
   // ── Capacitor native app handling ────────────────────────────────────────
   // Placed after answerCall/rejectCall declarations to avoid TDZ errors
   useEffect(() => {
-    const onCapacitorAppResume = () => resumeAudio();
+    const onCapacitorAppResume = () => {
+      if (activeCallRef.current) activateNativeAudio();
+      resumeAudio();
+    };
     const onCapacitorCallAnswer = () => answerCall();
     const onCapacitorCallDecline = () => rejectCall();
 
@@ -393,7 +437,31 @@ export const CallProvider = ({ children }) => {
       window.removeEventListener('capacitor:call-answer', onCapacitorCallAnswer);
       window.removeEventListener('capacitor:call-decline', onCapacitorCallDecline);
     };
-  }, [answerCall, rejectCall, resumeAudio]);
+  }, [activateNativeAudio, answerCall, rejectCall, resumeAudio]);
+
+  // CallKit actions are translated back into the existing WebRTC lifecycle.
+  // No native action creates a second peer connection or independent call state.
+  useEffect(() => {
+    const removeListener = addCallKitListener('callKitAction', ({ action, uuid, muted, outputs }) => {
+      if (uuid && callKitUUIDRef.current && uuid !== callKitUUIDRef.current) return;
+      if (action === 'answer') answerCall();
+      if (action === 'end' || action === 'reset') {
+        if (incomingCallRef.current && !activeCallRef.current) rejectCall();
+        else endCall();
+      }
+      if (action === 'mute') {
+        const track = localStreamRef.current?.getAudioTracks()[0];
+        if (!track || typeof muted !== 'boolean') return;
+        track.enabled = !muted;
+        setActiveCall(prev => prev ? { ...prev, isMuted: muted } : prev);
+      }
+      if (action === 'audioActivated' || action === 'audioResumed') resumeAudio();
+      if (action === 'routeChanged' && Array.isArray(outputs)) {
+        setActiveCall(prev => prev ? { ...prev, isSpeaker: outputs.includes('Speaker') } : prev);
+      }
+    });
+    return removeListener;
+  }, [answerCall, endCall, rejectCall, resumeAudio]);
 
   // ── In-call controls ─────────────────────────────────────────────────────────
 
@@ -402,6 +470,9 @@ export const CallProvider = ({ children }) => {
     if (!track) return;
     track.enabled = !track.enabled;
     setActiveCall(prev => prev ? { ...prev, isMuted: !track.enabled } : prev);
+    if (callKitUUIDRef.current) {
+      callKitInvoke('setMuted', { uuid: callKitUUIDRef.current, muted: !track.enabled });
+    }
   }, []);
 
   const toggleSpeaker = useCallback(async () => {
@@ -409,6 +480,9 @@ export const CallProvider = ({ children }) => {
     if (!current) return;
     const nextSpeaker = !current.isSpeaker;
     await applySpeaker(nextSpeaker);
+    if (callKitUUIDRef.current) {
+      await callKitInvoke('setSpeaker', { enabled: nextSpeaker });
+    }
     setActiveCall(prev => prev ? { ...prev, isSpeaker: nextSpeaker } : prev);
   }, [applySpeaker]);
 
@@ -427,7 +501,16 @@ export const CallProvider = ({ children }) => {
 
     const onIncoming = ({ from, callType }) => {
       if (activeCallRef.current) { socket.emit('call:reject', { to: from._id }); return; }
-      setIncomingCall({ from, callType });
+      const callUUID = createCallUUID();
+      callKitUUIDRef.current = callUUID;
+      callKitInvoke('reportIncomingCall', {
+        uuid: callUUID,
+        handle: from._id,
+        displayName: from.name,
+        hasVideo: callType === 'video',
+      }).then((result) => {
+        setIncomingCall({ from, callType, nativeCallKit: result?.reported === true });
+      });
     };
     const onAccepted = () => setActiveCall(prev => prev ? { ...prev, status: 'connecting' } : prev);
     const onRejected = () => cleanupCall();

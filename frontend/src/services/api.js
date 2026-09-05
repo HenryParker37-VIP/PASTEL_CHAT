@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com';
-console.log('[App] Backend URL:', BACKEND_URL);
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
+if (BACKEND_URL) console.log('[App] Backend URL:', BACKEND_URL);
 
 const api = axios.create({
   baseURL: BACKEND_URL,

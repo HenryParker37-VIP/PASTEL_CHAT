@@ -295,7 +295,7 @@ const App = () => {
   React.useEffect(() => {
     if (!IS_OAUTH_POPUP) {
       console.log('[App] Initialized');
-      console.log('[App] Backend URL:', process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com');
+      if (process.env.REACT_APP_BACKEND_URL) console.log('[App] Backend URL:', process.env.REACT_APP_BACKEND_URL);
       console.log('[App] Environment:', process.env.NODE_ENV);
     }
   }, []);

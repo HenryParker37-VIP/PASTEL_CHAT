@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const authMiddleware = require('../middleware/auth');
-const { findUserById, updateUser } = require('../db/store');
+const { findUserById, updateUser, findUserByVerificationCode } = require('../db/store');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || 'secret';
@@ -20,12 +20,56 @@ function generateVerificationCode() {
 
 // Helper: Validate webhook signature
 function validateWebhookSignature(body, signature) {
-  if (!TELEGRAM_WEBHOOK_SECRET) return true; // Skip if not configured
+  if (!process.env.TELEGRAM_WEBHOOK_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET === 'secret') return true; // Skip if not strictly set
   const hash = crypto
-    .createHmac('sha256', TELEGRAM_WEBHOOK_SECRET)
+    .createHmac('sha256', process.env.TELEGRAM_WEBHOOK_SECRET)
     .update(JSON.stringify(body))
     .digest('hex');
   return hash === signature;
+}
+
+async function handleTelegramVerification(code, chatId) {
+  const user = findUserByVerificationCode(code);
+  if (!user) {
+    await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: '❌ Invalid or expired code. Please restart setup in Pastel Chat.'
+      })
+    }).catch(() => {});
+    return null;
+  }
+  const expired = user.telegramVerificationExpires && new Date() > new Date(user.telegramVerificationExpires);
+  if (expired) {
+    await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: '⏰ Code expired. Please restart setup in Pastel Chat.'
+      })
+    }).catch(() => {});
+    return null;
+  }
+  const updated = updateUser(user._id, {
+    telegramChatId: String(chatId),
+    telegramConnected: true,
+    telegramVerified: true,
+    telegramVerificationCode: null,
+    telegramVerificationExpires: null
+  });
+  await fetch(`${TELEGRAM_API}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: '🎉 Connected to Pastel Chat!\n\nYou\'ll now receive notifications for incoming calls, messages, and friend requests.',
+      parse_mode: 'Markdown'
+    })
+  }).catch(() => {});
+  return updated;
 }
 
 // POST /api/telegram/connect
@@ -168,25 +212,34 @@ router.post('/send-test-notification', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /telegram/webhook
+// POST /telegram/webhook and POST /api/telegram/webhook
 // Public webhook endpoint for Telegram bot callbacks
-// Telegram sends updates when user interacts with bot
-router.post('/webhook', async (req, res) => {
+router.post(['/webhook', '/api/telegram/webhook'], async (req, res) => {
   try {
-    const signature = req.headers['x-telegram-webhook-signature'];
+    const signature = req.headers['x-telegram-webhook-signature'] || req.headers['x-telegram-bot-api-secret-token'];
     if (!validateWebhookSignature(req.body, signature)) {
       return res.status(403).json({ message: 'Invalid signature' });
     }
 
-    const { message, update_id } = req.body;
+    const { message } = req.body;
     if (!message) {
       return res.json({ ok: true });
     }
 
-    const { text, from, chat } = message;
-    const chatId = chat.id;
-    const telegramUserId = from.id;
-    const username = from.username;
+    const { text, chat } = message;
+    const chatId = chat?.id;
+    if (!chatId) return res.json({ ok: true });
+
+    // Handle deep link /start CODE
+    if (text && text.startsWith('/start ')) {
+      const code = text.slice(7).trim().toUpperCase();
+      if (code) {
+        const verifiedUser = await handleTelegramVerification(code, chatId);
+        const io = req.app.get('io');
+        if (io && verifiedUser) io.emit('telegram:verified', { userId: String(verifiedUser._id), chatId });
+        return res.json({ ok: true });
+      }
+    }
 
     // Handle /start command
     if (text === '/start') {
@@ -208,32 +261,9 @@ router.post('/webhook', async (req, res) => {
     // Parse /verify CODE command
     if (text && text.startsWith('/verify ')) {
       const code = text.slice(8).trim().toUpperCase();
-
-      // Find user with this verification code
-      // Note: In production, query MongoDB directly
-      // For now, this is a placeholder - actual implementation depends on DB access in webhook context
-
-      // We need to find the user by verification code and Telegram username
-      // This would require a database query that's out of scope for this webhook
-      // In a real implementation, store in Redis cache or similar
-
-      const apiResponse = await fetch(`${TELEGRAM_API}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: '✅ Verification code received! Please return to Pastel Chat to complete setup.',
-          parse_mode: 'Markdown'
-        })
-      });
-
-      // Store pending verification in cache/temp store (to be matched in /api/telegram/verify endpoint)
-      // For now, emit event via Socket.IO if user is connected
+      const verifiedUser = await handleTelegramVerification(code, chatId);
       const io = req.app.get('io');
-      if (io) {
-        io.emit('telegram:verification', { code, chatId, username, telegramUserId });
-      }
-
+      if (io && verifiedUser) io.emit('telegram:verified', { userId: String(verifiedUser._id), chatId });
       return res.json({ ok: true });
     }
 

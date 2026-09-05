@@ -1,16 +1,32 @@
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v10';
 const STATIC_CACHE  = `pastel-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `pastel-dynamic-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/offline.html'];
-const NEVER_CACHE   = ['/api/', '/socket.io/', 'chrome-extension'];
+const NEVER_CACHE   = [
+  '/api/', '/auth/', '/users/', '/friends/', '/messages/',
+  '/groups/', '/private-space/', '/feedback/', '/admin/',
+  '/push/', '/notifications/', '/releases/', '/stickers/',
+  '/health', '/telegram/', '/socket.io/', 'chrome-extension'
+];
+
+function safeAppUrl(value) {
+  try {
+    const raw = String(value || '/');
+    const parsed = new URL(raw, self.location.origin);
+    if (parsed.origin !== self.location.origin || parsed.pathname.startsWith('//') || parsed.pathname.startsWith('/api/')) return '/';
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const raw = String(value || '/');
+    return raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+  }
+}
 
 // ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
-  self.skipWaiting();
 });
 
 // ── Activate ──────────────────────────────────────────────────────────────────
@@ -50,7 +66,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   // ── External API requests (different domain) ──
-  // For requests to https://pastel-chat.onrender.com, always fetch from network
   if (url.hostname !== self.location.hostname && url.hostname !== 'localhost' && !url.hostname.startsWith('127.')) {
     event.respondWith(fetch(request).catch(err => {
       console.error('[SW] External fetch failed for:', request.url, err);
@@ -119,14 +134,14 @@ self.addEventListener('push', (event) => {
   }
 
   // ── Regular message / friend request / test notification ──
-  const title   = data.title || 'PastelChat';
-  const targetUrl = data.data?.url || data.url || '/';
+  const title   = data.title || 'Pastel Chat';
+  const targetUrl = safeAppUrl(data.data?.url || data.data?.route || data.url || data.route || '/');
   const options = {
     body:     data.body || 'You have a new notification on PastelChat',
     icon:     data.icon || '/icons/icon-192x192.png',
     badge:    data.badge || '/icons/icon-72x72.png',
     tag:      data.tag || (data.type ? `pastel-${data.type}` : 'pastel-notification'),
-    data:     data.data || { url: targetUrl, type: data.type },
+    data:     { ...(data.data || {}), url: targetUrl, type: data.type },
     vibrate:  [200, 100, 200],
     renotify: true,
   };
@@ -175,7 +190,7 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   // ── Regular notification click — open/focus app and deep-link ──
-  const target = notifData.url || '/';
+  const target = safeAppUrl(notifData.url || '/');
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       // Look for any existing PastelChat window

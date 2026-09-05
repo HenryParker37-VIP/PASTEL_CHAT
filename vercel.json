@@ -2,16 +2,35 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/build",
-  "installCommand": "echo skip-root-install",
-  "framework": "create-react-app",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/auth/(.*)", "destination": "/api/index.js" },
+    { "source": "/users/(.*)", "destination": "/api/index.js" },
+    { "source": "/friends/(.*)", "destination": "/api/index.js" },
+    { "source": "/messages/(.*)", "destination": "/api/index.js" },
+    { "source": "/groups/(.*)", "destination": "/api/index.js" },
+    { "source": "/private-space/(.*)", "destination": "/api/index.js" },
+    { "source": "/feedback/(.*)", "destination": "/api/index.js" },
+    { "source": "/admin/(.*)", "destination": "/api/index.js" },
+    { "source": "/push/(.*)", "destination": "/api/index.js" },
+    { "source": "/notifications/(.*)", "destination": "/api/index.js" },
+    { "source": "/releases/(.*)", "destination": "/api/index.js" },
+    { "source": "/stickers/(.*)", "destination": "/api/index.js" },
+    { "source": "/health", "destination": "/api/index.js" },
+    { "source": "/telegram/(.*)", "destination": "/api/index.js" },
+    { "source": "/((?!api/|auth/|users/|friends/|messages/|groups/|private-space/|feedback/|admin/|push/|notifications/|releases/|stickers/|health|telegram/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/static/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     }
   ]

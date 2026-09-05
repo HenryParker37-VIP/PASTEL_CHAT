@@ -11,7 +11,7 @@ The web version works perfectly. The standalone version fails at the login scree
 ## Root Causes
 
 ### 1. Service Worker Blocking External API Requests
-**Issue:** The service worker's fetch handler was checking for `/api/` paths, but actual API requests go to `https://pastel-chat.onrender.com` (external domain with full paths like `/auth/register`).
+**Issue:** The service worker's fetch handler was checking for `/api/` paths, but actual API requests go to `https://pastel-chat.vercel.app` (external domain with full paths like `/auth/register`).
 
 **Original Code Problem:**
 ```javascript
@@ -181,7 +181,7 @@ If the app still shows cached error pages:
 Open DevTools → Console and look for:
 ```
 [SW] Activating service worker
-[Socket] Connecting to: https://pastel-chat.onrender.com
+[Socket] Connecting to: https://pastel-chat.vercel.app
 [Socket] Connected to backend
 ```
 
@@ -204,7 +204,7 @@ In DevTools → Network tab, verify:
 
 **Required Environment Variables:**
 ```
-REACT_APP_BACKEND_URL=https://pastel-chat.onrender.com
+REACT_APP_BACKEND_URL=https://pastel-chat.vercel.app
 REACT_APP_TENOR_API_KEY=AIzaSyDYH8XWx_2AGH-D2wB9tXU67DZ7PaIL9ak
 REACT_APP_GOOGLE_CLIENT_ID=<your-google-oauth-id>
 REACT_APP_VAPID_PUBLIC_KEY=<your-vapid-public-key>
@@ -226,7 +226,7 @@ The original code checked for `/api/` paths because developers often use relativ
 fetch('/api/auth/register')
 
 // But actual implementation uses absolute URLs
-fetch('https://pastel-chat.onrender.com/auth/register')
+fetch('https://pastel-chat.vercel.app/auth/register')
 ```
 
 The standalone app must use absolute URLs because it runs in a different context than the Vercel-deployed frontend.

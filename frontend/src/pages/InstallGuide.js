@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '../i18n';
 
-const PRODUCTION_URL = 'https://pastel-chat.onrender.com';
+const PRODUCTION_URL = 'https://pastel-chat.vercel.app';
 
 const platformButtonStyle = {
   flex: 1,

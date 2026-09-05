@@ -1,7 +1,7 @@
 // Diagnostics to help debug standalone app connection issues
 export async function runDiagnostics() {
   const results = {
-    backendUrl: process.env.REACT_APP_BACKEND_URL || 'https://pastel-chat.onrender.com',
+    backendUrl: process.env.REACT_APP_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : ''),
     isStandalone: window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches,
     isOnline: navigator.onLine,
     hasServiceWorker: 'serviceWorker' in navigator,
