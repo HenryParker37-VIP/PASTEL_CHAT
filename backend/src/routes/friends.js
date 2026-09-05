@@ -17,12 +17,12 @@ const {
 
 // GET /friends - List my friends
 router.get('/', authMiddleware, (req, res) => {
-  res.json(getFriends(req.user._id));
+  res.json(getFriends(req.user._id) || []);
 });
 
 // GET /friends/requests - List pending requests
 router.get('/requests', authMiddleware, (req, res) => {
-  res.json(getRequests(req.user._id));
+  res.json(getRequests(req.user._id) || []);
 });
 
 // POST /friends/request - Send a friend request { friendId }

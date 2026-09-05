@@ -4,11 +4,12 @@ import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 import PastelIcon from './PastelIcon';
 
-const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReaction, onRetry, highlightId, conversationIdentity, onMessageVisible }) => {
+const MessageList = ({ messages = [], loading, typingUsers = [], onReply, onRecall, onReaction, onRetry, highlightId, conversationIdentity, onMessageVisible }) => {
   const containerRef = useRef(null);
   const initialPositionedRef = useRef(false);
   const previousMessageCountRef = useRef(0);
   const nearBottomRef = useRef(true);
+  const safeMessages = Array.isArray(messages) ? messages : [];
 
   const isNearBottom = (container) => (
     container.scrollHeight - container.scrollTop - container.clientHeight < 80
@@ -20,24 +21,24 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
     if (loading || initialPositionedRef.current || !containerRef.current) return;
 
     containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    previousMessageCountRef.current = messages.length;
+    previousMessageCountRef.current = safeMessages.length;
     initialPositionedRef.current = true;
-  }, [loading, messages.length]);
+  }, [loading, safeMessages.length]);
 
   // Keep the normal live-chat behavior for messages that arrive after the
   // initial batch, but only when the user was already near the bottom.
   useEffect(() => {
-    if (!initialPositionedRef.current || messages.length <= previousMessageCountRef.current) return;
+    if (!initialPositionedRef.current || safeMessages.length <= previousMessageCountRef.current) return;
 
     const container = containerRef.current;
     if (!container) return;
 
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    previousMessageCountRef.current = messages.length;
+    previousMessageCountRef.current = safeMessages.length;
     if (distanceFromBottom < 80) {
       container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages.length]);
+  }, [safeMessages.length]);
 
   // The flex layout reduces this container when the iPhone keyboard opens.
   // Re-anchor only if the user was already reading the bottom; never move a
@@ -108,20 +109,21 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
   const groupByDate = (msgs) => {
     const groups = [];
     let lastDate = null;
-    msgs.forEach((msg) => {
-      const d = new Date(msg.timestamp).toLocaleDateString('en-US', {
+    (Array.isArray(msgs) ? msgs : []).forEach((msg) => {
+      if (!msg) return;
+      const d = new Date(msg.timestamp || Date.now()).toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
       if (d !== lastDate) {
         groups.push({ type: 'dateSeparator', label: d, id: `sep-${d}` });
         lastDate = d;
       }
-      groups.push({ type: 'message', data: msg, id: msg._id });
+      groups.push({ type: 'message', data: msg, id: msg._id || msg.clientMessageId || `tmp-${Math.random()}` });
     });
     return groups;
   };
 
-  const items = groupByDate(messages);
+  const items = groupByDate(safeMessages);
 
   return (
     <div
@@ -144,7 +146,7 @@ const MessageList = ({ messages, loading, typingUsers, onReply, onRecall, onReac
     >
       {loading && <LoadingAnimation />}
 
-      {!loading && messages.length === 0 && (
+      {!loading && safeMessages.length === 0 && (
         <div style={{
           display: 'flex',
           flexDirection: 'column',
