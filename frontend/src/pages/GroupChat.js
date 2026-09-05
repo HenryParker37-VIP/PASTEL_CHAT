@@ -54,9 +54,10 @@ const GroupChat = () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/groups/${groupId}/messages?limit=80`);
-      setMessages(data);
+      setMessages(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
     } catch (e) {
       console.error('Failed to load group messages', e);
+      setMessages([]);
     } finally {
       setLoading(false);
     }

@@ -79,9 +79,10 @@ const Chat = () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/messages/with/${friendId}?limit=80`);
-      setMessages(data);
+      setMessages(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
     } catch (err) {
       console.error('Failed to load messages:', err.message);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -301,9 +302,10 @@ const Chat = () => {
       setSearchLoading(true);
       try {
         const { data } = await api.get(`/messages/search/${friendId}?q=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(data);
+        setSearchResults(Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []));
       } catch (e) {
         console.error('Search failed:', e);
+        setSearchResults([]);
       } finally {
         setSearchLoading(false);
       }

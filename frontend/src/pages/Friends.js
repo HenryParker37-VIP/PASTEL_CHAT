@@ -34,7 +34,7 @@ const Friends = () => {
   const loadFriends = useCallback(async () => {
     try {
       const { data } = await api.get('/friends');
-      setFriends(data);
+      setFriends(Array.isArray(data) ? data : (Array.isArray(data?.friends) ? data.friends : []));
     } catch {
       setFriends([]);
     }
@@ -43,7 +43,7 @@ const Friends = () => {
   const loadRequests = useCallback(async () => {
     try {
       const { data } = await api.get('/friends/requests');
-      setRequests(data);
+      setRequests(Array.isArray(data) ? data : (Array.isArray(data?.requests) ? data.requests : []));
     } catch {
       setRequests([]);
     }
@@ -52,7 +52,7 @@ const Friends = () => {
   const loadGroups = useCallback(async () => {
     try {
       const { data } = await api.get('/groups');
-      setGroups(data);
+      setGroups(Array.isArray(data) ? data : (Array.isArray(data?.groups) ? data.groups : []));
     } catch {
       setGroups([]);
     }
@@ -77,7 +77,8 @@ const Friends = () => {
     if (!q.trim()) return;
     try {
       const { data } = await api.get('/users/search', { params: { q: q.trim() } });
-      setResults(data.filter(u => u._id !== user._id));
+      const rawResults = Array.isArray(data) ? data : (Array.isArray(data?.users) ? data.users : []);
+      setResults(rawResults.filter(u => u && u._id !== user?._id));
     } catch {
       setResults([]);
     }
@@ -87,7 +88,7 @@ const Friends = () => {
     setBusy(true); setError('');
     try {
       await api.post('/friends/request', { friendId: targetId });
-      setResults(r => r.filter(u => u._id !== targetId));
+      setResults(r => (Array.isArray(r) ? r : []).filter(u => u && u._id !== targetId));
       push({ icon: 'users', title: t('feedbackFriendRequestSent'), tone: 'success' });
     } catch (err) {
       setError(err.response?.data?.message || 'Could not send request');
@@ -141,7 +142,9 @@ const Friends = () => {
 
   const toggleMember = (friendId) => {
     setSelectedMembers(prev =>
-      prev.includes(friendId) ? prev.filter(id => id !== friendId) : [...prev, friendId]
+      (Array.isArray(prev) ? prev : []).includes(friendId)
+        ? prev.filter(id => id !== friendId)
+        : [...(Array.isArray(prev) ? prev : []), friendId]
     );
   };
 
@@ -151,7 +154,7 @@ const Friends = () => {
     setCreatingGroup(true);
     try {
       const { data } = await api.post('/groups', { name: groupName.trim(), memberIds: selectedMembers });
-      setGroups(prev => [data, ...prev]);
+      setGroups(prev => [data, ...(Array.isArray(prev) ? prev : [])]);
       setShowCreateGroup(false);
       setGroupName('');
       setSelectedMembers([]);
@@ -163,7 +166,12 @@ const Friends = () => {
     }
   };
 
-  const isOnline = (id) => onlineUsers.some(u => u._id === id);
+  const isOnline = (id) => (Array.isArray(onlineUsers) ? onlineUsers : []).some(u => u && u._id === id);
+
+  const safeFriends = Array.isArray(friends) ? friends : [];
+  const safeRequests = Array.isArray(requests) ? requests : [];
+  const safeGroups = Array.isArray(groups) ? groups : [];
+  const safeResults = Array.isArray(results) ? results : [];
 
   return (
     <div className="container">
@@ -172,11 +180,11 @@ const Friends = () => {
       </button>
       <h2 style={{ margin: '4px 0 14px' }}>{t('friendsTitle')}</h2>
 
-      {requests.length > 0 && (
+      {safeRequests.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <h3 style={{ margin: '0 0 10px', fontSize: 16 }}>{t('friendsPending')}</h3>
           <div style={{ display: 'grid', gap: 8 }}>
-            {requests.map(r => (
+            {safeRequests.map(r => (
               <div key={r._id} className="friend-tile pop-in" style={{ cursor: 'default' }}>
                 <img className="avatar" src={r.avatar} alt="" />
                 <div style={{ flex: 1 }}>
@@ -203,9 +211,9 @@ const Friends = () => {
           <button className="btn" type="submit">{t('search')}</button>
         </form>
         {error && <p style={{ color: '#e57373', fontSize: 13, marginTop: 10 }}>{error}</p>}
-        {results.length > 0 && (
+        {safeResults.length > 0 && (
           <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
-            {results.map(u => (
+            {safeResults.map(u => (
               <div key={u._id} className="friend-tile pop-in" style={{ cursor: 'default' }}>
                 <img className="avatar" src={u.avatar} alt="" />
                 <div style={{ flex: 1 }}>
@@ -219,14 +227,14 @@ const Friends = () => {
         )}
       </div>
 
-      {friends.length === 0 && (
+      {safeFriends.length === 0 && (
         <div className="card" style={{ textAlign: 'center', marginBottom: 20 }}>
           <p style={{ margin: 0, color: '#888' }}>{t('friendsNoFriends')}</p>
         </div>
       )}
 
       <div className="friend-list" style={{ marginBottom: 28 }}>
-        {friends.map(f => (
+        {safeFriends.map(f => (
           <div key={f.friendId} className="friend-tile pop-in" style={{ boxShadow: `inset 3px 0 0 ${getPastelIdentity(f.friendId).accent}` }}>
             <img className="avatar" src={f.avatar} alt="" style={{ border: `2px solid ${getPastelIdentity(f.friendId).accent}` }} onClick={() => navigate(`/chat/${f.friendId}`)} />
             <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate(`/chat/${f.friendId}`)}>
@@ -277,14 +285,14 @@ const Friends = () => {
         </button>
       </div>
 
-      {groups.length === 0 && !showCreateGroup && (
+      {safeGroups.length === 0 && !showCreateGroup && (
         <div className="card" style={{ textAlign: 'center', marginBottom: 16 }}>
           <p style={{ margin: 0, color: '#888' }}>{t('friendsNoGroups')}</p>
         </div>
       )}
 
       <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
-        {groups.map(g => (
+        {safeGroups.map(g => (
           <div
             key={g._id}
             className="friend-tile pop-in"
@@ -335,13 +343,13 @@ const Friends = () => {
                 autoFocus
               />
 
-              {friends.length > 0 && (
+              {safeFriends.length > 0 && (
                 <>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#888', display: 'block', marginBottom: 10 }}>
                     {t('friendsAddMembers')}
                   </label>
                   <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
-                    {friends.map(f => (
+                    {safeFriends.map(f => (
                       <label
                         key={f.friendId}
                         style={{

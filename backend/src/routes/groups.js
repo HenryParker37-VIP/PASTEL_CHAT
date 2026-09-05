@@ -10,7 +10,8 @@ const { notifyInApp } = require('../services/inAppNotifications');
 
 // GET /groups — list groups I belong to
 router.get('/', authMiddleware, (req, res) => {
-  const groups = getGroupsForUser(req.user._id).map(groupPublic);
+  const list = getGroupsForUser(req.user._id) || [];
+  const groups = list.map(groupPublic).filter(Boolean);
   res.json(groups);
 });
 

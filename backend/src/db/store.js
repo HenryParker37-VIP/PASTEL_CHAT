@@ -396,8 +396,10 @@ function userPublic(u) {
 // We store symmetric friendships (one row per pair direction). Friending is one-directional:
 // A adds B with nickname "Buddy" → A sees B as "Buddy". B doesn't automatically see A.
 function getFriends(userId) {
+  if (!store.friendships || !Array.isArray(store.friendships)) return [];
+  const uid = String(userId || '');
   return store.friendships
-    .filter((f) => f.userId === userId)
+    .filter((f) => String(f.userId) === uid)
     .map((f) => {
       const friend = findUserById(f.friendId);
       if (!friend) return null;
@@ -414,19 +416,20 @@ function getFriends(userId) {
     .filter(Boolean);
 }
 function findFriendship(userId, friendId) {
-  const ownerId = String(userId);
-  const targetId = String(friendId);
-  return store.friendships.find((f) => String(f.userId) === ownerId && String(f.friendId) === targetId);
+  if (!store.friendships || !Array.isArray(store.friendships)) return null;
+  const ownerId = String(userId || '');
+  const targetId = String(friendId || '');
+  return store.friendships.find((f) => String(f.userId) === ownerId && String(f.friendId) === targetId) || null;
 }
 function addFriend(userId, friendId, customNickname) {
-  if (userId === friendId) return null;
+  if (String(userId) === String(friendId)) return null;
   if (findFriendship(userId, friendId)) return findFriendship(userId, friendId);
   const friend = findUserById(friendId);
   if (!friend) return null;
   const f = {
     _id: genId(),
-    userId,
-    friendId,
+    userId: String(userId),
+    friendId: String(friendId),
     customNickname: (customNickname || friend.name).trim().slice(0, 50),
     createdAt: new Date().toISOString()
   };
@@ -440,22 +443,24 @@ function updateFriend(userId, friendId, customNickname) {
   return f;
 }
 function removeFriend(userId, friendId) {
-  const idx = store.friendships.findIndex((f) => f.userId === userId && f.friendId === friendId);
+  const ownerId = String(userId);
+  const targetId = String(friendId);
+  const idx = store.friendships.findIndex((f) => String(f.userId) === ownerId && String(f.friendId) === targetId);
   if (idx >= 0) { store.friendships.splice(idx, 1); persist(); return true; }
   return false;
 }
 
 // ===== Friend Requests =====
 function createRequest(fromId, toId) {
-  if (fromId === toId) return null;
+  if (String(fromId) === String(toId)) return null;
   if (findFriendship(fromId, toId) || findFriendship(toId, fromId)) return null;
   if (findRequest(fromId, toId)) return findRequest(fromId, toId);
   if (findRequest(toId, fromId)) return null; // Already requested in reverse
 
   const req = {
     _id: genId(),
-    fromId,
-    toId,
+    fromId: String(fromId),
+    toId: String(toId),
     createdAt: new Date().toISOString()
   };
   store.friendRequests.push(req);
@@ -464,22 +469,29 @@ function createRequest(fromId, toId) {
 }
 
 function findRequest(fromId, toId) {
-  return store.friendRequests.find((r) => r.fromId === fromId && r.toId === toId);
+  if (!store.friendRequests || !Array.isArray(store.friendRequests)) return null;
+  const from = String(fromId);
+  const to = String(toId);
+  return store.friendRequests.find((r) => String(r.fromId) === from && String(r.toId) === to) || null;
 }
 
 function findRequestById(id) {
-  return store.friendRequests.find((r) => r._id === id);
+  if (!store.friendRequests || !Array.isArray(store.friendRequests)) return null;
+  return store.friendRequests.find((r) => String(r._id) === String(id)) || null;
 }
 
 function removeRequest(id) {
-  const idx = store.friendRequests.findIndex((r) => r._id === id);
+  if (!store.friendRequests || !Array.isArray(store.friendRequests)) return false;
+  const idx = store.friendRequests.findIndex((r) => String(r._id) === String(id));
   if (idx >= 0) { store.friendRequests.splice(idx, 1); persist(); return true; }
   return false;
 }
 
 function getRequests(userId) {
+  if (!store.friendRequests || !Array.isArray(store.friendRequests)) return [];
+  const uid = String(userId || '');
   return store.friendRequests
-    .filter(r => r.toId === userId)
+    .filter(r => String(r.toId) === uid)
     .map(r => {
       const fromUser = findUserById(r.fromId);
       if (!fromUser) return null;
@@ -678,18 +690,23 @@ function createGroup({ name, creatorId, memberIds = [] }) {
   return group;
 }
 function findGroup(id) {
-  return store.groups.find(g => String(g._id) === String(id));
+  if (!store.groups || !Array.isArray(store.groups) || !id) return null;
+  return store.groups.find(g => String(g._id) === String(id)) || null;
 }
 function getGroupsForUser(userId) {
-  return store.groups.filter(g => g.members.includes(userId));
+  if (!store.groups || !Array.isArray(store.groups)) return [];
+  const uid = String(userId || '');
+  return store.groups.filter(g => Array.isArray(g.members) && g.members.map(String).includes(uid));
 }
 function groupPublic(g) {
   if (!g) return null;
+  const members = Array.isArray(g.members) ? g.members : [];
   return {
     _id: g._id,
     name: g.name,
     creatorId: g.creatorId,
-    members: g.members.map(id => userPublic(findUserById(id))).filter(Boolean),
+    members: members.map(id => userPublic(findUserById(id))).filter(Boolean),
+    memberCount: members.length,
     createdAt: g.createdAt
   };
 }
