@@ -158,8 +158,8 @@ const Home = () => {
             <div>
               <p className="home-mobile-name">{user?.name}</p>
               <p className="home-mobile-status">
-                <span className="home-mobile-dot" style={{ background: connected ? '#7bd389' : '#ccc' }} />
-                {connected ? t('connected') : t('connecting')}
+                <span className="home-mobile-dot" style={{ background: (connected || navigator.onLine) ? '#7bd389' : '#ccc' }} />
+                {(connected || navigator.onLine) ? t('connected') : t('connecting')}
               </p>
             </div>
           </div>
@@ -269,9 +269,9 @@ const Home = () => {
             <p style={{ margin: 0, fontSize: 12 }}>
               <span style={{
                 display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                background: connected ? '#7bd389' : '#ccc', marginRight: 6
+                background: (connected || navigator.onLine) ? '#7bd389' : '#ccc', marginRight: 6
               }} />
-              {connected ? t('connected') : t('connecting')} · {time.toLocaleTimeString()}
+              {(connected || navigator.onLine) ? t('connected') : t('connecting')} · {time.toLocaleTimeString()}
             </p>
           </div>
         </div>

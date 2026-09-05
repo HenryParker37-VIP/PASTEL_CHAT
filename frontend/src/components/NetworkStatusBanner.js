@@ -18,21 +18,17 @@ const NetworkStatusBanner = () => {
         if (active) setStatus('offline');
         return;
       }
-      if (!connected) {
-        if (active) setStatus('weak');
-        return;
-      }
 
       const startedAt = performance.now();
       try {
-        await api.get('/health', { timeout: 5000, headers: { 'Cache-Control': 'no-cache' } });
+        await api.get('/health', { timeout: 6000, headers: { 'Cache-Control': 'no-cache' } });
         const latency = performance.now() - startedAt;
-        if (latency > 1200) slowSamplesRef.current += 1;
+        if (latency > 3500) slowSamplesRef.current += 1;
         else slowSamplesRef.current = 0;
         if (active) setStatus(slowSamplesRef.current >= 2 ? 'weak' : null);
       } catch {
         slowSamplesRef.current += 1;
-        if (active) setStatus('weak');
+        if (active) setStatus(slowSamplesRef.current >= 2 ? 'weak' : null);
       }
     };
 
