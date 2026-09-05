@@ -95,13 +95,30 @@ function persist() {
   }
 }
 
+let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
-  await DurableState.findOneAndUpdate(
-    { key: 'primary' },
-    { key: 'primary', data: store },
-    { upsert: true, setDefaultsOnInsert: true }
-  ).exec();
+  try {
+    pendingDurableWrite = DurableState.findOneAndUpdate(
+      { key: 'primary' },
+      { key: 'primary', data: store },
+      { upsert: true, setDefaultsOnInsert: true }
+    ).exec();
+    await pendingDurableWrite;
+  } catch (err) {
+    console.error('[DB] Durable snapshot write error:', err.message);
+  } finally {
+    pendingDurableWrite = null;
+  }
+}
+
+async function flushPersist() {
+  if (!mongoConnected) return;
+  if (pendingDurableWrite) {
+    await pendingDurableWrite;
+  } else {
+    await writeDurableSnapshot();
+  }
 }
 
 async function hydrateFromDurableStore() {
@@ -111,7 +128,9 @@ async function hydrateFromDurableStore() {
   }
 
   try {
-    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+    }
     mongoConnected = true;
     const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
     if (snapshot?.data) {
@@ -373,13 +392,20 @@ function getStorageStatus() { return { configured: mongoConfigured, connected: m
 function searchUsers(query, exceptId) {
   if (!query || !query.trim()) return [];
   const q = query.trim().toLowerCase();
-  return store.users
-    .filter((u) => u._id !== exceptId && u.name.toLowerCase().includes(q))
+  const eid = String(exceptId || '');
+  return (store.users || [])
+    .filter((u) => {
+      if (!u || String(u._id) === eid) return false;
+      const nameMatch = u.name && u.name.toLowerCase().includes(q);
+      const codeMatch = u.loginCode && u.loginCode.toLowerCase().includes(q);
+      return nameMatch || codeMatch;
+    })
     .slice(0, 20)
-    .map(userPublic);
+    .map(userPublic)
+    .filter(Boolean);
 }
 function getOnlineUsers() {
-  return store.users.filter((u) => u.isOnline).map(userPublic);
+  return (store.users || []).filter((u) => u && u.isOnline).map(userPublic).filter(Boolean);
 }
 function userPublic(u) {
   if (!u) return null;
@@ -452,15 +478,29 @@ function removeFriend(userId, friendId) {
 
 // ===== Friend Requests =====
 function createRequest(fromId, toId) {
-  if (String(fromId) === String(toId)) return null;
-  if (findFriendship(fromId, toId) || findFriendship(toId, fromId)) return null;
-  if (findRequest(fromId, toId)) return findRequest(fromId, toId);
-  if (findRequest(toId, fromId)) return null; // Already requested in reverse
+  const fId = String(fromId || '');
+  const tId = String(toId || '');
+  if (!fId || !tId || fId === tId) return null;
+  if (findFriendship(fId, tId) || findFriendship(tId, fId)) return null;
+  if (findRequest(fId, tId)) return findRequest(fId, tId);
+  
+  const reverseReq = findRequest(tId, fId);
+  if (reverseReq) {
+    // Both users tried to add each other: auto-accept and connect as mutual friends!
+    removeRequest(reverseReq._id);
+    const u1 = findUserById(fId);
+    const u2 = findUserById(tId);
+    if (u1 && u2) {
+      addFriend(u1._id, u2._id, u2.name);
+      addFriend(u2._id, u1._id, u1.name);
+    }
+    return { _id: genId(), fromId: fId, toId: tId, status: 'accepted', autoAccepted: true };
+  }
 
   const req = {
     _id: genId(),
-    fromId: String(fromId),
-    toId: String(toId),
+    fromId: fId,
+    toId: tId,
     createdAt: new Date().toISOString()
   };
   store.friendRequests.push(req);
@@ -1106,7 +1146,7 @@ ready.then(() => {
 }).catch(() => {});
 
 module.exports = {
-  store, persist, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
+  store, persist, flushPersist, hydrateFromDurableStore, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,

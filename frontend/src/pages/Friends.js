@@ -87,9 +87,15 @@ const Friends = () => {
   const handleRequest = async (targetId) => {
     setBusy(true); setError('');
     try {
-      await api.post('/friends/request', { friendId: targetId });
+      const { data } = await api.post('/friends/request', { friendId: targetId });
       setResults(r => (Array.isArray(r) ? r : []).filter(u => u && u._id !== targetId));
-      push({ icon: 'users', title: t('feedbackFriendRequestSent'), tone: 'success' });
+      if (data?.autoAccepted) {
+        loadFriends();
+        loadRequests();
+        push({ icon: 'users', title: t('feedbackFriendRequestAccepted') || 'Connected as friends!', tone: 'success' });
+      } else {
+        push({ icon: 'users', title: t('feedbackFriendRequestSent'), tone: 'success' });
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Could not send request');
     } finally {
