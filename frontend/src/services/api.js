@@ -17,14 +17,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirect to login on 401
+// Redirect to login on 401 for authenticated session expiry
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const url = String(err.config?.url || '');
+      if (!url.includes('/auth/login') && !url.includes('/auth/register') && !url.includes('/auth/google') && !url.includes('/auth/microsoft')) {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(err);
   }
