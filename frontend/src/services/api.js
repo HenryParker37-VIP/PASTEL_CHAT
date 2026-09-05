@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
-if (BACKEND_URL) console.log('[App] Backend URL:', BACKEND_URL);
+let rawBackendUrl = (process.env.REACT_APP_BACKEND_URL || '').trim();
+if (rawBackendUrl.includes('onrender.com')) rawBackendUrl = '';
+const BACKEND_URL = rawBackendUrl;
+console.log('[App] Target API Base:', BACKEND_URL || '(same-origin)');
 
 const api = axios.create({
   baseURL: BACKEND_URL,

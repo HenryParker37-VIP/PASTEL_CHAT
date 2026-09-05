@@ -21,8 +21,9 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
-    // Connect to dedicated signaling server if configured, or current origin
-    const SIGNALING_URL = process.env.REACT_APP_SIGNALING_URL || process.env.REACT_APP_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    let rawSocketUrl = (process.env.REACT_APP_SIGNALING_URL || process.env.REACT_APP_BACKEND_URL || '').trim();
+    if (rawSocketUrl.includes('onrender.com')) rawSocketUrl = '';
+    const SIGNALING_URL = rawSocketUrl || (typeof window !== 'undefined' ? window.location.origin : '');
     console.log('[Socket] Connecting to:', SIGNALING_URL || '(current origin)');
 
     const newSocket = io(
