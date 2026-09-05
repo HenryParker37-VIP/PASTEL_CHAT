@@ -29,7 +29,7 @@ router.get('/requests', authMiddleware, (req, res) => {
 router.post('/request', authMiddleware, (req, res) => {
   const { friendId } = req.body;
   if (!friendId) return res.status(400).json({ message: 'friendId required' });
-  if (friendId === req.user._id) return res.status(400).json({ message: 'Cannot add yourself' });
+  if (String(friendId) === String(req.user._id)) return res.status(400).json({ message: 'Cannot add yourself' });
   
   const target = findUserById(friendId);
   if (!target) return res.status(404).json({ message: 'User not found' });
@@ -37,8 +37,20 @@ router.post('/request', authMiddleware, (req, res) => {
   const reqObj = createRequest(req.user._id, friendId);
   if (!reqObj) return res.status(400).json({ message: 'Request could not be created or already friends' });
 
-  // Notify the target
   const io = req.app.get('io');
+  if (reqObj.autoAccepted) {
+    notifyInApp(io, friendId, {
+      type: 'friend_accepted',
+      from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
+    }, {
+      title: 'Đã trở thành bạn bè',
+      body: `${req.user.name} và bạn đã trở thành bạn bè.`,
+      data: { route: '/friends' }
+    });
+    return res.json(reqObj);
+  }
+
+  // Notify the target
   notifyInApp(io, friendId, {
     type: 'friend_requested',
     from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
