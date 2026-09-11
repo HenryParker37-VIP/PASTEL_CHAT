@@ -281,6 +281,27 @@ function isAIUser(userId) {
   return String(userId) === AI_USER_ID;
 }
 
+function updateAIAvatar(newAvatarUrl) {
+  if (!newAvatarUrl || typeof newAvatarUrl !== 'string') return null;
+  const avatar = newAvatarUrl.trim();
+
+  // Update user in store.users
+  const user = (store.users || []).find(u => u && (String(u._id) === AI_USER_ID || u.aiCharacterId === AI_CHARACTER_ID));
+  if (user) {
+    user.avatar = avatar;
+  }
+
+  // Update character in store.aiCharacters
+  const char = (store.aiCharacters || []).find(c => c && (c._id === AI_CHARACTER_ID || c.userId === AI_USER_ID));
+  if (char) {
+    char.avatar = avatar;
+  }
+
+  // Also update messages from Lyra if any
+  persist();
+  return { success: true, avatar };
+}
+
 function applySnapshot(loaded) {
   if (!loaded || typeof loaded !== 'object') return;
   store.users = Array.isArray(loaded.users) ? loaded.users : [];
@@ -1504,5 +1525,5 @@ module.exports = {
   AI_USER_ID, AI_CHARACTER_ID, ensureAICharacter, ensureAIFriendship,
   getAICharacter, getAICharacterState, updateAICharacterState,
   getAIRelationship, updateAIRelationship,
-  getAIMemories, addAIMemory, deleteAIMemory, getAILifeEvents, isAIUser
+  getAIMemories, addAIMemory, deleteAIMemory, getAILifeEvents, isAIUser, updateAIAvatar
 };

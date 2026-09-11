@@ -123,12 +123,12 @@ async function handleUserMessageToAI({
       await sleep(typingTime);
     }
 
-    // Insert bubble into database
+    // Insert bubble into database (Do not quote-reply unless an explicit intent is needed)
     const msg = storeDb.createMessage({
       senderId: aiUser._id,
       receiverId: user._id,
       content: bubbleText,
-      replyTo: i === 0 && userMessage._id ? userMessage._id : null
+      replyTo: null
     });
 
     const populated = storeDb.populateMessage(msg, user._id);
@@ -171,7 +171,10 @@ async function handleUserMessageToAI({
 
   // 5. Post-Turn Updates: Memory & Relationship
   processMemoryUpdates(storeDb, user._id, 'char_lyra', plan.memories_to_save);
-  updateRelationshipOnInteraction(storeDb, user._id, { sleepIntent: plan.sleep_intent });
+  updateRelationshipOnInteraction(storeDb, user._id, { sleepIntent: plan.sleep_intent, activeLanguage: plan.detectedLanguage });
+  if (plan.detectedLanguage) {
+    storeDb.updateAICharacterState({ active_language: plan.detectedLanguage });
+  }
 
   return createdMessages;
 }

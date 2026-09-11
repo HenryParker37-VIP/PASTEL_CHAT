@@ -74,6 +74,32 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
     }
   };
 
+  const handleUploadAvatar = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setActionMessage('Image must be under 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        setBusy(true);
+        const { data } = await api.post('/ai/avatar', { avatar: reader.result });
+        if (data.success) {
+          setActionMessage('Avatar updated successfully!');
+          loadData();
+          if (onRefreshChat) onRefreshChat();
+        }
+      } catch (err) {
+        setActionMessage(err.response?.data?.error || 'Failed to update avatar');
+      } finally {
+        setBusy(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div
       style={{
@@ -109,27 +135,37 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img
-              src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50"
-              alt="Lyra"
-              style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid #b5ead7' }}
-            />
+            <div style={{ position: 'relative' }}>
+              <img
+                src={aiStatus?.user?.avatar || "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50"}
+                alt="Lyra"
+                style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid #b5ead7', objectFit: 'cover', display: 'block' }}
+              />
+              <label
+                title="Change Avatar"
+                style={{
+                  position: 'absolute', bottom: -2, right: -2,
+                  background: 'white', border: '1.5px solid #b5ead7',
+                  borderRadius: '50%', width: 20, height: 20,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                }}
+              >
+                <PastelIcon name="camera" size={11} style={{ color: '#555' }} />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadAvatar}
+                />
+              </label>
+            </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Lyra</h3>
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  background: 'linear-gradient(135deg, #ffd1dc, #c7ceea)',
-                  color: '#4a4063',
-                  padding: '2px 7px',
-                  borderRadius: 10
-                }}>
-                  ✦ AI Contact
-                </span>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{aiStatus?.user?.name || 'Lyra'}</h3>
               </div>
               <p style={{ margin: 0, fontSize: 12, color: '#888' }}>
-                Barista & Graphic Design Student
+                {aiStatus?.character?.role || 'Barista & Graphic Design Student'}
               </p>
             </div>
           </div>
