@@ -31,9 +31,11 @@
     { "source": "/releases/(.*)", "destination": "/api/index.js" },
     { "source": "/stickers", "destination": "/api/index.js" },
     { "source": "/stickers/(.*)", "destination": "/api/index.js" },
+    { "source": "/ai", "destination": "/api/index.js" },
+    { "source": "/ai/(.*)", "destination": "/api/index.js" },
     { "source": "/health", "destination": "/api/index.js" },
     { "source": "/telegram/(.*)", "destination": "/api/index.js" },
-    { "source": "/((?!api/|auth/|users|friends|messages|groups|private-space|feedback|admin/|push|notifications|releases|stickers|health|telegram/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|auth/|users|friends|messages|groups|private-space|feedback|admin/|push|notifications|releases|stickers|ai|health|telegram/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

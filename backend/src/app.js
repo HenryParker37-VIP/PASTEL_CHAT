@@ -21,6 +21,7 @@ const adminReleaseRoutes = require('./routes/admin-releases');
 const stickerRoutes = require('./routes/stickers');
 const gifRoutes = require('./routes/gifs');
 const webrtcRoutes = require('./routes/webrtc');
+const aiRoutes = require('./routes/ai');
 const setupSocket = require('./socket');
 const securityHeaders = require('./middleware/security');
 const rateLimit = require('./middleware/rateLimit');
@@ -103,6 +104,8 @@ app.use('/admin/releases', adminReleaseRoutes);
 app.use('/stickers', stickerRoutes);
 app.use('/api/gifs', rateLimit({ name: 'gifs', windowMs: 60_000, max: 60 }), gifRoutes);
 app.use('/api/webrtc', webrtcRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/ai', aiRoutes);
 
 app.get('/health', (_, res) => res.json({
   status: 'ok',
