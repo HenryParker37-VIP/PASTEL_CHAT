@@ -104,25 +104,32 @@ const Friends = () => {
   };
 
   const handleAccept = async (reqId) => {
+    setError('');
     try {
       await api.post(`/friends/accept/${reqId}`);
       loadRequests();
       loadFriends();
       push({ icon: 'check', title: t('feedbackFriendRequestAccepted'), tone: 'success' });
-    } catch {
-      setError(t('feedbackSomethingWrong'));
-      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
+    } catch (err) {
+      loadRequests();
+      loadFriends();
+      const msg = err.response?.data?.message || t('feedbackSomethingWrong');
+      setError(msg);
+      push({ icon: 'alert', title: msg, tone: 'error' });
     }
   };
 
   const handleDecline = async (reqId) => {
+    setError('');
     try {
       await api.post(`/friends/decline/${reqId}`);
       loadRequests();
       push({ icon: 'check', title: t('feedbackFriendRequestDeclined'), tone: 'info' });
-    } catch {
-      setError(t('feedbackSomethingWrong'));
-      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
+    } catch (err) {
+      loadRequests();
+      const msg = err.response?.data?.message || t('feedbackSomethingWrong');
+      setError(msg);
+      push({ icon: 'alert', title: msg, tone: 'error' });
     }
   };
 
