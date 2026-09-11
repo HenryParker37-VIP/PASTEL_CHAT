@@ -12,6 +12,8 @@ const {
   createRequest,
   getRequests,
   findRequestById,
+  findRequest,
+  findFriendship,
   removeRequest
 } = require('../db/store');
 
@@ -27,85 +29,132 @@ router.get('/requests', authMiddleware, (req, res) => {
 
 // POST /friends/request - Send a friend request { friendId }
 router.post('/request', authMiddleware, (req, res) => {
-  const { friendId } = req.body;
-  if (!friendId) return res.status(400).json({ message: 'friendId required' });
-  if (String(friendId) === String(req.user._id)) return res.status(400).json({ message: 'Cannot add yourself' });
-  
-  const target = findUserById(friendId);
-  if (!target) return res.status(404).json({ message: 'User not found' });
+  try {
+    const { friendId } = req.body;
+    if (!friendId) return res.status(400).json({ message: 'friendId required' });
+    if (String(friendId) === String(req.user._id)) return res.status(400).json({ message: 'Cannot add yourself' });
+    
+    const target = findUserById(friendId);
+    if (!target) return res.status(404).json({ message: 'User not found' });
 
-  const reqObj = createRequest(req.user._id, friendId);
-  if (!reqObj) return res.status(400).json({ message: 'Request could not be created or already friends' });
+    const reqObj = createRequest(req.user._id, friendId);
+    if (!reqObj) return res.status(400).json({ message: 'Request could not be created or already friends' });
 
-  const io = req.app.get('io');
-  if (reqObj.autoAccepted) {
-    notifyInApp(io, friendId, {
-      type: 'friend_accepted',
-      from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
-    }, {
-      title: 'Đã trở thành bạn bè',
-      body: `${req.user.name} và bạn đã trở thành bạn bè.`,
-      data: { route: '/friends' }
-    });
-    return res.json(reqObj);
+    const io = req.app.get('io');
+    if (reqObj.autoAccepted) {
+      try {
+        notifyInApp(io, friendId, {
+          type: 'friend_accepted',
+          from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
+        }, {
+          title: 'Đã trở thành bạn bè',
+          body: `${req.user.name} và bạn đã trở thành bạn bè.`,
+          data: { route: '/friends' }
+        });
+      } catch (e) {}
+      return res.json(reqObj);
+    }
+
+    // Notify the target
+    try {
+      notifyInApp(io, friendId, {
+        type: 'friend_requested',
+        from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
+      }, {
+        title: 'Lời mời kết bạn mới',
+        body: `${req.user.name} muốn kết bạn với bạn.`,
+        data: { route: '/friends' }
+      });
+    } catch (e) {}
+
+    // Send Web Push notification
+    sendFriendRequestPush(friendId, req.user).catch(e =>
+      console.error('[Push] Failed to send friend request push:', e.message)
+    );
+
+    res.json(reqObj);
+  } catch (error) {
+    console.error('[Friends] Request error:', error.message);
+    res.status(500).json({ message: 'Failed to send friend request' });
   }
-
-  // Notify the target
-  notifyInApp(io, friendId, {
-    type: 'friend_requested',
-    from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar }
-  }, {
-    title: 'Lời mời kết bạn mới',
-    body: `${req.user.name} muốn kết bạn với bạn.`,
-    data: { route: '/friends' }
-  });
-
-  // Send Web Push notification
-  sendFriendRequestPush(friendId, req.user).catch(e =>
-    console.error('[Push] Failed to send friend request push:', e.message)
-  );
-
-  res.json(reqObj);
 });
 
 // POST /friends/accept/:reqId - Accept a request
 router.post('/accept/:reqId', authMiddleware, (req, res) => {
-  const request = findRequestById(req.params.reqId);
-  if (!request) return res.status(404).json({ message: 'Request not found' });
-  if (request.toId !== req.user._id) return res.status(403).json({ message: 'Not authorized' });
+  try {
+    const rawReqId = String(req.params.reqId || '').trim();
+    const myId = String(req.user._id);
 
-  // Become mutual friends
-  const A = findUserById(request.fromId);
-  const B = findUserById(request.toId);
-  if (A && B) {
-    addFriend(A._id, B._id, B.name);
-    addFriend(B._id, A._id, A.name);
+    let request = findRequestById(rawReqId) || findRequest(rawReqId, myId);
+    if (!request) {
+      const existing = findFriendship(myId, rawReqId) || findFriendship(rawReqId, myId);
+      if (existing) {
+        return res.json({ success: true, message: 'Already friends' });
+      }
+      return res.status(404).json({ message: 'Friend request not found or already accepted' });
+    }
+
+    if (String(request.toId) !== myId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Become mutual friends
+    const fromId = String(request.fromId);
+    const toId = String(request.toId);
+    const A = findUserById(fromId);
+    const B = findUserById(toId) || req.user;
+
+    const fromName = A?.name || 'Friend';
+    const toName = B?.name || req.user.name || 'Friend';
+
+    addFriend(fromId, toId, toName);
+    addFriend(toId, fromId, fromName);
+
+    removeRequest(request._id, fromId);
+
+    // Notify sender safely
+    try {
+      const io = req.app.get('io');
+      const senderFrom = {
+        _id: toId,
+        name: toName,
+        avatar: B?.avatar || req.user.avatar || ''
+      };
+      notifyInApp(io, fromId, {
+        type: 'friend_accepted',
+        from: senderFrom
+      }, {
+        title: 'Lời mời kết bạn đã được chấp nhận',
+        body: `${toName} đã trở thành bạn bè với bạn.`,
+        data: { route: '/friends' }
+      });
+    } catch (e) {
+      console.warn('[Friends] Failed to emit accept notification:', e.message);
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[Friends] Accept error:', error.message);
+    return res.status(500).json({ message: 'Failed to accept friend request' });
   }
-
-  removeRequest(request._id);
-
-  // Notify sender
-  const io = req.app.get('io');
-  notifyInApp(io, request.fromId, {
-    type: 'friend_accepted',
-    from: { _id: B._id, name: B.name, avatar: B.avatar }
-  }, {
-    title: 'Lời mời kết bạn đã được chấp nhận',
-    body: `${B.name} đã trở thành bạn bè với bạn.`,
-    data: { route: '/friends' }
-  });
-
-  res.json({ success: true });
 });
 
 // POST /friends/decline/:reqId - Decline a request
 router.post('/decline/:reqId', authMiddleware, (req, res) => {
-  const request = findRequestById(req.params.reqId);
-  if (!request) return res.status(404).json({ message: 'Request not found' });
-  if (request.toId !== req.user._id) return res.status(403).json({ message: 'Not authorized' });
+  try {
+    const rawReqId = String(req.params.reqId || '').trim();
+    const myId = String(req.user._id);
 
-  removeRequest(request._id);
-  res.json({ success: true });
+    const request = findRequestById(rawReqId) || findRequest(rawReqId, myId);
+    if (!request) return res.json({ success: true, message: 'Request already cleared' });
+    if (String(request.toId) !== myId) return res.status(403).json({ message: 'Not authorized' });
+
+    removeRequest(request._id, request.fromId);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[Friends] Decline error:', error.message);
+    return res.status(500).json({ message: 'Failed to decline friend request' });
+  }
 });
 
 // PUT /friends/:friendId - Update custom nickname for a friend

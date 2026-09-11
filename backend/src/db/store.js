@@ -515,15 +515,17 @@ function findFriendship(userId, friendId) {
   return store.friendships.find((f) => String(f.userId) === ownerId && String(f.friendId) === targetId) || null;
 }
 function addFriend(userId, friendId, customNickname) {
-  if (String(userId) === String(friendId)) return null;
-  if (findFriendship(userId, friendId)) return findFriendship(userId, friendId);
-  const friend = findUserById(friendId);
-  if (!friend) return null;
+  const uId = String(userId || '');
+  const fId = String(friendId || '');
+  if (!uId || !fId || uId === fId) return null;
+  if (findFriendship(uId, fId)) return findFriendship(uId, fId);
+  const friend = findUserById(fId);
+  const nickname = (customNickname || friend?.name || 'Friend').trim().slice(0, 50);
   const f = {
     _id: genId(),
-    userId: String(userId),
-    friendId: String(friendId),
-    customNickname: (customNickname || friend.name).trim().slice(0, 50),
+    userId: uId,
+    friendId: fId,
+    customNickname: nickname,
     createdAt: new Date().toISOString()
   };
   store.friendships.push(f);
@@ -587,10 +589,19 @@ function findRequestById(id) {
   return store.friendRequests.find((r) => String(r._id) === String(id)) || null;
 }
 
-function removeRequest(id) {
+function removeRequest(idOrFromId, maybeToId) {
   if (!store.friendRequests || !Array.isArray(store.friendRequests)) return false;
-  const idx = store.friendRequests.findIndex((r) => String(r._id) === String(id));
-  if (idx >= 0) { store.friendRequests.splice(idx, 1); persist(); return true; }
+  const searchId = String(idOrFromId || '');
+  let idx = store.friendRequests.findIndex((r) => String(r._id) === searchId);
+  if (idx < 0 && maybeToId) {
+    const toId = String(maybeToId || '');
+    idx = store.friendRequests.findIndex((r) => (String(r.fromId) === searchId && String(r.toId) === toId) || (String(r.fromId) === toId && String(r.toId) === searchId));
+  }
+  if (idx >= 0) {
+    store.friendRequests.splice(idx, 1);
+    persist();
+    return true;
+  }
   return false;
 }
 
