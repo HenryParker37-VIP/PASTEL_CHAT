@@ -121,7 +121,16 @@ const Chat = () => {
           : message
       )));
       removePendingMessage(user?._id, pending.clientMessageId);
-      if (friendId === 'user_ai_lyra' || friend?.isAI) {
+      if (Array.isArray(data.aiReplies) && data.aiReplies.length > 0) {
+        data.aiReplies.forEach((aiMsg, idx) => {
+          setTimeout(() => {
+            setMessages((current) => {
+              if (current.some((m) => m._id === aiMsg._id)) return current;
+              return [...current, aiMsg];
+            });
+          }, (idx + 1) * 750);
+        });
+      } else if (friendId === 'user_ai_lyra' || friend?.isAI) {
         setTimeout(fetchMessages, 1500);
         setTimeout(fetchMessages, 3500);
       }
