@@ -10,6 +10,7 @@ import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
 import AIDebugModal from '../components/AIDebugModal';
+import { useToast } from '../components/Toast';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
 
@@ -21,6 +22,7 @@ const Chat = () => {
   const { user, updateProfile } = useAuth();
   const { socket, connected } = useSocket();
   const { startCall, activeCall } = useCall();
+  const { push } = useToast();
   const navigate = useNavigate();
 
   const [messages, setMessages] = useState([]);
@@ -235,6 +237,12 @@ const Chat = () => {
       }
     };
 
+    const onUserUpdated = (data) => {
+      if (data && data.userId === friendId) {
+        setFriend((prev) => prev ? { ...prev, avatar: data.avatar } : prev);
+      }
+    };
+
     socket.on(`msg:${roomKey}`, onMessage);
     socket.on(`msg:${reverseKey}`, onMessage);
     socket.on(`msg_recall:${roomKey}`, onRecall);
@@ -243,6 +251,7 @@ const Chat = () => {
     socket.on(`msg_reaction:${reverseKey}`, onReaction);
     socket.on(`typing:${user._id}`, onTyping);
     socket.on('message_status', onMessageStatus);
+    socket.on('user_updated', onUserUpdated);
     // Re-fetch on socket reconnect to catch messages missed while disconnected
     socket.on('connect', fetchMessages);
 
@@ -269,6 +278,7 @@ const Chat = () => {
       socket.off(`msg_reaction:${reverseKey}`, onReaction);
       socket.off(`typing:${user._id}`, onTyping);
       socket.off('message_status', onMessageStatus);
+      socket.off('user_updated', onUserUpdated);
       socket.off('connect', fetchMessages);
     };
   }, [socket, friendId, user, fetchMessages]);
@@ -408,6 +418,55 @@ const Chat = () => {
     );
   };
 
+  const handleAIAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      push({ title: 'Please select an image file (PNG, JPG, WEBP)', tone: 'danger', icon: 'alert' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      push({ title: 'Image must be under 5MB', tone: 'danger', icon: 'alert' });
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = reader.result;
+        try {
+          const res = await api.post('/ai/avatar', { avatar: base64Data });
+          if (res.data?.success) {
+            setFriend((prev) => prev ? { ...prev, avatar: res.data.avatar } : prev);
+            push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
+          }
+        } catch (err) {
+          push({ title: err.response?.data?.error || 'Failed to update avatar', tone: 'danger', icon: 'alert' });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e) {
+      push({ title: 'Could not read image file', tone: 'danger', icon: 'alert' });
+    }
+  };
+
+  const handleAIAvatarUrlPrompt = async () => {
+    const url = window.prompt('Enter image URL for avatar:', friend?.avatar || '');
+    if (url && url.trim()) {
+      try {
+        const res = await api.post('/ai/avatar', { avatar: url.trim() });
+        if (res.data?.success) {
+          setFriend((prev) => prev ? { ...prev, avatar: res.data.avatar } : prev);
+          push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
+        }
+      } catch (err) {
+        push({ title: err.response?.data?.error || 'Failed to update avatar', tone: 'danger', icon: 'alert' });
+      }
+    }
+  };
+
   const formatSearchTime = (ts) =>
     new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -533,7 +592,7 @@ const Chat = () => {
                   <img
                     src={friend.avatar}
                     alt=""
-                    style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${friendIdentity.accent}` }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${friendIdentity.accent}`, objectFit: 'cover' }}
                   />
                 </button>
                 <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
@@ -545,29 +604,9 @@ const Chat = () => {
                     }}>
                       {friend.name}
                     </span>
-                    {(friend.isAI || friend._id === 'user_ai_lyra' || friendId === 'user_ai_lyra') && (
-                      <span
-                        onClick={(e) => { e.stopPropagation(); setShowAIDebug(true); }}
-                        title="Experimental AI Contact • Click to view inner state & memories"
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 600,
-                          letterSpacing: '0.4px',
-                          background: 'linear-gradient(135deg, #ffd1dc, #c7ceea)',
-                          color: '#4a4063',
-                          padding: '1px 6px',
-                          borderRadius: '10px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        ✦ AI
-                      </span>
-                    )}
                   </div>
-                  <span style={{ fontSize: 11, color: (friend.isAI || friendId === 'user_ai_lyra') ? '#8c70a4' : (friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb')) }}>
-                    {(friend.isAI || friendId === 'user_ai_lyra')
-                      ? (aiActivity ? `☕ ${aiActivity}` : '✦ AI contact • online')
-                      : (friend.status || (friend.isOnline ? 'Online' : 'Offline'))}
+                  <span style={{ fontSize: 11, color: (friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb')) }}>
+                    {friend.status || (aiActivity ? `☕ ${aiActivity}` : (friend.isOnline ? 'Online' : 'Offline'))}
                   </span>
                 </div>
 
@@ -681,9 +720,55 @@ const Chat = () => {
               padding: '14px 16px', flexShrink: 0,
               display: 'flex', alignItems: 'center', gap: 14
             }}>
-              <img src={friend.avatar} alt="" style={{ width: 52, height: 52, borderRadius: '50%', border: `3px solid ${friendIdentity.accent}` }} />
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <img
+                  src={friend.avatar}
+                  alt=""
+                  style={{ width: 56, height: 56, borderRadius: '50%', border: `3px solid ${friendIdentity.accent}`, objectFit: 'cover', display: 'block' }}
+                />
+                {(friend._id === 'user_ai_lyra' || friend.isAI) && (
+                  <label
+                    title="Upload custom avatar"
+                    style={{
+                      position: 'absolute', bottom: -2, right: -2,
+                      background: 'white', border: `2px solid ${friendIdentity.accent}`,
+                      borderRadius: '50%', width: 24, height: 24,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    <PastelIcon name="camera" size={13} style={{ color: friendIdentity.accent }} />
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={handleAIAvatarChange}
+                    />
+                  </label>
+                )}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{friend.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{friend.name}</div>
+                  {(friend._id === 'user_ai_lyra' || friend.isAI) && (
+                    <button
+                      type="button"
+                      onClick={handleAIAvatarUrlPrompt}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: friendIdentity.accent,
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        textDecoration: 'underline',
+                        padding: 0
+                      }}
+                      title="Set avatar from image link"
+                    >
+                      (Set URL)
+                    </button>
+                  )}
+                </div>
                 {friend.status && <div style={{ fontSize: 13, color: '#B08ABD', marginTop: 1 }}>{friend.status}</div>}
                 {friend.bio && <div style={{ fontSize: 13, color: 'var(--subtext)', marginTop: 4, wordBreak: 'break-word' }}>{friend.bio}</div>}
                 <div style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb', marginTop: 4 }}>

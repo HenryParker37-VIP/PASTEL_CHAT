@@ -38,4 +38,5 @@ frontend/dist/
 frontend/.npm-cache/
 output/
 .claude/
+*.app
 

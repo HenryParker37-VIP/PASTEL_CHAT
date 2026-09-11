@@ -265,19 +265,6 @@ const Friends = () => {
               ) : (
                 <p className="name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {f.customNickname}
-                  {(f.isAI || f.friendId === 'user_ai_lyra') && (
-                    <span style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      letterSpacing: '0.4px',
-                      background: 'linear-gradient(135deg, #ffd1dc, #c7ceea)',
-                      color: '#4a4063',
-                      padding: '1px 6px',
-                      borderRadius: '10px'
-                    }}>
-                      ✦ AI
-                    </span>
-                  )}
                 </p>
               )}
               <p className="sub">
@@ -394,7 +381,7 @@ const Friends = () => {
                           onChange={() => toggleMember(f.friendId)}
                           style={{ accentColor: '#DDA0DD' }}
                         />
-                        <img src={f.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                        <img src={f.avatar} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
                         <span style={{ fontSize: 14, fontWeight: 500 }}>{f.customNickname}</span>
                       </label>
                     ))}

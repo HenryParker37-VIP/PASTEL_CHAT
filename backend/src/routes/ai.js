@@ -95,4 +95,49 @@ router.post('/debug/reset-relationship', authMiddleware, (req, res) => {
   }
 });
 
+// POST /ai/avatar - Update Lyra's avatar image (accepts data URL or image URL)
+router.post('/avatar', authMiddleware, (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar || typeof avatar !== 'string') {
+      return res.status(400).json({ message: 'Avatar image is required' });
+    }
+
+    const trimmed = avatar.trim();
+    // Validate image format: data:image/(jpeg|jpg|png|webp);base64,... or valid http(s) URL
+    const isDataImage = /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(trimmed);
+    const isHttpUrl = /^https?:\/\/.+\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(trimmed) || /^https?:\/\/api\.dicebear\.com\/.+/i.test(trimmed);
+
+    if (!isDataImage && !isHttpUrl) {
+      return res.status(400).json({
+        message: 'Invalid image format. Must be JPG, JPEG, PNG, or WEBP.'
+      });
+    }
+
+    // Size limit check (approx 5MB max for base64 payload)
+    if (trimmed.length > 7 * 1024 * 1024) {
+      return res.status(400).json({ message: 'Image too large. Maximum size is 5MB.' });
+    }
+
+    const updated = storeDb.updateAIAvatar(trimmed);
+    if (!updated) {
+      return res.status(500).json({ message: 'Failed to update avatar' });
+    }
+
+    // Notify connected clients via socket
+    const io = req.app.get('io');
+    if (io && typeof io.emit === 'function') {
+      io.emit('user_updated', {
+        userId: 'user_ai_lyra',
+        avatar: trimmed
+      });
+    }
+
+    res.json({ success: true, avatar: trimmed });
+  } catch (err) {
+    console.error('[AI Routes] Avatar update error:', err.message);
+    res.status(500).json({ message: 'Failed to update avatar' });
+  }
+});
+
 module.exports = router;

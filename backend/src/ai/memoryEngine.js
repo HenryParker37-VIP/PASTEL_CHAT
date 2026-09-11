@@ -24,7 +24,7 @@ function processMemoryUpdates(storeDb, userId, characterId, memoriesToSave = [])
   return saved;
 }
 
-function updateRelationshipOnInteraction(storeDb, userId, { sleepIntent = false } = {}) {
+function updateRelationshipOnInteraction(storeDb, userId, { sleepIntent = false, activeLanguage = null } = {}) {
   if (!storeDb || !userId) return null;
   const currentRel = storeDb.getAIRelationship(userId) || {
     userId: String(userId),
@@ -44,6 +44,10 @@ function updateRelationshipOnInteraction(storeDb, userId, { sleepIntent = false 
     last_interaction_at: new Date().toISOString(),
     consecutive_ignored_count: 0 // Reset ignored counter when user interacts
   };
+
+  if (activeLanguage) {
+    updates.active_language = activeLanguage;
+  }
 
   // Grow relationship metrics slowly up to 10
   if (currentRel.familiarity < 10) updates.familiarity = Math.min(10, (currentRel.familiarity || 1) + 0.2);
