@@ -21,6 +21,10 @@ const {
 } = require('../db/store');
 
 function canAccessConversation(userId, friendId) {
+  const target = findUserById(friendId);
+  if (target && target.isAI) return true;
+  const me = findUserById(userId);
+  if (me && me.isAI) return true;
   return userId !== friendId && Boolean(findFriendship(userId, friendId) || findFriendship(friendId, userId));
 }
 
@@ -155,6 +159,20 @@ router.post('/', authMiddleware, (req, res) => {
       console.error('[Push] Failed to send message push:', e.message)
     );
 
+    // If receiver is AI, trigger conversation director asynchronously
+    if (receiver.isAI) {
+      const { handleUserMessageToAI } = require('../ai/conversationDirector');
+      const storeDb = require('../db/store');
+      const recentHistory = getConversation(req.user._id, receiverId, { limit: 10 });
+      handleUserMessageToAI({
+        storeDb,
+        io,
+        user: req.user,
+        userMessage: populated,
+        recentHistory
+      }).catch(e => console.error('[AI] Pipeline execution error:', e.message));
+    }
+
     res.status(201).json(populated);
   } catch (e) {
     console.error('[Messages] Send error:', e.message);
@@ -279,6 +297,21 @@ router.post('/:id/reply', authMiddleware, (req, res) => {
     sendMessagePush(otherId, req.user, populated.content).catch(e =>
       console.error('[Push] Failed to send reply push:', e.message)
     );
+
+    // If recipient is AI, trigger conversation director asynchronously
+    const otherUser = findUserById(otherId);
+    if (otherUser && otherUser.isAI) {
+      const { handleUserMessageToAI } = require('../ai/conversationDirector');
+      const storeDb = require('../db/store');
+      const recentHistory = getConversation(req.user._id, otherId, { limit: 10 });
+      handleUserMessageToAI({
+        storeDb,
+        io,
+        user: req.user,
+        userMessage: populated,
+        recentHistory
+      }).catch(e => console.error('[AI] Reply pipeline execution error:', e.message));
+    }
 
     res.status(201).json(populated);
   } catch (e) {

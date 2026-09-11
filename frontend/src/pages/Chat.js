@@ -9,6 +9,7 @@ import OnlineUsers from '../components/OnlineUsers';
 import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
+import AIDebugModal from '../components/AIDebugModal';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
 
@@ -30,6 +31,8 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile());
   const [chatColor, setChatColor] = useState(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [showAIDebug, setShowAIDebug] = useState(false);
+  const [aiActivity, setAiActivity] = useState(null);
   const typingRef = useRef({});
   const colorPickerRef = useRef(null);
   const deliveredAckRef = useRef(new Set());
@@ -88,7 +91,18 @@ const Chat = () => {
     }
   }, [friendId, user]);
 
-  useEffect(() => { fetchMessages(); }, [fetchMessages]);
+  useEffect(() => {
+    fetchMessages();
+    if (friendId === 'user_ai_lyra' || friend?.isAI) {
+      api.get('/ai/status')
+        .then(res => {
+          if (res.data?.state?.current_activity) {
+            setAiActivity(res.data.state.current_activity);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [fetchMessages, friendId, friend?.isAI]);
 
   const sendPendingMessage = useCallback(async (pending) => {
     if (pendingSendInFlightRef.current.has(pending.clientMessageId)) return;
@@ -107,6 +121,10 @@ const Chat = () => {
           : message
       )));
       removePendingMessage(user?._id, pending.clientMessageId);
+      if (friendId === 'user_ai_lyra' || friend?.isAI) {
+        setTimeout(fetchMessages, 1500);
+        setTimeout(fetchMessages, 3500);
+      }
     } catch (err) {
       console.error('Send failed:', err.message);
       savePendingMessage(user?._id, { ...pending, deliveryStatus: 'failed' });
@@ -118,6 +136,7 @@ const Chat = () => {
     } finally {
       pendingSendInFlightRef.current.delete(pending.clientMessageId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendId, user?._id]);
 
   useEffect(() => {
@@ -509,15 +528,37 @@ const Chat = () => {
                   />
                 </button>
                 <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setProfileOpen(v => !v)}>
-                  <span style={{
-                    fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    display: 'block'
-                  }}>
-                    {friend.name}
-                  </span>
-                  <span style={{ fontSize: 11, color: friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb') }}>
-                    {friend.status || (friend.isOnline ? 'Online' : 'Offline')}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 600, color: 'var(--text)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      display: 'block'
+                    }}>
+                      {friend.name}
+                    </span>
+                    {(friend.isAI || friend._id === 'user_ai_lyra' || friendId === 'user_ai_lyra') && (
+                      <span
+                        onClick={(e) => { e.stopPropagation(); setShowAIDebug(true); }}
+                        title="Experimental AI Contact • Click to view inner state & memories"
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.4px',
+                          background: 'linear-gradient(135deg, #ffd1dc, #c7ceea)',
+                          color: '#4a4063',
+                          padding: '1px 6px',
+                          borderRadius: '10px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✦ AI
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: (friend.isAI || friendId === 'user_ai_lyra') ? '#8c70a4' : (friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb')) }}>
+                    {(friend.isAI || friendId === 'user_ai_lyra')
+                      ? (aiActivity ? `☕ ${aiActivity}` : '✦ AI contact • online')
+                      : (friend.status || (friend.isOnline ? 'Online' : 'Offline'))}
                   </span>
                 </div>
 
@@ -771,6 +812,9 @@ const Chat = () => {
           />
         </div>
       </div>
+      {showAIDebug && (
+        <AIDebugModal onClose={() => setShowAIDebug(false)} onRefreshChat={fetchMessages} />
+      )}
     </div>
   );
 };

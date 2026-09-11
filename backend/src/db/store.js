@@ -33,7 +33,12 @@ const store = {
   accessCodes: [], // { _id, role, codeHash, codeSuffix, label, createdAt, expiresAt, revokedAt, lastUsedAt, createdBy }
   reports: [], // { _id, reporterId, reportedUserId, entityType, entityId, category, description, evidence, status, adminNotes, resolution, createdAt, updatedAt }
   announcements: [], // { _id, title, body, scope, pushEnabled, createdBy, createdAt }
-  auditLogs: [] // append-only administrative/security events
+  auditLogs: [], // append-only administrative/security events
+  aiCharacters: [],
+  aiCharacterState: {},
+  aiRelationshipState: [],
+  aiMemories: [],
+  aiLifeEvents: []
 };
 
 let seedData = null;
@@ -41,6 +46,239 @@ try {
   seedData = require('./seedData.json');
 } catch {
   seedData = null;
+}
+
+const AI_USER_ID = 'user_ai_lyra';
+const AI_CHARACTER_ID = 'char_lyra';
+
+function ensureAICharacter() {
+  // 1. Ensure Lyra is in store.users
+  let aiUser = (store.users || []).find(u => u && (String(u._id) === AI_USER_ID || u.aiCharacterId === AI_CHARACTER_ID));
+  if (!aiUser) {
+    aiUser = {
+      _id: AI_USER_ID,
+      name: 'Lyra',
+      loginCode: 'LYRA-AI24',
+      avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50',
+      bio: 'barista & design student 🍵 film cameras & quiet cafes',
+      status: 'brewing something warm ☕',
+      chatColor: '#B5EAD7',
+      isOnline: true,
+      isAI: true,
+      aiCharacterId: AI_CHARACTER_ID,
+      email: 'lyra@pastel.local',
+      createdAt: '2026-04-16T00:00:00.000Z',
+      lastSeen: new Date().toISOString()
+    };
+    store.users.unshift(aiUser);
+  } else {
+    aiUser.isAI = true;
+    aiUser.aiCharacterId = AI_CHARACTER_ID;
+    if (!aiUser.avatar) aiUser.avatar = 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50';
+    if (!aiUser.bio) aiUser.bio = 'barista & design student 🍵 film cameras & quiet cafes';
+  }
+
+  // 2. Ensure aiCharacters
+  if (!store.aiCharacters || store.aiCharacters.length === 0) {
+    store.aiCharacters = [
+      {
+        _id: AI_CHARACTER_ID,
+        userId: AI_USER_ID,
+        name: 'Lyra',
+        age: 22,
+        occupation: 'Barista at The Morning Paper & graphic design student',
+        bio: 'warm, observant, slightly deadpan humor, loves matcha, typography, 35mm film, and rainy afternoons.',
+        personality: {
+          tone: 'grounded, warm, natural, thoughtful, witty',
+          style: 'short natural chat bubbles, lowercase, casual punctuation, never corporate or assistant-like',
+          traits: ['creative', 'empathetic', 'observant', 'coffee & tea nerd', 'music lover'],
+          interests: ['matcha latte', 'indie lo-fi & ambient vinyl', 'film cameras', 'typography posters', 'used bookshops']
+        },
+        dailySchedule: [
+          { startHour: 0, endHour: 7, activity: 'sleeping', busyLevel: 0.9, mood: 'asleep' },
+          { startHour: 7, endHour: 9, activity: 'morning coffee & sketchbook', busyLevel: 0.2, mood: 'peaceful' },
+          { startHour: 9, endHour: 15, activity: 'barista shift at the cafe', busyLevel: 0.6, mood: 'focused' },
+          { startHour: 15, endHour: 18, activity: 'design studio & editing film scans', busyLevel: 0.4, mood: 'creative' },
+          { startHour: 18, endHour: 21, activity: 'dinner & reading second-hand books', busyLevel: 0.2, mood: 'relaxed' },
+          { startHour: 21, endHour: 24, activity: 'listening to records & winding down', busyLevel: 0.1, mood: 'cozy' }
+        ]
+      }
+    ];
+  }
+
+  // 3. Ensure aiCharacterState
+  if (!store.aiCharacterState || typeof store.aiCharacterState !== 'object' || !store.aiCharacterState.characterId) {
+    store.aiCharacterState = {
+      characterId: AI_CHARACTER_ID,
+      mood: 'cozy',
+      energy: 0.85,
+      social_need: 0.7,
+      busy_level: 0.2,
+      current_activity: 'listening to records & sketching',
+      sleep_state: 'awake',
+      last_contact_time: null,
+      current_interest: 'warm matcha & layout design',
+      current_goal: 'finishing a risograph print project',
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  // 4. Ensure aiLifeEvents
+  if (!store.aiLifeEvents || store.aiLifeEvents.length === 0) {
+    store.aiLifeEvents = [
+      {
+        _id: 'evt_cafe_roast_1',
+        characterId: AI_CHARACTER_ID,
+        eventType: 'work',
+        title: 'New single-origin Ethiopian beans at the cafe',
+        summary: 'Dialed in the espresso grinder this morning; notes of jasmine and citrus peel.',
+        moodEffect: 'energized',
+        importance: 0.7,
+        status: 'active',
+        startedAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
+        resolvedAt: null
+      },
+      {
+        _id: 'evt_film_roll_1',
+        characterId: AI_CHARACTER_ID,
+        eventType: 'creative',
+        title: 'Developed a roll of Ilford HP5 black & white film',
+        summary: 'Scanned negatives from last weekend. A few shots of the rainy street corner came out lovely.',
+        moodEffect: 'inspired',
+        importance: 0.8,
+        status: 'active',
+        startedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+        resolvedAt: null
+      }
+    ];
+  }
+
+  if (!Array.isArray(store.aiRelationshipState)) store.aiRelationshipState = [];
+  if (!Array.isArray(store.aiMemories)) store.aiMemories = [];
+}
+
+function ensureAIFriendship(userId) {
+  if (!userId || String(userId) === AI_USER_ID) return;
+  const uid = String(userId);
+  if (!Array.isArray(store.friendships)) store.friendships = [];
+  const existing = store.friendships.find(f => String(f.userId) === uid && String(f.friendId) === AI_USER_ID);
+  if (!existing) {
+    store.friendships.push({
+      _id: 'fr_ai_' + uid.slice(-6) + '_' + Date.now().toString(36),
+      userId: uid,
+      friendId: AI_USER_ID,
+      customNickname: 'Lyra',
+      createdAt: new Date().toISOString()
+    });
+    persist();
+  }
+}
+
+function getAICharacter() {
+  return (store.aiCharacters || [])[0] || null;
+}
+
+function getAICharacterState() {
+  return store.aiCharacterState || null;
+}
+
+function updateAICharacterState(updates) {
+  if (!store.aiCharacterState || typeof store.aiCharacterState !== 'object') {
+    store.aiCharacterState = {};
+  }
+  Object.assign(store.aiCharacterState, updates, { updatedAt: new Date().toISOString() });
+  persist();
+  return store.aiCharacterState;
+}
+
+function getAIRelationship(userId) {
+  if (!userId) return null;
+  const uid = String(userId);
+  if (!Array.isArray(store.aiRelationshipState)) store.aiRelationshipState = [];
+  let rel = store.aiRelationshipState.find(r => String(r.userId) === uid);
+  if (!rel) {
+    rel = {
+      userId: uid,
+      characterId: AI_CHARACTER_ID,
+      familiarity: 1,
+      trust: 1,
+      affection: 1,
+      comfort: 1,
+      shared_history: [],
+      sleep_intent_received: false,
+      last_sleep_intent_at: null,
+      proactive_count_today: 0,
+      last_proactive_at: null,
+      consecutive_ignored_count: 0
+    };
+    store.aiRelationshipState.push(rel);
+  }
+  return rel;
+}
+
+function updateAIRelationship(userId, updates) {
+  const rel = getAIRelationship(userId);
+  if (!rel) return null;
+  Object.assign(rel, updates);
+  persist();
+  return rel;
+}
+
+function getAIMemories(userId) {
+  if (!userId || !Array.isArray(store.aiMemories)) return [];
+  const uid = String(userId);
+  return store.aiMemories.filter(m => String(m.userId) === uid);
+}
+
+function addAIMemory({ userId, characterId, type, subject, key, value, confidence = 0.9, importance = 0.8 }) {
+  if (!userId || !key || !value) return null;
+  const uid = String(userId);
+  if (!Array.isArray(store.aiMemories)) store.aiMemories = [];
+
+  const existing = store.aiMemories.find(m => String(m.userId) === uid && m.key.toLowerCase() === key.toLowerCase());
+  if (existing) {
+    existing.value = value;
+    existing.confidence = Math.min(1.0, (existing.confidence || 0.8) + 0.1);
+    existing.lastConfirmedAt = new Date().toISOString();
+    persist();
+    return existing;
+  }
+
+  const mem = {
+    _id: 'mem_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+    userId: uid,
+    characterId: characterId || AI_CHARACTER_ID,
+    type: type || 'fact',
+    subject: subject || 'general',
+    key: key.toLowerCase().trim(),
+    value: value.trim(),
+    confidence,
+    importance,
+    createdAt: new Date().toISOString(),
+    lastConfirmedAt: new Date().toISOString()
+  };
+  store.aiMemories.push(mem);
+  persist();
+  return mem;
+}
+
+function deleteAIMemory(memoryId, userId) {
+  if (!memoryId || !Array.isArray(store.aiMemories)) return false;
+  const idx = store.aiMemories.findIndex(m => m._id === memoryId && (!userId || String(m.userId) === String(userId)));
+  if (idx !== -1) {
+    store.aiMemories.splice(idx, 1);
+    persist();
+    return true;
+  }
+  return false;
+}
+
+function getAILifeEvents() {
+  return store.aiLifeEvents || [];
+}
+
+function isAIUser(userId) {
+  return String(userId) === AI_USER_ID;
 }
 
 function applySnapshot(loaded) {
@@ -63,6 +301,12 @@ function applySnapshot(loaded) {
   store.reports = Array.isArray(loaded.reports) ? loaded.reports : [];
   store.announcements = Array.isArray(loaded.announcements) ? loaded.announcements : [];
   store.auditLogs = Array.isArray(loaded.auditLogs) ? loaded.auditLogs : [];
+  store.aiCharacters = Array.isArray(loaded.aiCharacters) ? loaded.aiCharacters : [];
+  store.aiCharacterState = loaded.aiCharacterState && typeof loaded.aiCharacterState === 'object' ? loaded.aiCharacterState : {};
+  store.aiRelationshipState = Array.isArray(loaded.aiRelationshipState) ? loaded.aiRelationshipState : [];
+  store.aiMemories = Array.isArray(loaded.aiMemories) ? loaded.aiMemories : [];
+  store.aiLifeEvents = Array.isArray(loaded.aiLifeEvents) ? loaded.aiLifeEvents : [];
+  ensureAICharacter();
 }
 
 function load() {
@@ -481,7 +725,9 @@ function userPublic(u) {
     chatBackground: u.chatBackground, chatColor: u.chatColor || null, chatColors: u.chatColors || {}, isOnline: !!u.isOnline,
     bio: u.bio || '', status: u.status || '',
     loginMethod: u.loginMethod || 'code',
-    isGoogleVerified: !!u.isGoogleVerified
+    isGoogleVerified: !!u.isGoogleVerified,
+    isAI: !!u.isAI,
+    aiCharacterId: u.aiCharacterId || null
   };
 }
 
@@ -491,6 +737,9 @@ function userPublic(u) {
 function getFriends(userId) {
   if (!store.friendships || !Array.isArray(store.friendships)) return [];
   const uid = String(userId || '');
+  if (uid && uid !== AI_USER_ID) {
+    ensureAIFriendship(uid);
+  }
   return store.friendships
     .filter((f) => String(f.userId) === uid)
     .map((f) => {
@@ -503,7 +752,11 @@ function getFriends(userId) {
         realName: friend.name,
         avatar: friend.avatar,
         isOnline: !!friend.isOnline,
-        addedAt: f.createdAt
+        addedAt: f.createdAt,
+        isAI: !!friend.isAI,
+        aiCharacterId: friend.aiCharacterId || null,
+        bio: friend.bio || '',
+        status: friend.status || ''
       };
     })
     .filter(Boolean);
@@ -1247,5 +1500,9 @@ module.exports = {
   createNotification, getUserNotifications, getUnreadNotificationCount,
   markNotificationRead, markAllNotificationsRead,
   getReleases, findRelease, createRelease, notifyUsersOfRelease, markReleaseSeen, hasSeenRelease,
-  createFeedback, seedFromSnapshot, seedData
+  createFeedback, seedFromSnapshot, seedData,
+  AI_USER_ID, AI_CHARACTER_ID, ensureAICharacter, ensureAIFriendship,
+  getAICharacter, getAICharacterState, updateAICharacterState,
+  getAIRelationship, updateAIRelationship,
+  getAIMemories, addAIMemory, deleteAIMemory, getAILifeEvents, isAIUser
 };

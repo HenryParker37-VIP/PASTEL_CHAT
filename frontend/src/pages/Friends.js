@@ -263,11 +263,26 @@ const Friends = () => {
                   style={{ padding: '4px 10px', fontSize: 14 }}
                 />
               ) : (
-                <p className="name">{f.customNickname}</p>
+                <p className="name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {f.customNickname}
+                  {(f.isAI || f.friendId === 'user_ai_lyra') && (
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.4px',
+                      background: 'linear-gradient(135deg, #ffd1dc, #c7ceea)',
+                      color: '#4a4063',
+                      padding: '1px 6px',
+                      borderRadius: '10px'
+                    }}>
+                      ✦ AI
+                    </span>
+                  )}
+                </p>
               )}
               <p className="sub">
-                <span className={`dot ${isOnline(f.friendId) ? 'online' : ''}`} />
-                {f.realName} {f.realName !== f.customNickname && <em style={{ color: '#aaa' }}>(real name)</em>}
+                <span className={`dot ${(isOnline(f.friendId) || f.isAI || f.friendId === 'user_ai_lyra') ? 'online' : ''}`} />
+                {f.bio ? f.bio : `${f.realName} ${f.realName !== f.customNickname ? `(${f.realName})` : ''}`}
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
