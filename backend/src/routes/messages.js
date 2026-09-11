@@ -70,7 +70,7 @@ router.delete('/clear/:friendId', authMiddleware, (req, res) => {
 });
 
 // POST /messages - Send new message { receiverId, content, replyTo, media }
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
     const { receiverId, content, replyTo, media, clientMessageId } = req.body;
     if (!receiverId) return res.status(400).json({ message: 'receiverId required' });
@@ -159,21 +159,27 @@ router.post('/', authMiddleware, (req, res) => {
       console.error('[Push] Failed to send message push:', e.message)
     );
 
-    // If receiver is AI, trigger conversation director asynchronously
+    // If receiver is AI, trigger conversation director and await responses
+    let aiReplies = [];
     if (receiver.isAI) {
       const { handleUserMessageToAI } = require('../ai/conversationDirector');
       const storeDb = require('../db/store');
       const recentHistory = getConversation(req.user._id, receiverId, { limit: 10 });
-      handleUserMessageToAI({
-        storeDb,
-        io,
-        user: req.user,
-        userMessage: populated,
-        recentHistory
-      }).catch(e => console.error('[AI] Pipeline execution error:', e.message));
+      try {
+        aiReplies = await handleUserMessageToAI({
+          storeDb,
+          io,
+          user: req.user,
+          userMessage: populated,
+          recentHistory,
+          fastMode: true
+        });
+      } catch (e) {
+        console.error('[AI] Pipeline execution error:', e.message);
+      }
     }
 
-    res.status(201).json(populated);
+    res.status(201).json({ ...populated, aiReplies });
   } catch (e) {
     console.error('[Messages] Send error:', e.message);
     res.status(500).json({ message: 'Failed to send' });
@@ -260,7 +266,7 @@ router.post('/:id/react', authMiddleware, (req, res) => {
 });
 
 // POST /messages/:id/reply - Reply { content }
-router.post('/:id/reply', authMiddleware, (req, res) => {
+router.post('/:id/reply', authMiddleware, async (req, res) => {
   try {
     const { content } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ message: 'Content required' });
@@ -298,22 +304,28 @@ router.post('/:id/reply', authMiddleware, (req, res) => {
       console.error('[Push] Failed to send reply push:', e.message)
     );
 
-    // If recipient is AI, trigger conversation director asynchronously
+    // If recipient is AI, trigger conversation director and await responses
+    let aiReplies = [];
     const otherUser = findUserById(otherId);
     if (otherUser && otherUser.isAI) {
       const { handleUserMessageToAI } = require('../ai/conversationDirector');
       const storeDb = require('../db/store');
       const recentHistory = getConversation(req.user._id, otherId, { limit: 10 });
-      handleUserMessageToAI({
-        storeDb,
-        io,
-        user: req.user,
-        userMessage: populated,
-        recentHistory
-      }).catch(e => console.error('[AI] Reply pipeline execution error:', e.message));
+      try {
+        aiReplies = await handleUserMessageToAI({
+          storeDb,
+          io,
+          user: req.user,
+          userMessage: populated,
+          recentHistory,
+          fastMode: true
+        });
+      } catch (e) {
+        console.error('[AI] Reply pipeline execution error:', e.message);
+      }
     }
 
-    res.status(201).json(populated);
+    res.status(201).json({ ...populated, aiReplies });
   } catch (e) {
     res.status(500).json({ message: 'Failed to reply' });
   }
