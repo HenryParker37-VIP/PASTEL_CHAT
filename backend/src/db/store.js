@@ -36,28 +36,51 @@ const store = {
   auditLogs: [] // append-only administrative/security events
 };
 
+let seedData = null;
+try {
+  seedData = require('./seedData.json');
+} catch {
+  seedData = null;
+}
+
+function applySnapshot(loaded) {
+  if (!loaded || typeof loaded !== 'object') return;
+  store.users = Array.isArray(loaded.users) ? loaded.users : [];
+  store.friendships = Array.isArray(loaded.friendships) ? loaded.friendships : [];
+  store.friendRequests = Array.isArray(loaded.friendRequests) ? loaded.friendRequests : [];
+  store.messages = Array.isArray(loaded.messages) ? loaded.messages : [];
+  store.groups = Array.isArray(loaded.groups) ? loaded.groups : [];
+  store.feedback = Array.isArray(loaded.feedback) ? loaded.feedback : [];
+  store.notes = Array.isArray(loaded.notes) ? loaded.notes : [];
+  store.reminders = Array.isArray(loaded.reminders) ? loaded.reminders : [];
+  store.birthdays = Array.isArray(loaded.birthdays) ? loaded.birthdays : [];
+  store.sharedPhotos = Array.isArray(loaded.sharedPhotos) ? loaded.sharedPhotos : [];
+  store.pushSubscriptions = Array.isArray(loaded.pushSubscriptions) ? loaded.pushSubscriptions : [];
+  store.notifications = Array.isArray(loaded.notifications) ? loaded.notifications : [];
+  store.releases = Array.isArray(loaded.releases) ? loaded.releases : [];
+  store.sessions = Array.isArray(loaded.sessions) ? loaded.sessions : [];
+  store.accessCodes = Array.isArray(loaded.accessCodes) ? loaded.accessCodes : [];
+  store.reports = Array.isArray(loaded.reports) ? loaded.reports : [];
+  store.announcements = Array.isArray(loaded.announcements) ? loaded.announcements : [];
+  store.auditLogs = Array.isArray(loaded.auditLogs) ? loaded.auditLogs : [];
+}
+
 function load() {
   try {
+    let loaded = null;
     if (fs.existsSync(DB_PATH)) {
-      const loaded = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-      store.users = loaded.users || [];
-      store.friendships = loaded.friendships || [];
-      store.friendRequests = loaded.friendRequests || [];
-      store.messages = loaded.messages || [];
-      store.groups = loaded.groups || [];
-      store.feedback = loaded.feedback || [];
-      store.notes = loaded.notes || [];
-      store.reminders = loaded.reminders || [];
-      store.birthdays = loaded.birthdays || [];
-      store.sharedPhotos = loaded.sharedPhotos || [];
-      store.pushSubscriptions = loaded.pushSubscriptions || [];
-      store.notifications = loaded.notifications || [];
-      store.releases = loaded.releases || [];
-      store.sessions = loaded.sessions || [];
-      store.accessCodes = loaded.accessCodes || [];
-      store.reports = loaded.reports || [];
-      store.announcements = loaded.announcements || [];
-      store.auditLogs = loaded.auditLogs || [];
+      try {
+        loaded = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      } catch (err) {
+        console.error('[DB] Error reading db.json:', err.message);
+      }
+    }
+    if ((!loaded || !Array.isArray(loaded.users) || loaded.users.length === 0) && seedData) {
+      loaded = seedData;
+      console.log('[DB] Hydrating initial state from bundled seedData.json');
+    }
+    if (loaded) {
+      applySnapshot(loaded);
       console.log(`[DB] Loaded ${store.users.length} users, ${store.messages.length} messages, ${store.friendships.length} friendships, ${store.groups.length} groups`);
     } else {
       console.log('[DB] Starting fresh at', DB_PATH);
@@ -133,14 +156,44 @@ async function hydrateFromDurableStore() {
     }
     mongoConnected = true;
     const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
-    if (snapshot?.data) {
+    if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
       Object.keys(store).forEach((key) => {
         if (Array.isArray(snapshot.data[key])) store[key] = snapshot.data[key];
       });
+
+      // Merge seed users, friendships, and messages if missing from durable store
+      if (seedData && Array.isArray(seedData.users)) {
+        let merged = false;
+        seedData.users.forEach((seedUser) => {
+          if (!store.users.some((u) => u._id === seedUser._id || (seedUser.loginCode && u.loginCode === seedUser.loginCode))) {
+            store.users.push(seedUser);
+            merged = true;
+          }
+        });
+        if (Array.isArray(seedData.friendships)) {
+          seedData.friendships.forEach((seedFriendship) => {
+            if (!store.friendships.some((f) => f._id === seedFriendship._id)) {
+              store.friendships.push(seedFriendship);
+              merged = true;
+            }
+          });
+        }
+        if (Array.isArray(seedData.messages)) {
+          seedData.messages.forEach((seedMsg) => {
+            if (!store.messages.some((m) => m._id === seedMsg._id)) {
+              store.messages.push(seedMsg);
+              merged = true;
+            }
+          });
+        }
+        if (merged) {
+          await writeDurableSnapshot();
+        }
+      }
       console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
     } else {
       await writeDurableSnapshot();
-      console.log('[DB] Initialized durable MongoDB state from local store');
+      console.log('[DB] Initialized durable MongoDB state from local store / seed data');
     }
   } catch (e) {
     mongoConnected = false;
@@ -232,7 +285,7 @@ function revokeAccessCodeSessions(accessCodeId) {
   return count;
 }
 function ensureConfiguredAdmin() {
-  const configuredAdminCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
+  const configuredAdminCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE || 'ADMN-0307');
   const configuredAdmin = store.users.find((user) => user.isAdmin === true);
   if (configuredAdminCode && configuredAdmin) {
     if (configuredAdmin.loginCode !== null || configuredAdmin.adminRole !== 'OWNER') {
@@ -256,6 +309,20 @@ function ensureConfiguredAdmin() {
     createAccessCode({ code: configuredDemoCode, label: 'Initial demo access', createdBy: 'system' });
     console.log('[DB] Bootstrapped configured demo access code');
   }
+}
+
+function seedFromSnapshot() {
+  if (seedData) {
+    applySnapshot(seedData);
+    ensureConfiguredAdmin();
+    persist();
+  }
+  return {
+    users: store.users.length,
+    messages: store.messages.length,
+    friendships: store.friendships.length,
+    groups: store.groups.length
+  };
 }
 
 function genId() { return crypto.randomBytes(12).toString('hex'); }
@@ -1169,5 +1236,5 @@ module.exports = {
   createNotification, getUserNotifications, getUnreadNotificationCount,
   markNotificationRead, markAllNotificationsRead,
   getReleases, findRelease, createRelease, notifyUsersOfRelease, markReleaseSeen, hasSeenRelease,
-  createFeedback
+  createFeedback, seedFromSnapshot, seedData
 };

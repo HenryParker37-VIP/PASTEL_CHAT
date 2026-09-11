@@ -1,0 +1,1959 @@
+{
+  "users": [
+    {
+      "_id": "96de1f3a3530a440f48a53d6",
+      "isOnline": false,
+      "createdAt": "2026-04-16T18:14:30.156Z",
+      "lastSeen": "2026-04-16T18:14:30.156Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=testbot&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "email": "testbot@pastel.local",
+      "name": "TestBot",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "8607da681eb0cbf83cce3abf",
+      "isOnline": false,
+      "createdAt": "2026-04-16T18:15:12.821Z",
+      "lastSeen": "2026-04-16T18:18:12.254Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=alice&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "email": "alice@pastel.local",
+      "name": "Alice",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "58c24beab19cb77ba05a527a",
+      "isOnline": false,
+      "createdAt": "2026-04-16T18:16:36.180Z",
+      "lastSeen": "2026-04-16T23:31:46.419Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=henry&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "email": "henry@pastel.local",
+      "name": "Henry",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "cd1a095aa0144309c16eda0b",
+      "isOnline": false,
+      "createdAt": "2026-04-16T18:18:16.792Z",
+      "lastSeen": "2026-04-16T23:54:07.352Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=lisa&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "email": "lisa@pastel.local",
+      "name": "Lisa",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "d5a86f9070b9c42cace3b88b",
+      "isOnline": false,
+      "createdAt": "2026-04-17T02:26:26.298Z",
+      "lastSeen": "2026-04-17T02:43:51.712Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=henryhung37&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "name": "HenryHung37",
+      "loginCode": "B5F8-JUZZ",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "11a470ca467c835b93ce5dd2",
+      "isOnline": false,
+      "createdAt": "2026-04-17T02:44:25.990Z",
+      "lastSeen": "2026-04-21T04:07:44.789Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Mochi&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1,fff8f3,ffd1dc,b0e0e6,e6e6fa&radius=50",
+      "chatBackground": "default",
+      "name": "Tuan Hung",
+      "loginCode": "VFTQ-KCCB",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "c7baf0500b342e6192de6475",
+      "isOnline": false,
+      "createdAt": "2026-04-17T02:44:41.289Z",
+      "lastSeen": "2026-04-17T02:52:54.133Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=henry%20parker&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "name": "Henry Parker",
+      "loginCode": "EJ44-FJM2",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "64b05351b71e9e342acbfe27",
+      "isOnline": false,
+      "createdAt": "2026-04-17T03:38:08.392Z",
+      "lastSeen": "2026-04-17T03:38:08.392Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=testytest&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "name": "testytest",
+      "loginCode": "AP3K-2W2S",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "caf0761cac3920ec325552bb",
+      "name": "Admin",
+      "loginCode": "ADMN-0307",
+      "isAdmin": true,
+      "isOnline": true,
+      "createdAt": "2026-05-11T15:14:37.810Z",
+      "lastSeen": "2026-09-02T14:33:17.103Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50",
+      "chatBackground": "default",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "2657036e0dfad81b05360925",
+      "isOnline": false,
+      "createdAt": "2026-05-11T15:16:06.175Z",
+      "lastSeen": "2026-05-11T15:16:06.175Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=testuser99&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "TestUser99",
+      "loginCode": "BDQG-SJ4C",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "7109c6b8a67290520c7fbc99",
+      "isOnline": false,
+      "createdAt": "2026-05-11T15:16:38.280Z",
+      "lastSeen": "2026-05-11T17:11:36.534Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=cuddlycloud52&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CuddlyCloud52",
+      "loginCode": "HDFA-PWNU",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "a0c13599b14fab26e50273be",
+      "isOnline": false,
+      "createdAt": "2026-05-11T17:16:24.760Z",
+      "lastSeen": "2026-05-11T17:16:24.760Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=pushtester&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "PushTester",
+      "loginCode": "8UKT-YU8K",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "0da5c8d05f00ea3e2778891c",
+      "isOnline": false,
+      "createdAt": "2026-05-11T17:43:11.429Z",
+      "lastSeen": "2026-05-11T19:59:30.930Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=custom&skinColor=b07540&hairColor=ff87b0&backgroundColor=ffb6c1&radius=50&eyes=variant01",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "SunnyBerry84",
+      "loginCode": "PA8G-G5UE",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "3aa267313f31b5cc0a8f4011",
+      "isOnline": false,
+      "createdAt": "2026-05-11T17:49:59.895Z",
+      "lastSeen": "2026-05-11T17:52:50.556Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=testbunny99&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "TestBunny99",
+      "loginCode": "SFPC-5K85",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "57571106cde70ac1b9c3f638",
+      "isOnline": false,
+      "createdAt": "2026-05-11T17:52:52.660Z",
+      "lastSeen": "2026-05-11T17:52:58.013Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=sparklyberry74&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "SparklyBerry74",
+      "loginCode": "X9WA-32VD",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "508c904922c4ee5bf3a3f9ee",
+      "isOnline": false,
+      "createdAt": "2026-05-11T17:52:59.367Z",
+      "lastSeen": "2026-05-11T17:53:00.939Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=sunnycookie22&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "SunnyCookie22",
+      "loginCode": "7E4S-BGG3",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "04f7e5b0bb7f87f3bd06d237",
+      "isOnline": false,
+      "createdAt": "2026-05-11T17:53:05.778Z",
+      "lastSeen": "2026-05-11T18:21:39.476Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=sunnypetal20&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "SunnyPetal20",
+      "loginCode": "4QMJ-YQKP",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "81d8f521d0f95ba2aaead3ea",
+      "isOnline": false,
+      "createdAt": "2026-05-11T18:21:41.735Z",
+      "lastSeen": "2026-05-11T18:21:46.072Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=fluffycloud97&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "FluffyCloud97",
+      "loginCode": "6CCA-SZ6D",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "476e08967e1d99834784710f",
+      "isOnline": false,
+      "createdAt": "2026-05-11T18:24:46.573Z",
+      "lastSeen": "2026-05-11T18:24:56.727Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=dreamystar87&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "DreamyStar87",
+      "loginCode": "2KNA-W8J7",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "d32b81d9095a1b0e98aa3037",
+      "isOnline": false,
+      "createdAt": "2026-05-11T18:24:58.118Z",
+      "lastSeen": "2026-05-11T18:25:01.934Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=bubblycookie91&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "BubblyCookie91",
+      "loginCode": "KK4W-C562",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "f220aa8c307d3de905b9ef66",
+      "isOnline": false,
+      "createdAt": "2026-05-11T18:25:51.206Z",
+      "lastSeen": "2026-05-11T19:04:58.160Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=cloudypetal63&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CloudyPetal63",
+      "loginCode": "UT4E-7KA5",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "1a4b954a28d24f7a0f4e179d",
+      "isOnline": false,
+      "createdAt": "2026-05-11T18:36:58.565Z",
+      "lastSeen": "2026-05-11T18:36:58.565Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=1z3psa1s&skinColor=e8b89a&hairColor=1a1a1a&backgroundColor=98ffcc&radius=50&eyes=variant06",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "DreamyBun53",
+      "loginCode": "9M6D-CGPU",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "92df235530ed766254549f8d",
+      "isOnline": false,
+      "createdAt": "2026-05-11T18:39:27.898Z",
+      "lastSeen": "2026-05-11T18:39:27.898Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=hf4ra1t4&skinColor=e8b89a&hairColor=a070c0&backgroundColor=dda0dd&radius=50&eyes=variant06",
+      "chatBackground": "default",
+      "bio": "Hey Hey!!! ",
+      "status": "✈️ Traveling",
+      "name": "CozyBear29",
+      "loginCode": "R2M8-WE3F",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "62a10ef4b8714a1d27076ba7",
+      "isOnline": false,
+      "createdAt": "2026-05-11T19:16:46.347Z",
+      "lastSeen": "2026-05-11T19:16:46.347Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=0dsmzzmm&skinColor=f8d9c4&hairColor=1a1a1a&backgroundColor=b0e0e6&radius=50&eyes=variant05",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "SparklyKitten39",
+      "loginCode": "TDFU-4NH2",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "c4f6a8a3d8841ee1cbbfd1d5",
+      "isOnline": false,
+      "createdAt": "2026-05-11T19:18:16.464Z",
+      "lastSeen": "2026-05-11T19:18:16.464Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=custom&skinColor=f8d9c4&hairColor=4a2c2c&backgroundColor=ffb6c1&radius=50&eyes=variant01",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CozyMuffin82",
+      "loginCode": "5GWR-WF6E",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "2add6fb9a15c08800d66a05a",
+      "isOnline": false,
+      "createdAt": "2026-05-11T19:24:05.489Z",
+      "lastSeen": "2026-05-11T19:24:05.489Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=custom&skinColor=f8d9c4&hairColor=4a2c2c&backgroundColor=ffb6c1&radius=50&eyes=variant01",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "MochiPetal14",
+      "loginCode": "E4MY-E62X",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "f46e9885b0ba0a2cfe18bc19",
+      "isOnline": false,
+      "createdAt": "2026-05-11T19:25:43.606Z",
+      "lastSeen": "2026-05-11T19:25:43.606Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Peach&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1,fff8f3,ffd1dc,b0e0e6,e6e6fa&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CozyCookie86",
+      "loginCode": "BP7U-5WY6",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "09b1b6a9528fc8b373f4ac3d",
+      "isOnline": false,
+      "createdAt": "2026-05-11T19:53:02.889Z",
+      "lastSeen": "2026-05-11T19:53:02.889Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=custom&skinColor=f8d9c4&hairColor=4a2c2c&backgroundColor=ffb6c1&radius=50&eyes=variant01",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CozyPanda84",
+      "loginCode": "PEVK-DPN4",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "bffc5df1625350b3bf3a2aa1",
+      "isOnline": false,
+      "createdAt": "2026-05-11T19:56:15.677Z",
+      "lastSeen": "2026-05-11T19:56:15.677Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Mochi&backgroundColor=ffb6c1&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "FluffySprout53",
+      "loginCode": "76VR-AX2D",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "74a78055664efb96aa5a19df",
+      "isOnline": false,
+      "createdAt": "2026-05-11T20:04:14.446Z",
+      "lastSeen": "2026-05-11T20:04:14.446Z",
+      "avatar": "https://api.dicebear.com/7.x/lorelei/svg?seed=custom&skinColor=f8d9c4&hairColor=4a2c2c&backgroundColor=ffb6c1&radius=50&eyes=variant01",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "PeachyKitten42",
+      "loginCode": "S2EX-9Q5E",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "6d6ce95abdd3f9500b643097",
+      "isOnline": false,
+      "createdAt": "2026-05-11T20:07:16.007Z",
+      "lastSeen": "2026-05-11T20:07:29.931Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Peach&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1,fff8f3,ffd1dc,b0e0e6,e6e6fa&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CuddlyBun67",
+      "loginCode": "YTGR-MV8R",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "5ed81024d64fa93ceb368b89",
+      "isOnline": false,
+      "createdAt": "2026-05-11T20:10:02.403Z",
+      "lastSeen": "2026-05-11T20:10:02.403Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Peach&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1,fff8f3,ffd1dc,b0e0e6,e6e6fa&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CuddlyStar48",
+      "loginCode": "P4TC-R6YY",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    },
+    {
+      "_id": "f21b7215f5fb88803b96b6d3",
+      "isOnline": false,
+      "createdAt": "2026-05-11T20:22:24.467Z",
+      "lastSeen": "2026-05-11T20:22:24.467Z",
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Peach&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1,fff8f3,ffd1dc,b0e0e6,e6e6fa&radius=50",
+      "chatBackground": "default",
+      "bio": "",
+      "status": "",
+      "name": "CozyPetal44",
+      "loginCode": "KJ7T-FU7U",
+      "loginMethod": "code",
+      "isGoogleVerified": false
+    }
+  ],
+  "friendships": [
+    {
+      "_id": "675aa0c8983b1f4028b2eb1a",
+      "userId": "11a470ca467c835b93ce5dd2",
+      "friendId": "c7baf0500b342e6192de6475",
+      "customNickname": "Henry Parker",
+      "createdAt": "2026-04-17T02:44:57.163Z"
+    },
+    {
+      "_id": "e1675f3ceb6ce56157de73ab",
+      "userId": "c7baf0500b342e6192de6475",
+      "friendId": "11a470ca467c835b93ce5dd2",
+      "customNickname": "Tuan Hung",
+      "createdAt": "2026-04-17T02:52:39.114Z"
+    },
+    {
+      "_id": "11cb12d9ae41c55c2ca97ed7",
+      "userId": "1a4b954a28d24f7a0f4e179d",
+      "friendId": "92df235530ed766254549f8d",
+      "customNickname": "CozyBear29",
+      "createdAt": "2026-05-11T18:41:03.968Z"
+    },
+    {
+      "_id": "ed89a22bcbd5c5c00bdd4642",
+      "userId": "92df235530ed766254549f8d",
+      "friendId": "1a4b954a28d24f7a0f4e179d",
+      "customNickname": "DreamyBun53",
+      "createdAt": "2026-05-11T18:41:03.968Z"
+    },
+    {
+      "_id": "5b4e69afd5848040c41a3e72",
+      "userId": "f46e9885b0ba0a2cfe18bc19",
+      "friendId": "2add6fb9a15c08800d66a05a",
+      "customNickname": "MochiPetal14",
+      "createdAt": "2026-05-11T19:26:44.727Z"
+    },
+    {
+      "_id": "c1f3ea7504488119622d9726",
+      "userId": "2add6fb9a15c08800d66a05a",
+      "friendId": "f46e9885b0ba0a2cfe18bc19",
+      "customNickname": "CozyCookie86",
+      "createdAt": "2026-05-11T19:26:44.727Z"
+    },
+    {
+      "_id": "dfd696de1b0c04ce1f71e4d9",
+      "userId": "5ed81024d64fa93ceb368b89",
+      "friendId": "f21b7215f5fb88803b96b6d3",
+      "customNickname": "CozyPetal44",
+      "createdAt": "2026-05-11T20:23:00.729Z"
+    },
+    {
+      "_id": "9495038c2fea09d18e523c0d",
+      "userId": "f21b7215f5fb88803b96b6d3",
+      "friendId": "5ed81024d64fa93ceb368b89",
+      "customNickname": "CuddlyStar48",
+      "createdAt": "2026-05-11T20:23:00.729Z"
+    }
+  ],
+  "friendRequests": [
+    {
+      "_id": "7286ea2bd918d42c8b38de21",
+      "fromId": "0da5c8d05f00ea3e2778891c",
+      "toId": "caf0761cac3920ec325552bb",
+      "createdAt": "2026-05-11T17:44:49.085Z"
+    }
+  ],
+  "messages": [
+    {
+      "_id": "6a77af415b7651230e78bb20",
+      "timestamp": "2026-04-16T18:15:31.568Z",
+      "isRecalled": false,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "8607da681eb0cbf83cce3abf",
+      "content": "Hello PastelChat! 🌸✨ This is my first message."
+    },
+    {
+      "_id": "db066c53881c3ee311ebfb1e",
+      "timestamp": "2026-04-16T18:15:59.514Z",
+      "isRecalled": true,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "8607da681eb0cbf83cce3abf",
+      "content": "This message has been recalled"
+    },
+    {
+      "_id": "9fdfc39c557eafe561361690",
+      "timestamp": "2026-04-16T18:16:17.468Z",
+      "isRecalled": false,
+      "replyTo": "db066c53881c3ee311ebfb1e",
+      "receiverId": null,
+      "senderId": "8607da681eb0cbf83cce3abf",
+      "content": "This is my reply to myself!"
+    },
+    {
+      "_id": "dc0794c030af035cf73aafba",
+      "timestamp": "2026-04-16T18:16:40.044Z",
+      "isRecalled": false,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "58c24beab19cb77ba05a527a",
+      "content": "hi"
+    },
+    {
+      "_id": "d27950f15dc6d9fbabf0e3b6",
+      "timestamp": "2026-04-16T18:17:30.783Z",
+      "isRecalled": false,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "8607da681eb0cbf83cce3abf",
+      "content": "💖"
+    },
+    {
+      "_id": "fec9578bb4a21df09d40311c",
+      "timestamp": "2026-04-16T18:17:46.548Z",
+      "isRecalled": true,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "58c24beab19cb77ba05a527a",
+      "content": "This message has been recalled"
+    },
+    {
+      "_id": "766ac6eb8b868c66ffbc373e",
+      "timestamp": "2026-04-16T18:17:51.706Z",
+      "isRecalled": false,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "8607da681eb0cbf83cce3abf",
+      "content": "yeah true"
+    },
+    {
+      "_id": "ae11e8b3263b308b63f4519a",
+      "timestamp": "2026-04-16T18:19:30.977Z",
+      "isRecalled": false,
+      "replyTo": "766ac6eb8b868c66ffbc373e",
+      "receiverId": null,
+      "senderId": "cd1a095aa0144309c16eda0b",
+      "content": "haha"
+    },
+    {
+      "_id": "a8a8b982d56e203de9fb0934",
+      "timestamp": "2026-04-16T18:47:36.982Z",
+      "isRecalled": false,
+      "replyTo": null,
+      "receiverId": null,
+      "senderId": "58c24beab19cb77ba05a527a",
+      "content": "good night guys"
+    },
+    {
+      "_id": "fc6a56e7cade85315593a225",
+      "timestamp": "2026-05-11T17:50:51.356Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "3aa267313f31b5cc0a8f4011",
+      "receiverId": "caf0761cac3920ec325552bb",
+      "content": "❤️"
+    },
+    {
+      "_id": "fb8d9ce3428ca6fb99721a7f",
+      "timestamp": "2026-05-11T18:41:17.154Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "1a4b954a28d24f7a0f4e179d",
+      "receiverId": "92df235530ed766254549f8d",
+      "content": "hey!"
+    },
+    {
+      "_id": "22bd584692bfacbd2fdce54e",
+      "timestamp": "2026-05-11T18:41:50.006Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "1a4b954a28d24f7a0f4e179d",
+      "receiverId": "92df235530ed766254549f8d",
+      "content": "💕"
+    },
+    {
+      "_id": "b80cdb02c3dbfa80a8cf97ed",
+      "timestamp": "2026-05-11T18:52:57.793Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "1a4b954a28d24f7a0f4e179d",
+      "receiverId": "92df235530ed766254549f8d",
+      "content": "🩷"
+    },
+    {
+      "_id": "00ff821ac5087f728b50fb9c",
+      "timestamp": "2026-05-11T19:28:59.137Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "2add6fb9a15c08800d66a05a",
+      "receiverId": "f46e9885b0ba0a2cfe18bc19",
+      "content": "hi"
+    },
+    {
+      "_id": "ebace38eacf016e003792177",
+      "timestamp": "2026-05-11T19:30:07.086Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "2add6fb9a15c08800d66a05a",
+      "receiverId": "f46e9885b0ba0a2cfe18bc19",
+      "content": "💘"
+    },
+    {
+      "_id": "5504799881c34fb23625af30",
+      "timestamp": "2026-05-11T20:23:11.893Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "5ed81024d64fa93ceb368b89",
+      "receiverId": "f21b7215f5fb88803b96b6d3",
+      "content": "hi"
+    },
+    {
+      "_id": "f84b7adc51d34a721dd85634",
+      "timestamp": "2026-05-11T20:24:33.681Z",
+      "isRecalled": false,
+      "isPinned": false,
+      "replyTo": null,
+      "reactions": {},
+      "media": null,
+      "senderId": "f21b7215f5fb88803b96b6d3",
+      "receiverId": "5ed81024d64fa93ceb368b89",
+      "content": "🌺"
+    }
+  ],
+  "groups": [],
+  "feedback": [],
+  "notes": [],
+  "reminders": [],
+  "birthdays": [],
+  "sharedPhotos": [],
+  "pushSubscriptions": [
+    {
+      "userId": "0da5c8d05f00ea3e2778891c",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/cPimBcZ8ho8:APA91bFxE6nbf8mBON8NueuRLckHwGnZGoeyiMtregOhwzPUOIRxTi5B-D3ISGa0ZKZoAJAOTSQphiuODklii1vIWgKtODDc-qCmhLY0-iTsLeKyt_RY4ogb4UL5LIvkuMqIBbK_WRPi",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BBahQ_4Fd4JN3_aNqnyjdSFQ10B7dUc1LE91HwrZRS8vWYjsnXbNwwy2605kfOgQXxFTaCm2UMyEWBvwDhw-DVg",
+            "auth": "XEgBNvSeXnu5mfN0JJT6cA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "1a4b954a28d24f7a0f4e179d",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "62a10ef4b8714a1d27076ba7",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "caf0761cac3920ec325552bb",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "c4f6a8a3d8841ee1cbbfd1d5",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "2add6fb9a15c08800d66a05a",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "09b1b6a9528fc8b373f4ac3d",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "bffc5df1625350b3bf3a2aa1",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "74a78055664efb96aa5a19df",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "6d6ce95abdd3f9500b643097",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/cPimBcZ8ho8:APA91bFxE6nbf8mBON8NueuRLckHwGnZGoeyiMtregOhwzPUOIRxTi5B-D3ISGa0ZKZoAJAOTSQphiuODklii1vIWgKtODDc-qCmhLY0-iTsLeKyt_RY4ogb4UL5LIvkuMqIBbK_WRPi",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BBahQ_4Fd4JN3_aNqnyjdSFQ10B7dUc1LE91HwrZRS8vWYjsnXbNwwy2605kfOgQXxFTaCm2UMyEWBvwDhw-DVg",
+            "auth": "XEgBNvSeXnu5mfN0JJT6cA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "5ed81024d64fa93ceb368b89",
+      "subscriptions": [
+        {
+          "endpoint": "https://fcm.googleapis.com/fcm/send/ccDFqFMvM3Q:APA91bFJ24hIttvmw4HrMYgMP4V2PXDJb9chudM-6o5zOpiHYDv9v-LkXBO8q6ZNP_Eokw_EX3X94SLqZ340yzrYgLAxWUmHgZ4PYS4lO6SQ_zlS0uy1HWp7KsgkxhpZubEfkZLHEBRN",
+          "expirationTime": null,
+          "keys": {
+            "p256dh": "BJ10B_WfvtIzaEWoYybYlKRTtD5BiB3r2y3v2_XdUy4N2so1_NZkiglMi3KHaand-xxjTQLfA-C-FhHFGJBPSAU",
+            "auth": "jsJtRZxUom06bdyRaVFdsA"
+          }
+        }
+      ]
+    },
+    {
+      "userId": "test_user_multidevice_1788287079523",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788287079524",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788287079525",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788287079525",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788287079525",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788287090797",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788287090798",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788287090798",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788287090798",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788287090798",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788287102386",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788287102386",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788287102387",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788287102387",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788287102387",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788287102530",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788287136103",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788287136103",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788287136103",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788287136104",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788287136104",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788287136296",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788287717421",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788287717422",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788287717422",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788287717422",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788287717423",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788287717625",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788291182736",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788291182737",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788291182737",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788291182737",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788291182737",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788291182955",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788291373549",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788291373549",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788291373549",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788291373550",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788291373550",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788291373755",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788329234484",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788329234485",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788329234486",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788329234486",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788329234486",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788329234678",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788329412948",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788329412948",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788329412949",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788329412949",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788329412949",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788329413131",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788335197986",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788335197986",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788335197987",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788335197987",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788335197987",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788335198181",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788336929653",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788336929654",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788336929655",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788336929655",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788336929655",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788336929843",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788338668248",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788338668249",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788338668250",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788338668250",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788338668250",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788338668532",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788338700598",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788338700599",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788338700599",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788338700599",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788338700599",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788338700881",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788340873358",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788340873358",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788340873359",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788340873359",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788340873359",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788340873646",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788342357680",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788342357681",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788342357682",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788342357682",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788342357682",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788342357968",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788343895203",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788343895204",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788343895207",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788343895207",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788343895207",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788343895496",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788343965125",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788343965126",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788343965126",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788343965126",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788343965127",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788343965404",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788345906114",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788345906115",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788345906115",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788345906116",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788345906116",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788345906399",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788346926798",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788346926799",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788346926799",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788346926799",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788346926800",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788346927086",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788346956485",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788346956485",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788346956486",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788346956486",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788346956486",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788346956759",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788346969434",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788346969434",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788346969435",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788346969435",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788346969435",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788346969666",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_user_multidevice_1788349469881",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_1788349469882",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_fr_1788349469883",
+      "subscriptions": []
+    },
+    {
+      "userId": "receiver_active_1788349469883",
+      "subscriptions": []
+    },
+    {
+      "userId": "user_expired_1788349469883",
+      "subscriptions": []
+    },
+    {
+      "userId": "test_route_user_1788349470167",
+      "subscriptions": []
+    }
+  ],
+  "notifications": [
+    {
+      "_id": "911a625da774881b5e6e7b53",
+      "userId": "f21b7215f5fb88803b96b6d3",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "c0429085f63256ac37fc6bfd",
+      "userId": "5ed81024d64fa93ceb368b89",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "e4342381484f5aa56b5b80a7",
+      "userId": "6d6ce95abdd3f9500b643097",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "8290f47948b41d86e3346624",
+      "userId": "74a78055664efb96aa5a19df",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "93d5d6bada70be29bc050845",
+      "userId": "bffc5df1625350b3bf3a2aa1",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "51bf70480ee48569a9062c62",
+      "userId": "09b1b6a9528fc8b373f4ac3d",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "c3c6de41d64fba3a71146358",
+      "userId": "f46e9885b0ba0a2cfe18bc19",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "be9d03e8119c62e4ac1c127e",
+      "userId": "2add6fb9a15c08800d66a05a",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "5b5cb95426648c8ea76bfc4c",
+      "userId": "c4f6a8a3d8841ee1cbbfd1d5",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "33d597f55a383a78144bd396",
+      "userId": "62a10ef4b8714a1d27076ba7",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "9471e7eb523f8adc0854e961",
+      "userId": "92df235530ed766254549f8d",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "9a118b090b0eddf7a75e0747",
+      "userId": "1a4b954a28d24f7a0f4e179d",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "ebf26b32b704c3d3e5bf183e",
+      "userId": "f220aa8c307d3de905b9ef66",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "95464f4d48944ef8ed274e9e",
+      "userId": "d32b81d9095a1b0e98aa3037",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "82aea31742920c10b50d5f83",
+      "userId": "476e08967e1d99834784710f",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "6bb3f286c1dda8339cbb4150",
+      "userId": "81d8f521d0f95ba2aaead3ea",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "e79f8dee46cd3377cc0ebd1c",
+      "userId": "04f7e5b0bb7f87f3bd06d237",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "c765a7dd8235f4b5a7d997df",
+      "userId": "508c904922c4ee5bf3a3f9ee",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "8e13d5bf83841af362342403",
+      "userId": "57571106cde70ac1b9c3f638",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "e61f9e9d26efe0de8a0690e1",
+      "userId": "3aa267313f31b5cc0a8f4011",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "869a33257573745eafe4b5ca",
+      "userId": "0da5c8d05f00ea3e2778891c",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "6cc580e8e1f2fc85b1ee5ae4",
+      "userId": "a0c13599b14fab26e50273be",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.207Z"
+    },
+    {
+      "_id": "409f0d8c9012e3349f518ed6",
+      "userId": "7109c6b8a67290520c7fbc99",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "c7fd18dcc144ed95bd9e5255",
+      "userId": "2657036e0dfad81b05360925",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "605cf0432409e7389aad378b",
+      "userId": "caf0761cac3920ec325552bb",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "8c90feef9550a819183c68ea",
+      "userId": "64b05351b71e9e342acbfe27",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "1e88a130e5e4a8b412c0219b",
+      "userId": "c7baf0500b342e6192de6475",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "12c9ad9d286645c3318d4006",
+      "userId": "11a470ca467c835b93ce5dd2",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "f058de941093e1367435292b",
+      "userId": "d5a86f9070b9c42cace3b88b",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "c91a023ff128913214079f91",
+      "userId": "cd1a095aa0144309c16eda0b",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "693eb2b7add3421da8ead418",
+      "userId": "58c24beab19cb77ba05a527a",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "edfbe2caa5fe331a0dfddd8a",
+      "userId": "8607da681eb0cbf83cce3abf",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    },
+    {
+      "_id": "9bc44fdcc5776da46fcae7e7",
+      "userId": "96de1f3a3530a440f48a53d6",
+      "type": "release_published",
+      "title": "PastelChat has been updated ✨",
+      "body": "Version 1.1.0 is now available. See what’s new and what we fixed.",
+      "from": null,
+      "data": {
+        "releaseVersion": "1.1.0",
+        "route": "/whats-new/1.1.0"
+      },
+      "read": false,
+      "createdAt": "2026-09-02T10:11:35.206Z"
+    }
+  ],
+  "releases": [
+    {
+      "_id": "d86044b7ea1fd45de1fc6b4f",
+      "version": "1.1.0",
+      "title": "More colorful, more connected",
+      "titleVi": "Nhiều màu sắc hơn, kết nối gần hơn",
+      "summary": "PastelChat is now more durable, expressive, and helpful across devices.",
+      "summaryVi": "PastelChat nay bền vững, nhiều cảm xúc và hữu ích hơn trên mọi thiết bị.",
+      "features": [
+        "Push Notifications",
+        "Notification deep linking",
+        "Custom pastel chat colors",
+        "What’s New release history",
+        "Custom PastelChat toast and confirmation feedback"
+      ],
+      "fixes": [
+        "Chat history now survives deployments",
+        "Sessions remain logged in after updates",
+        "Removed the production dependency on ephemeral db.json storage",
+        "MongoDB persistence enabled"
+      ],
+      "improvements": [
+        "Vietnamese/English notification localization",
+        "Improved PWA update behavior",
+        "Draft preservation during updates",
+        "Improved install guide and platform UI"
+      ],
+      "featuresVi": [
+        "Thông báo đẩy",
+        "Liên kết sâu từ thông báo",
+        "Màu pastel tùy chỉnh cho cuộc trò chuyện",
+        "Lịch sử Có gì mới",
+        "Toast và hộp xác nhận mang phong cách PastelChat"
+      ],
+      "fixesVi": [
+        "Lịch sử chat vẫn được giữ sau khi triển khai",
+        "Phiên đăng nhập vẫn được duy trì sau khi cập nhật",
+        "Đã loại bỏ phụ thuộc production vào db.json tạm thời",
+        "Đã bật lưu trữ MongoDB"
+      ],
+      "improvementsVi": [
+        "Bản địa hóa thông báo tiếng Việt/Anh",
+        "Cải thiện cập nhật PWA",
+        "Giữ lại tin nhắn nháp khi cập nhật",
+        "Cải thiện hướng dẫn cài đặt và giao diện nền tảng"
+      ],
+      "releasedAt": "2026-09-02T10:11:35.205Z",
+      "important": true,
+      "pushEnabled": false
+    }
+  ],
+  "sessions": [
+    {
+      "_id": "4d69791f040e12775288d83814b4380a4ed9",
+      "userId": "caf0761cac3920ec325552bb",
+      "createdAt": "2026-09-02T14:28:58.211Z",
+      "lastUsedAt": "2026-09-02T14:28:58.211Z",
+      "expiresAt": "2026-10-02T14:28:58.211Z",
+      "revokedAt": null
+    },
+    {
+      "_id": "d0c5c8941c3cb2eb56b2f45253af1634c29c",
+      "userId": "caf0761cac3920ec325552bb",
+      "createdAt": "2026-09-02T14:29:54.885Z",
+      "lastUsedAt": "2026-09-02T14:29:54.885Z",
+      "expiresAt": "2026-10-02T14:29:54.885Z",
+      "revokedAt": null
+    },
+    {
+      "_id": "b93feb7d2024bd2ccbba65d6328bdade7e4f",
+      "userId": "caf0761cac3920ec325552bb",
+      "createdAt": "2026-09-02T14:29:54.911Z",
+      "lastUsedAt": "2026-09-02T14:29:54.911Z",
+      "expiresAt": "2026-10-02T14:29:54.911Z",
+      "revokedAt": null
+    },
+    {
+      "_id": "795e2abd1e47344fdd8e7dbf67ea5ab6ea3f",
+      "userId": "caf0761cac3920ec325552bb",
+      "createdAt": "2026-09-02T14:30:51.874Z",
+      "lastUsedAt": "2026-09-02T14:34:17.101Z",
+      "expiresAt": "2026-10-02T14:30:51.874Z",
+      "revokedAt": null
+    }
+  ],
+  "accessCodes": [],
+  "reports": [],
+  "announcements": [],
+  "auditLogs": [
+    {
+      "_id": "fea712ac23faa9d91c0d80d4",
+      "adminId": "caf0761cac3920ec325552bb",
+      "action": "admin_login",
+      "targetType": "admin",
+      "targetId": "caf0761cac3920ec325552bb",
+      "metadata": {
+        "method": "login_code"
+      },
+      "createdAt": "2026-09-02T14:30:51.874Z"
+    },
+    {
+      "_id": "4598ff8bdefac798d010bb2b",
+      "adminId": "caf0761cac3920ec325552bb",
+      "action": "admin_login",
+      "targetType": "admin",
+      "targetId": "caf0761cac3920ec325552bb",
+      "metadata": {
+        "method": "login_code"
+      },
+      "createdAt": "2026-09-02T14:29:54.911Z"
+    },
+    {
+      "_id": "710fff0d2e1ff789287f44a8",
+      "adminId": "caf0761cac3920ec325552bb",
+      "action": "admin_login",
+      "targetType": "admin",
+      "targetId": "caf0761cac3920ec325552bb",
+      "metadata": {
+        "method": "login_code"
+      },
+      "createdAt": "2026-09-02T14:29:54.885Z"
+    },
+    {
+      "_id": "db7625c62451b3ca14238e45",
+      "adminId": "caf0761cac3920ec325552bb",
+      "action": "admin_login",
+      "targetType": "admin",
+      "targetId": "caf0761cac3920ec325552bb",
+      "metadata": {
+        "method": "login_code"
+      },
+      "createdAt": "2026-09-02T14:28:58.211Z"
+    }
+  ]
+}

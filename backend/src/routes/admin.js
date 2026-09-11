@@ -8,7 +8,8 @@ const rateLimit = require('../middleware/rateLimit');
 const {
   store, findUserById, getActiveSessionCount, updateUser, revokeUserSessions,
   createAuditLog, updateReport, createAnnouncement, createNotification, getStorageStatus,
-  getReleases, createAccessCode, generateDemoAccessCode, accessCodeView, revokeAccessCode, revokeAccessCodeSessions
+  getReleases, createAccessCode, generateDemoAccessCode, accessCodeView, revokeAccessCode, revokeAccessCodeSessions,
+  seedFromSnapshot
 } = require('../db/store');
 const { sendPushToUser, getPushLanguage } = require('../services/pushService');
 const { appVersion, buildId } = require('../version');
@@ -257,6 +258,12 @@ router.post('/announcements', requireOwner, adminWriteLimit, async (req, res) =>
   createAuditLog({ adminId: req.user._id, action: scope === 'all' ? 'mass_announcement' : 'announcement_created', targetType: 'announcement', targetId: announcement._id, metadata: { scope, recipientCount: recipients.length, notificationsCreated, pushesSent } });
   if (pushEnabled) createAuditLog({ adminId: req.user._id, action: 'important_push', targetType: 'announcement', targetId: announcement._id, metadata: { recipientCount: recipients.length, pushesSent } });
   return res.status(201).json({ announcement, recipientCount: recipients.length, notificationsCreated, pushesSent });
+});
+
+router.post('/import-seed', requireOwner, adminWriteLimit, (req, res) => {
+  const result = seedFromSnapshot();
+  createAuditLog({ adminId: req.user._id, action: 'import_seed', targetType: 'store', targetId: 'primary', metadata: result });
+  return res.json({ ok: true, imported: result });
 });
 
 module.exports = router;

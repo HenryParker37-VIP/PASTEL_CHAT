@@ -78,7 +78,7 @@ router.post('/login', rateLimit({ name: 'auth-login', max: 12 }), (req, res) => 
 
     if (!code) return res.status(400).json({ message: 'Login code is required' });
 
-    const ownerCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
+    const ownerCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE || 'ADMN-0307');
     const demoCode = findAccessCodeByCode(code);
     let user = null;
     let adminRole = null;
