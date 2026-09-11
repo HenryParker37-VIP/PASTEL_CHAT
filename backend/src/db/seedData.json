@@ -1,0 +1,81 @@
+{
+  "users": [
+    {
+      "_id": "user_ai_lyra",
+      "name": "Lyra",
+      "loginCode": null,
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50",
+      "bio": "barista & design student 🍵 film cameras & quiet cafes",
+      "status": "brewing something warm ☕",
+      "chatColor": "#B5EAD7",
+      "isOnline": true,
+      "isAI": true,
+      "aiCharacterId": "char_lyra",
+      "email": "lyra@synthetic.test",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "lastSeen": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "_id": "synthetic_user_alice",
+      "name": "Alice",
+      "loginCode": null,
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=alice&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
+      "bio": "synthetic fixture user",
+      "status": "testing",
+      "chatColor": "#FFB6C1",
+      "isOnline": false,
+      "email": "alice@synthetic.test",
+      "loginMethod": "code",
+      "isGoogleVerified": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "lastSeen": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "_id": "synthetic_user_bob",
+      "name": "Bob",
+      "loginCode": null,
+      "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=bob&backgroundColor=add8e6&radius=50",
+      "bio": "synthetic fixture user",
+      "status": "testing",
+      "chatColor": "#ADD8E6",
+      "isOnline": false,
+      "email": "bob@synthetic.test",
+      "loginMethod": "code",
+      "isGoogleVerified": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "lastSeen": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "friendships": [
+    {
+      "_id": "friendship_synthetic_alice_bob",
+      "userId": "synthetic_user_alice",
+      "friendId": "synthetic_user_bob",
+      "customNickname": "Bob",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "_id": "friendship_synthetic_bob_alice",
+      "userId": "synthetic_user_bob",
+      "friendId": "synthetic_user_alice",
+      "customNickname": "Alice",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "friendRequests": [],
+  "messages": [],
+  "groups": [],
+  "feedback": [],
+  "notes": [],
+  "reminders": [],
+  "birthdays": [],
+  "sharedPhotos": [],
+  "pushSubscriptions": [],
+  "notifications": [],
+  "releases": [],
+  "sessions": [],
+  "accessCodes": [],
+  "reports": [],
+  "announcements": [],
+  "auditLogs": []
+}
