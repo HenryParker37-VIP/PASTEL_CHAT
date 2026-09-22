@@ -1,15 +1,24 @@
 /**
- * Conversation Director for AI Contact Lyra.
- * Coordinates character state, memory retrieval, model routing, and pacing.
+ * Conversation Director for PastelChat AI Characters.
+ * Coordinates CharacterConfig, state, memory retrieval, prompt construction,
+ * model routing, and human-like typing pacing.
  */
 
 const { AIModelRouter } = require('./modelRouter');
+const { CharacterConfig } = require('./characterConfig');
+const { buildCharacterSystemPrompt } = require('./promptBuilder');
 const { sleep, calculateTypingDuration, calculateInitialDelay, getInterBubblePause } = require('./timingEngine');
-const { processMemoryUpdates, updateRelationshipOnInteraction } = require('./memoryEngine');
+const { filterRelevantMemories, processMemoryUpdates, updateRelationshipOnInteraction } = require('./memoryEngine');
 const { notifyInApp } = require('../services/inAppNotifications');
 const { sendMessagePush } = require('../services/pushService');
 
 const modelRouter = new AIModelRouter();
+const conversationQueues = new Map();
+const latestMessageByConversation = new Map();
+
+function getConversationKey(userId, characterUserId = 'user_ai_lyra') {
+  return `${String(userId)}:${String(characterUserId)}`;
+}
 
 /**
  * Updates character activity based on time of day schedule.
@@ -35,49 +44,72 @@ function syncCharacterRhythm(storeDb) {
 }
 
 /**
- * Executes full conversational response from Lyra to a user message.
+ * Clean history to prevent duplicated latest messages and maintain strict turn order.
  */
-async function handleUserMessageToAI({
+function prepareContextHistory(history = [], currentMessageContent = '') {
+  const normCurrent = String(currentMessageContent || '').trim().toLowerCase();
+  const rows = (history || []).slice(-15);
+
+  // If the last item in history is already the current user message, exclude it from history
+  // because it will be passed explicitly as userMessage.
+  if (rows.length > 0) {
+    const last = rows[rows.length - 1];
+    const isUser = !last.isAI && last.senderId !== 'user_ai_lyra' && last.senderId?._id !== 'user_ai_lyra';
+    if (isUser && String(last.content || '').trim().toLowerCase() === normCurrent) {
+      return rows.slice(0, -1);
+    }
+  }
+  return rows;
+}
+
+/**
+ * Executes full conversational response from an AI character to a user message.
+ */
+async function executeLatestUserMessage({
   storeDb,
   io,
   user,
   userMessage,
   recentHistory = [],
-  fastMode = false // true when running in tight synchronous serverless context
+  fastMode = false
 }) {
   const aiUser = storeDb.findUserById('user_ai_lyra');
   if (!aiUser) {
-    console.error('[AI Director] AI user user_ai_lyra not found');
+    console.error('[AI Director] AI user record not found in database');
     return [];
   }
 
-  const character = storeDb.getAICharacter();
+  const key = getConversationKey(user._id, aiUser._id);
+
+  // A newer user message arrived while this turn was queued.
+  if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
+    console.log('[AI Director] Aborting obsolete turn in favor of newer turn');
+    return [];
+  }
+
+  const rawCharacter = storeDb.getAICharacter() || {
+    name: aiUser.name || 'Lyra',
+    age: 22,
+    occupation: 'Barista & design student',
+    bio: aiUser.bio || 'coffee, design, film cameras, quiet cafes'
+  };
+  const characterConfig = new CharacterConfig(rawCharacter);
   const characterState = syncCharacterRhythm(storeDb);
-  const lifeEvents = storeDb.getAILifeEvents();
-  const memories = storeDb.getAIMemories(user._id);
+  const allMemories = storeDb.getAIMemories(user._id);
+  const relevantMemories = filterRelevantMemories(allMemories, userMessage.content, recentHistory);
   const relationship = storeDb.getAIRelationship(user._id);
 
-  const startTime = Date.now();
-
-  // 1. Generate Structured Response Plan
-  const plan = await modelRouter.generate({
-    userMessage: userMessage.content,
-    history: recentHistory,
-    character,
+  // Build high-priority system prompt
+  const systemPrompt = buildCharacterSystemPrompt({
+    characterConfig,
     characterState,
-    lifeEvents,
-    memories,
+    memories: relevantMemories,
     relationship,
-    userName: user.name
+    detectedLanguage: relationship?.active_language || 'auto'
   });
 
-  const llmDuration = Date.now() - startTime;
-
-  // 2. Initial Reading Delay & Typing Start
-  if (!fastMode) {
-    const readingDelay = calculateInitialDelay((userMessage.content || '').length, llmDuration);
-    await sleep(readingDelay);
-  }
+  const cleanHistory = prepareContextHistory(recentHistory, userMessage.content);
+  const startTime = Date.now();
 
   const lyraSender = {
     _id: aiUser._id,
@@ -85,7 +117,6 @@ async function handleUserMessageToAI({
     avatar: aiUser.avatar
   };
 
-  // Broadcast typing indicator to user
   const emitTyping = (isTyping) => {
     if (io && typeof io.emit === 'function') {
       try {
@@ -96,9 +127,39 @@ async function handleUserMessageToAI({
     }
   };
 
-  emitTyping(true);
+  let plan;
+  try {
+    emitTyping(true);
 
-  // 3. Apply Reaction to User Message if planned
+    plan = await modelRouter.generate({
+      userMessage: userMessage.content,
+      history: cleanHistory,
+      systemPrompt,
+      conversationKey: key,
+      memoryCount: relevantMemories.length
+    });
+  } catch (err) {
+    emitTyping(false);
+    console.error(`[AI Director] Real LLM Generation failed: ${err.message}`);
+    // NEVER use a fake conversational fallback! Log and return empty to indicate failure.
+    return [];
+  }
+
+  // Check again if a newer message arrived while the LLM was thinking
+  if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
+    emitTyping(false);
+    return [];
+  }
+
+  const llmDuration = Date.now() - startTime;
+
+  // Initial Reading Delay & Typing Start
+  if (!fastMode) {
+    const readingDelay = calculateInitialDelay((userMessage.content || '').length, llmDuration);
+    await sleep(readingDelay);
+  }
+
+  // Apply Reaction to User Message if planned
   if (plan.reaction && userMessage._id) {
     try {
       const updated = storeDb.toggleReaction(userMessage._id, aiUser._id, plan.reaction);
@@ -108,13 +169,13 @@ async function handleUserMessageToAI({
         io.emit(`msg_reaction:${aiUser._id}:${user._id}`, { messageId: userMessage._id, reactions: populated.reactions });
       }
     } catch (err) {
-      console.warn('[AI Director] Reaction error:', err.message);
+      console.warn('[AI Director] Reaction warning:', err.message);
     }
   }
 
   const createdMessages = [];
 
-  // 4. Deliver Bubbles Sequentially
+  // Deliver Bubbles Sequentially with natural human pacing
   for (let i = 0; i < plan.bubbles.length; i++) {
     const bubbleText = plan.bubbles[i];
 
@@ -123,7 +184,6 @@ async function handleUserMessageToAI({
       await sleep(typingTime);
     }
 
-    // Insert bubble into database (Do not quote-reply unless an explicit intent is needed)
     const msg = storeDb.createMessage({
       senderId: aiUser._id,
       receiverId: user._id,
@@ -134,7 +194,6 @@ async function handleUserMessageToAI({
     const populated = storeDb.populateMessage(msg, user._id);
     createdMessages.push(populated);
 
-    // Emit to sockets
     if (io && typeof io.emit === 'function') {
       try {
         io.emit(`msg:${aiUser._id}:${user._id}`, populated);
@@ -155,31 +214,49 @@ async function handleUserMessageToAI({
       }
     }
 
-    // Web push notification
     sendMessagePush(user._id, lyraSender, populated.content).catch(e =>
-      console.error('[Push] Failed to send AI push notification:', e.message)
+      console.error('[Push] AI push notification error:', e.message)
     );
 
-    // If there is another bubble, pause briefly between bubbles
     if (i < plan.bubbles.length - 1 && !fastMode) {
-      const interPause = getInterBubblePause();
-      await sleep(interPause);
+      await sleep(getInterBubblePause());
     }
   }
 
   emitTyping(false);
 
-  // 5. Post-Turn Updates: Memory & Relationship
-  processMemoryUpdates(storeDb, user._id, 'char_lyra', plan.memories_to_save);
-  updateRelationshipOnInteraction(storeDb, user._id, { sleepIntent: plan.sleep_intent, activeLanguage: plan.detectedLanguage });
-  if (plan.detectedLanguage) {
-    storeDb.updateAICharacterState({ active_language: plan.detectedLanguage });
-  }
+  // Post-Turn Updates: Relationship
+  updateRelationshipOnInteraction(storeDb, user._id);
 
   return createdMessages;
 }
 
+function handleUserMessageToAI(args) {
+  const aiUserId = 'user_ai_lyra';
+  const key = getConversationKey(args.user._id, aiUserId);
+  latestMessageByConversation.set(key, String(args.userMessage._id));
+
+  const previous = conversationQueues.get(key) || Promise.resolve();
+  const task = previous
+    .catch(() => undefined)
+    .then(() => executeLatestUserMessage(args))
+    .finally(() => {
+      if (conversationQueues.get(key) === task) {
+        conversationQueues.delete(key);
+      }
+    });
+
+  conversationQueues.set(key, task);
+  return task;
+}
+
+function getConversationDebug(userId) {
+  return modelRouter.getDebug(getConversationKey(userId));
+}
+
 module.exports = {
   handleUserMessageToAI,
-  syncCharacterRhythm
+  syncCharacterRhythm,
+  getConversationDebug,
+  modelRouter
 };

@@ -1,6 +1,32 @@
 /**
- * Memory and Relationship State Engine for AI Contact Lyra.
+ * Memory and Relationship State Engine for PastelChat AI Characters.
+ * Separates raw conversational history from durable long-term facts.
  */
+
+const DURABLE_FACT_KEYS = new Set(['name', 'nickname', 'job', 'work', 'birthday', 'city', 'location', 'pet', 'interest', 'hobby', 'favorite']);
+
+/**
+ * Filter memories relevant to current context.
+ * Durable core facts (name, key preferences) are kept; situational facts are matched by keywords.
+ */
+function filterRelevantMemories(allMemories = [], currentMessage = '', history = []) {
+  if (!Array.isArray(allMemories) || allMemories.length === 0) return [];
+
+  const contextText = `${currentMessage} ${(history || []).slice(-4).map(m => m.content || '').join(' ')}`.toLowerCase();
+  const contextWords = new Set(contextText.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 2));
+
+  return allMemories.filter(mem => {
+    if (!mem || !mem.key || !mem.value) return false;
+    const key = String(mem.key).toLowerCase();
+
+    // Always include critical durable identity facts (e.g. user name or key traits)
+    if (DURABLE_FACT_KEYS.has(key)) return true;
+
+    // Keyword match on key, subject, or value
+    const memWords = `${key} ${mem.subject || ''} ${mem.value || ''}`.toLowerCase().split(/[\s_]+/);
+    return memWords.some(w => contextWords.has(w));
+  }).slice(-8);
+}
 
 function processMemoryUpdates(storeDb, userId, characterId, memoriesToSave = []) {
   if (!storeDb || !userId || !Array.isArray(memoriesToSave) || memoriesToSave.length === 0) return [];
@@ -42,14 +68,13 @@ function updateRelationshipOnInteraction(storeDb, userId, { sleepIntent = false,
 
   const updates = {
     last_interaction_at: new Date().toISOString(),
-    consecutive_ignored_count: 0 // Reset ignored counter when user interacts
+    consecutive_ignored_count: 0
   };
 
   if (activeLanguage) {
     updates.active_language = activeLanguage;
   }
 
-  // Grow relationship metrics slowly up to 10
   if (currentRel.familiarity < 10) updates.familiarity = Math.min(10, (currentRel.familiarity || 1) + 0.2);
   if (currentRel.comfort < 10) updates.comfort = Math.min(10, (currentRel.comfort || 1) + 0.15);
   if (currentRel.trust < 10) updates.trust = Math.min(10, (currentRel.trust || 1) + 0.1);
@@ -63,6 +88,7 @@ function updateRelationshipOnInteraction(storeDb, userId, { sleepIntent = false,
 }
 
 module.exports = {
+  filterRelevantMemories,
   processMemoryUpdates,
   updateRelationshipOnInteraction
 };
