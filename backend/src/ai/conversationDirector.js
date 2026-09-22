@@ -141,8 +141,8 @@ async function executeLatestUserMessage({
   } catch (err) {
     emitTyping(false);
     console.error(`[AI Director] Real LLM Generation failed: ${err.message}`);
-    // NEVER use a fake conversational fallback! Log and return empty to indicate failure.
-    return [];
+    // Rethrow to caller so diagnostics/logging can capture the real failure
+    throw err;
   }
 
   // Check again if a newer message arrived while the LLM was thinking

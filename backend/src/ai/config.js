@@ -1,6 +1,7 @@
 /**
  * AI Provider Configuration
- * Reads credentials from environment variables (.env in dev, dashboard in production).
+ * Reads credentials strictly from environment variables (.env in dev, dashboard in production).
+ * No embedded fallback credentials.
  */
 
 require('dotenv').config();
@@ -14,4 +15,3 @@ module.exports = {
   NVIDIA_API_KEY,
   OPENROUTER_API_KEY
 };
-

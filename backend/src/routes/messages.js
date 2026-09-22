@@ -161,6 +161,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // If receiver is AI, trigger conversation director and await responses
     let aiReplies = [];
+    let aiError = null;
     if (receiver.isAI) {
       const { handleUserMessageToAI } = require('../ai/conversationDirector');
       const storeDb = require('../db/store');
@@ -176,10 +177,11 @@ router.post('/', authMiddleware, async (req, res) => {
         });
       } catch (e) {
         console.error('[AI] Pipeline execution error:', e.message);
+        aiError = e.message;
       }
     }
 
-    res.status(201).json({ ...populated, aiReplies });
+    res.status(201).json({ ...populated, aiReplies, ...(aiError ? { aiError } : {}) });
   } catch (e) {
     console.error('[Messages] Send error:', e.message);
     res.status(500).json({ message: 'Failed to send' });
