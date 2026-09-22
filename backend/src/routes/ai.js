@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const storeDb = require('../db/store');
-const { syncCharacterRhythm } = require('../ai/conversationDirector');
+const { syncCharacterRhythm, getConversationDebug } = require('../ai/conversationDirector');
 const { triggerProactiveTick } = require('../ai/proactiveEngine');
 
 // GET /ai/status - Public or authenticated info about Lyra's current state
@@ -52,6 +52,37 @@ router.get('/relationship', authMiddleware, (req, res) => {
     res.json(rel);
   } catch (err) {
     res.status(500).json({ message: 'Failed to retrieve relationship' });
+  }
+});
+
+// Structured operational diagnostics only. Never includes prompts, hidden
+// reasoning, credentials, or another user's conversation data.
+router.get('/debug/conversation', authMiddleware, (req, res) => {
+  if (process.env.NODE_ENV === 'production' && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Debug access is restricted' });
+  }
+  try {
+    const relationship = storeDb.getAIRelationship(req.user._id);
+    const state = storeDb.getAICharacterState();
+    const debug = getConversationDebug(req.user._id);
+    res.json({
+      debug,
+      memory_count: storeDb.getAIMemories(req.user._id).length,
+      relationship: relationship ? {
+        familiarity: relationship.familiarity,
+        comfort: relationship.comfort,
+        active_language: relationship.active_language || 'auto',
+        sleep_intent_received: relationship.sleep_intent_received
+      } : null,
+      character_state: state ? {
+        mood: state.mood,
+        current_activity: state.current_activity,
+        busy_level: state.busy_level,
+        sleep_state: state.sleep_state
+      } : null
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to retrieve AI diagnostics' });
   }
 });
 

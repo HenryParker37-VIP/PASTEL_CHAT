@@ -1,13 +1,15 @@
 const assert = require('assert');
 const storeDb = require('../src/db/store');
-const { AIModelRouter, parseStructuredResponse, localHeuristicEngine } = require('../src/ai/modelRouter');
+const { CharacterConfig } = require('../src/ai/characterConfig');
+const { buildCharacterSystemPrompt } = require('../src/ai/promptBuilder');
+const { AIModelRouter, parseAndRecoverResponse } = require('../src/ai/modelRouter');
 const { calculateTypingDuration, calculateInitialDelay, getInterBubblePause } = require('../src/ai/timingEngine');
-const { processMemoryUpdates, updateRelationshipOnInteraction } = require('../src/ai/memoryEngine');
+const { filterRelevantMemories, processMemoryUpdates, updateRelationshipOnInteraction } = require('../src/ai/memoryEngine');
 const { syncCharacterRhythm, handleUserMessageToAI } = require('../src/ai/conversationDirector');
 const { triggerProactiveTick, getProactiveCandidates } = require('../src/ai/proactiveEngine');
 
 async function runAITests() {
-  console.log('🧪 Starting AI Contact (Lyra) Test Suite...');
+  console.log('🧪 Starting AI Character (Lyra) Test Suite...');
 
   // Test 1: Store & Character initialization
   const character = storeDb.getAICharacter();
@@ -41,29 +43,41 @@ async function runAITests() {
   assert(initialDelayCompensated >= 250, 'Initial delay must have minimum threshold');
   console.log('  ✅ Timing engine calculates natural human typing delays and compensates latency');
 
-  // Test 5: Local Heuristic Engine & Structured Response
-  const heuristicGreeting = localHeuristicEngine({
-    userMessage: 'hey Lyra!',
-    character,
-    characterState: state,
-    userName: 'Henry'
-  });
-  assert(Array.isArray(heuristicGreeting.bubbles) && heuristicGreeting.bubbles.length > 0, 'Greeting must yield bubbles');
-  assert(heuristicGreeting.bubbles.length <= 3, 'Greeting must be 1-3 bubbles');
-  console.log('  ✅ Local heuristic engine produces multi-bubble conversational greeting');
+  // Test 5: CharacterConfig normalization & behavioral translation
+  const config = new CharacterConfig(character);
+  assert.strictEqual(config.name, 'Lyra');
+  assert(config.personality.warmth >= 0.7, 'Lyra warmth slider must be set');
+  const personalityNotes = config.getPersonalityGuidelines();
+  const speechNotes = config.getSpeechGuidelines();
+  assert(personalityNotes.length > 0, 'Must produce qualitative personality guidelines');
+  assert(speechNotes.some(n => n.includes('DO NOT end every message with a question')), 'Must enforce natural question policy');
+  console.log('  ✅ Reusable CharacterConfig layer translates sliders into natural guidelines');
 
-  // Test 6: Sleep intent detection
-  const heuristicSleep = localHeuristicEngine({
-    userMessage: 'im going to sleep now, good night!',
-    character,
+  // Test 6: Dynamic Prompt Builder
+  const prompt = buildCharacterSystemPrompt({
+    characterConfig: config,
     characterState: state,
-    userName: 'Henry'
+    memories: [{ key: 'favorite_tea', value: 'matcha' }],
+    detectedLanguage: 'en'
   });
-  assert.strictEqual(heuristicSleep.sleep_intent, true, 'Sleep intent must be detected');
-  assert.strictEqual(heuristicSleep.reaction, '❤️', 'Should react warmly to goodnight');
-  console.log('  ✅ Sleep intent detected and flagged correctly');
+  assert(prompt.includes('Lyra'), 'Prompt must establish identity');
+  assert(prompt.includes('RELEVANCE TO CURRENT MESSAGE COMES FIRST'), 'Prompt must establish highest priority for current message');
+  assert(!prompt.includes('As an AI assistant'), 'Must not speak like an assistant');
+  console.log('  ✅ Prompt builder constructs prioritized character prompt');
 
-  // Test 7: Memory Engine & Persistence
+  // Test 7: Structured Output & Formatting Recovery (NO canned fallbacks)
+  const validJson = '{"bubbles": ["hey!", "how are you?"]}';
+  const parsed1 = parseAndRecoverResponse(validJson);
+  assert.deepStrictEqual(parsed1.bubbles, ['hey!', 'how are you?']);
+
+  // Plain text formatting recovery (must extract model text, never substitute canned response)
+  const plainText = 'oh wow\nthat sounds really interesting!';
+  const parsed2 = parseAndRecoverResponse(plainText);
+  assert.strictEqual(parsed2.bubbles.length, 2);
+  assert.strictEqual(parsed2.bubbles[0], 'oh wow');
+  console.log('  ✅ Structured output parser and formatting recovery verified');
+
+  // Test 8: Memory Engine & Persistence
   const testUserId = 'test_user_' + Date.now();
   const memoryToSave = [
     { type: 'preference', subject: 'beverages', key: 'favorite_tea', value: 'ceremonial matcha' },
@@ -76,13 +90,12 @@ async function runAITests() {
   assert.strictEqual(retrieved.length, 2, 'Should retrieve stored memories');
   assert.strictEqual(retrieved[0].value, 'ceremonial matcha');
 
-  // Test 8: Memory reinforcement
-  storeDb.addAIMemory({ userId: testUserId, key: 'favorite_tea', value: 'ceremonial matcha' });
-  const updatedMemories = storeDb.getAIMemories(testUserId);
-  assert.strictEqual(updatedMemories.length, 2, 'Should not duplicate existing key');
-  console.log('  ✅ Deep memory extraction, storage, and reinforcement verified');
+  // Test relevance filter
+  const relevant = filterRelevantMemories(retrieved, 'do you want tea?', []);
+  assert(relevant.some(m => m.key === 'favorite_tea'), 'Relevance filter must retrieve tea memory for tea query');
+  console.log('  ✅ Memory extraction, storage, and relevance filtering verified');
 
-  // Test 9: Relationship State & Sleep Intent update
+  // Test 9: Relationship State update
   const rel = updateRelationshipOnInteraction(storeDb, testUserId, { sleepIntent: true });
   assert(rel.familiarity > 1, 'Familiarity should increment');
   assert.strictEqual(rel.sleep_intent_received, true, 'Relationship must store sleep intent');
@@ -90,14 +103,13 @@ async function runAITests() {
 
   // Test 10: Proactive messaging & attention budget
   const mockIo = { emit: () => {} };
-  // Target user has sleep intent active, so proactive tick should respect it
   const proactiveResult = await triggerProactiveTick(storeDb, mockIo, testUserId);
   assert(proactiveResult, 'Proactive tick must return result');
   console.log('  ✅ Proactive scheduler attention budget evaluated successfully');
 
-  // Test 11: End-to-end conversation simulation with Lyra
+  // Test 11: End-to-end conversation simulation with real backend routing
   const testUser = { _id: testUserId, name: 'Alice' };
-  const userMsg = { _id: 'msg_test_1', content: 'what are you working on today?' };
+  const userMsg = { _id: 'msg_test_' + Date.now(), content: 'what are you working on today?' };
   const replies = await handleUserMessageToAI({
     storeDb,
     io: mockIo,
@@ -112,7 +124,7 @@ async function runAITests() {
   // Cleanup test user memories
   retrieved.forEach(m => storeDb.deleteAIMemory(m._id, testUserId));
 
-  console.log('\n🎉 All AI Contact (Lyra) tests passed successfully!\n');
+  console.log('\n🎉 All AI Character (Lyra) tests passed successfully!\n');
 }
 
 runAITests().catch(err => {
