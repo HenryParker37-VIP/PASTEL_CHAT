@@ -13,11 +13,18 @@ router.get('/status', (req, res) => {
     const lifeEvents = storeDb.getAILifeEvents();
     const aiUser = storeDb.findUserById('user_ai_lyra');
 
+    const { GEMINI_API_KEY, NVIDIA_API_KEY, OPENROUTER_API_KEY } = require('../ai/config');
+
     res.json({
       character,
       state: characterState,
       activeLifeEvents: (lifeEvents || []).filter(e => e.status === 'active'),
-      user: aiUser ? storeDb.userPublic(aiUser) : null
+      user: aiUser ? storeDb.userPublic(aiUser) : null,
+      providers: {
+        openrouter: !!OPENROUTER_API_KEY,
+        nvidia: !!NVIDIA_API_KEY,
+        gemini: !!GEMINI_API_KEY
+      }
     });
   } catch (err) {
     console.error('[AI Routes] Status error:', err.message);

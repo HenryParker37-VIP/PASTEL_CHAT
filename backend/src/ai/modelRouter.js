@@ -331,13 +331,13 @@ class AIModelRouter {
     const startTime = Date.now();
     const recentOutputs = this.getRecentOutputs(conversationKey);
 
-    // List of providers ordered by priority
+    // List of providers ordered by priority (OpenRouter is fastest at ~1.3s for serverless execution)
     const providerCandidates = [
       {
-        provider: 'gemini',
-        key: this.geminiKey,
-        models: [process.env.GEMINI_MODEL || 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest'],
-        call: (model, prompt) => this.callGemini({ userMessage, history, systemPrompt: prompt, model })
+        provider: 'openrouter',
+        key: this.openrouterKey,
+        models: [process.env.OPENROUTER_MODEL || 'google/gemma-3-27b-it'],
+        call: (model, prompt) => this.callOpenRouter({ userMessage, history, systemPrompt: prompt, model })
       },
       {
         provider: 'nvidia',
@@ -346,10 +346,10 @@ class AIModelRouter {
         call: (model, prompt) => this.callNVIDIA({ userMessage, history, systemPrompt: prompt, model })
       },
       {
-        provider: 'openrouter',
-        key: this.openrouterKey,
-        models: [process.env.OPENROUTER_MODEL || 'google/gemma-3-27b-it'],
-        call: (model, prompt) => this.callOpenRouter({ userMessage, history, systemPrompt: prompt, model })
+        provider: 'gemini',
+        key: this.geminiKey,
+        models: [process.env.GEMINI_MODEL || 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest'],
+        call: (model, prompt) => this.callGemini({ userMessage, history, systemPrompt: prompt, model })
       }
     ];
 
