@@ -2,7 +2,6 @@ const { app } = require('../backend/src/app');
 const storeDb = require('../backend/src/db/store');
 
 let readyPromise = null;
-let lastHydrateAt = 0;
 
 module.exports = async (req, res) => {
   if (!readyPromise) {
@@ -23,10 +22,11 @@ module.exports = async (req, res) => {
     });
   }
 
-  // If connected to MongoDB, periodically re-sync state across lambda instances (e.g. every 2s)
-  const now = Date.now();
-  if (storeDb.isDurableStorageEnabled() && now - lastHydrateAt > 2000) {
-    lastHydrateAt = now;
+  // A Vercel request can land on a different warm lambda than the previous
+  // request. Reload the durable snapshot before every request so a newly
+  // registered user, pending request, or accepted friendship is immediately
+  // visible instead of waiting for a per-instance refresh interval.
+  if (storeDb.isDurableStorageEnabled()) {
     try {
       await storeDb.hydrateFromDurableStore();
     } catch (err) {
