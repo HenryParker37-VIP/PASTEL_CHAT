@@ -1693,13 +1693,18 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     background: transparent;
     color: white;
     text-align: left;
-    cursor: pointer;
+    /* cursor removed from the outer div — children handle interaction */
   }
-  .mobile-chat-peer img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.7); flex: 0 0 auto; }
+  /* Avatar img inside either the picker label or the profile button */
+  .mobile-chat-peer img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.7); flex: 0 0 auto; display: block; }
+  /* Name/status text wrapper produced by the profile <button> inside mobile-chat-peer */
+  .mobile-chat-peer > button { background: none; border: none; padding: 0; margin: 0; color: white; text-align: left; min-width: 0; cursor: pointer; }
   .mobile-chat-peer span { display: grid; min-width: 0; max-width: 84px; align-content: center; gap: 1px; }
   .mobile-chat-peer strong, .mobile-chat-peer small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-chat-peer strong { font-size: 11px; line-height: 1.15; }
   .mobile-chat-peer small { font-size: 10px; line-height: 1.15; }
+  /* Avatar picker label: no visual change, just tappable */
+  .mobile-avatar-picker { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .app-user-menu { display: none; }
   .chat-main { width: 100%; }
   .chat-toolbar {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -8,7 +8,7 @@ import { useConfirm } from './Toast';
 import { useLang } from '../i18n';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
-const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = [] }) => {
+const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = [], onMobileAvatarChange, avatarUploading = false }) => {
   const { user, logout } = useAuth();
   const { onlineUsers, connected } = useSocket();
   const navigate = useNavigate();
@@ -16,6 +16,10 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
   const { confirm } = useConfirm();
   const [now, setNow] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
+  const mobileAvatarInputRef = useRef(null);
+
+  // Whether this chat peer is the Lyra AI (eligible for mobile avatar tap)
+  const isLyraContact = !!(friend?.isAI || friend?._id === 'user_ai_lyra' || friendId === 'user_ai_lyra');
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -103,29 +107,99 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
             </span>
           </div>
           {(friend || friendId === 'user_ai_lyra') && (
-            <button
-              className="mobile-chat-peer"
-              type="button"
-              onClick={onOpenProfile}
-              aria-label={`View ${friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : 'User')}'s profile`}
-            >
-              <img
-                src={resolveCharacterAvatar({
-                  friend,
-                  messages,
-                  friendId: friend?._id || friendId,
-                  userId: user?._id
-                })}
-                alt=""
-                style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }}
-              />
-              <span>
-                <strong>{friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : '')}</strong>
-                <small style={{ color: friend?.status ? '#B08ABD' : (friend?.isOnline || friendId === 'user_ai_lyra' ? '#4fa865' : '#bbb') }}>
-                  {friend?.status || (friend?.isOnline || friendId === 'user_ai_lyra' ? 'Online' : 'Offline')}
-                </small>
-              </span>
-            </button>
+            <div className="mobile-chat-peer">
+              {/* Lyra avatar — tap to change photo on mobile */}
+              {isLyraContact && onMobileAvatarChange ? (
+                <label
+                  className="mobile-avatar-picker"
+                  aria-label={avatarUploading ? 'Uploading avatar…' : 'Tap to change avatar'}
+                  title={avatarUploading ? 'Uploading…' : 'Tap to change avatar'}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                    flexShrink: 0,
+                    /* Extend touch target without changing visual size */
+                    padding: 4,
+                    margin: -4,
+                    borderRadius: '50%',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  <img
+                    src={resolveCharacterAvatar({
+                      friend,
+                      messages,
+                      friendId: friend?._id || friendId,
+                      userId: user?._id
+                    })}
+                    alt=""
+                    style={{
+                      borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)',
+                      opacity: avatarUploading ? 0.55 : 1,
+                      transition: 'opacity 0.2s'
+                    }}
+                  />
+                  {avatarUploading && (
+                    <span style={{
+                      position: 'absolute',
+                      inset: 4,
+                      borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.28)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      color: 'white',
+                      fontWeight: 700,
+                      pointerEvents: 'none'
+                    }}>⏳</span>
+                  )}
+                  <input
+                    ref={mobileAvatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    disabled={avatarUploading}
+                    onChange={onMobileAvatarChange}
+                  />
+                </label>
+              ) : (
+                /* Non-AI peer: avatar taps open profile as before */
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  style={{ background: 'none', border: 'none', padding: 4, margin: -4, borderRadius: '50%', cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}
+                  aria-label="View profile"
+                >
+                  <img
+                    src={resolveCharacterAvatar({
+                      friend,
+                      messages,
+                      friendId: friend?._id || friendId,
+                      userId: user?._id
+                    })}
+                    alt=""
+                    style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }}
+                  />
+                </button>
+              )}
+
+              {/* Name + status — always opens profile */}
+              <button
+                type="button"
+                onClick={onOpenProfile}
+                aria-label={`View ${friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : 'User')}'s profile`}
+                style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', minWidth: 0, textAlign: 'left', color: 'white', WebkitTapHighlightColor: 'transparent' }}
+              >
+                <span>
+                  <strong>{friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : '')}</strong>
+                  <small style={{ color: friend?.status ? '#B08ABD' : (friend?.isOnline || friendId === 'user_ai_lyra' ? '#4fa865' : '#bbb') }}>
+                    {avatarUploading ? 'Updating avatar…' : (friend?.status || (friend?.isOnline || friendId === 'user_ai_lyra' ? 'Online' : 'Offline'))}
+                  </small>
+                </span>
+              </button>
+            </div>
           )}
         </div>
       </div>

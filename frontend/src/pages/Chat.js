@@ -60,6 +60,7 @@ const Chat = () => {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [showAIDebug, setShowAIDebug] = useState(false);
   const [aiActivity, setAiActivity] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const typingRef = useRef({});
   const colorPickerRef = useRef(null);
   const deliveredAckRef = useRef(new Set());
@@ -950,7 +951,10 @@ const Chat = () => {
 
   const handleAIAvatarChange = async (event) => {
     const file = event.target.files?.[0];
+    // Reset input value so the same file can be re-selected if needed
+    if (event.target) event.target.value = '';
     if (!file) return;
+    if (avatarUploading) return; // Prevent duplicate uploads
 
     if (!file.type.startsWith('image/')) {
       push({ title: 'Please select an image file (PNG, JPG, WEBP)', tone: 'danger', icon: 'alert' });
@@ -962,6 +966,7 @@ const Chat = () => {
       return;
     }
 
+    setAvatarUploading(true);
     try {
       const reader = new FileReader();
       reader.onload = async () => {
@@ -982,15 +987,22 @@ const Chat = () => {
                 resolvedAvatar: newAvatar
               });
             }
-            push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
+            push({ title: 'Avatar updated!', tone: 'ok', icon: 'check' });
           }
         } catch (err) {
           push({ title: err.response?.data?.error || 'Failed to update avatar', tone: 'danger', icon: 'alert' });
+        } finally {
+          setAvatarUploading(false);
         }
+      };
+      reader.onerror = () => {
+        push({ title: 'Could not read image file', tone: 'danger', icon: 'alert' });
+        setAvatarUploading(false);
       };
       reader.readAsDataURL(file);
     } catch (e) {
       push({ title: 'Could not read image file', tone: 'danger', icon: 'alert' });
+      setAvatarUploading(false);
     }
   };
 
@@ -1055,6 +1067,8 @@ const Chat = () => {
         friendIdentity={friendIdentity}
         messages={messages}
         onOpenProfile={() => setProfileOpen(v => !v)}
+        onMobileAvatarChange={handleAIAvatarChange}
+        avatarUploading={avatarUploading}
       />
 
       {/* The bounded shell shrinks to visualViewport.height when the keyboard opens. */}
