@@ -159,10 +159,11 @@ router.post('/', authMiddleware, async (req, res) => {
       console.error('[Push] Failed to send message push:', e.message)
     );
 
-    // If receiver is AI, trigger conversation director and await responses
+    // If receiver is AI, trigger conversation director and await responses unless explicitly deferred
     let aiReplies = [];
     let aiError = null;
-    if (receiver.isAI) {
+    const shouldGenerateAiReply = req.body.generateAiReply !== false;
+    if (receiver.isAI && shouldGenerateAiReply) {
       const { handleUserMessageToAI } = require('../ai/conversationDirector');
       const storeDb = require('../db/store');
       const recentHistory = getConversation(req.user._id, receiverId, { limit: 10 });
@@ -185,6 +186,44 @@ router.post('/', authMiddleware, async (req, res) => {
   } catch (e) {
     console.error('[Messages] Send error:', e.message);
     res.status(500).json({ message: 'Failed to send' });
+  }
+});
+
+// POST /messages/ai-reply - Trigger AI reply generation for latest conversation state
+router.post('/ai-reply', authMiddleware, async (req, res) => {
+  try {
+    const { receiverId } = req.body;
+    const receiver = findUserById(receiverId || 'user_ai_lyra');
+    if (!receiver || !receiver.isAI) {
+      return res.status(400).json({ message: 'Target is not an AI contact' });
+    }
+
+    const { handleUserMessageToAI } = require('../ai/conversationDirector');
+    const storeDb = require('../db/store');
+    const recentHistory = getConversation(req.user._id, receiver._id, { limit: 10 });
+    const lastUserMsg = [...recentHistory].reverse().find(
+      (m) => String(m.senderId?._id || m.senderId) === String(req.user._id)
+    );
+
+    if (!lastUserMsg) {
+      return res.json({ aiReplies: [] });
+    }
+
+    const io = req.app.get('io');
+    const populated = populateMessage(lastUserMsg, req.user._id);
+    const aiReplies = await handleUserMessageToAI({
+      storeDb,
+      io,
+      user: req.user,
+      userMessage: populated,
+      recentHistory,
+      fastMode: true
+    });
+
+    res.json({ aiReplies: aiReplies || [] });
+  } catch (err) {
+    console.error('[AI Reply Endpoint] Error:', err.message);
+    res.status(500).json({ message: 'Failed to generate AI reply', error: err.message });
   }
 });
 

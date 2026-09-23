@@ -13,6 +13,16 @@ import AIDebugModal from '../components/AIDebugModal';
 import { useToast } from '../components/Toast';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
+import {
+  calculateHumanCompositionTime,
+  calculateRemainingTypingDelay,
+  calculateInterBubblePause,
+  calculateReactionDelay
+} from '../utils/aiTypingPacing';
+import {
+  TURN_STATE,
+  TURN_CONFIG
+} from '../utils/aiTurnTaking';
 
 const isMobile = () => window.innerWidth <= 700;
 const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 };
@@ -41,6 +51,21 @@ const Chat = () => {
   const readAckRef = useRef(new Set());
   const recoveredPendingRef = useRef(new Set());
   const pendingSendInFlightRef = useRef(new Set());
+  const [aiTyping, setAiTyping] = useState(null);
+  const conversationRevisionRef = useRef(0);
+  const activeAiTurnRef = useRef(null);
+  const reactionTimerRef = useRef(null);
+  const deliveryTimerRef = useRef(null);
+  const aiBubbleIdsInFlightRef = useRef(new Set());
+  const deliverNextAiBubbleRef = useRef();
+  const commitTurnGenerationRef = useRef();
+
+  // Human-like Turn-Taking refs
+  const isUserTypingRef = useRef(false);
+  const userTypingDebounceTimerRef = useRef(null);
+  const userIdleTimerRef = useRef(null);
+  const gracePeriodTimerRef = useRef(null);
+  const microTurnTimerRef = useRef(null);
 
   const chatColorStorageKey = user?._id && friendId ? `pastel-chat-color:${user._id}:${friendId}` : null;
 
@@ -51,6 +76,358 @@ const Chat = () => {
     }
     setChatColor(user?.chatColors?.[friendId] || localStorage.getItem(chatColorStorageKey) || null);
   }, [chatColorStorageKey, friendId, user?.chatColors]);
+
+  const friendIdentity = getPastelColor(chatColor) || getPastelColor(friend?.chatColor) || getPastelIdentity(friendId);
+
+  // Fetch message history — depends on user so it re-runs if auth reloads
+  const fetchMessages = useCallback(async () => {
+    if (!friendId || !user) return;
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/messages/with/${friendId}?limit=80`);
+      setMessages(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
+    } catch (err) {
+      console.error('Failed to load messages:', err.message);
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [friendId, user]);
+
+  const cancelActiveAiTurn = useCallback((reason = 'cancelled') => {
+    if (reactionTimerRef.current) {
+      clearTimeout(reactionTimerRef.current);
+      reactionTimerRef.current = null;
+    }
+    if (deliveryTimerRef.current) {
+      clearTimeout(deliveryTimerRef.current);
+      deliveryTimerRef.current = null;
+    }
+    if (microTurnTimerRef.current) {
+      clearTimeout(microTurnTimerRef.current);
+      microTurnTimerRef.current = null;
+    }
+    if (gracePeriodTimerRef.current) {
+      clearTimeout(gracePeriodTimerRef.current);
+      gracePeriodTimerRef.current = null;
+    }
+    if (userIdleTimerRef.current) {
+      clearTimeout(userIdleTimerRef.current);
+      userIdleTimerRef.current = null;
+    }
+    if (userTypingDebounceTimerRef.current) {
+      clearTimeout(userTypingDebounceTimerRef.current);
+      userTypingDebounceTimerRef.current = null;
+    }
+    if (activeAiTurnRef.current) {
+      activeAiTurnRef.current.deliveryState = 'cancelled';
+      activeAiTurnRef.current.pendingBubbles = [];
+    }
+    setAiTyping(null);
+  }, []);
+
+  const deliverNextAiBubble = useCallback((generationId, revision, elapsedGenerationTime = null, isResumeFinish = false) => {
+    const activeTurn = activeAiTurnRef.current;
+    if (
+      !activeTurn ||
+      activeTurn.generationId !== generationId ||
+      activeTurn.revision !== revision ||
+      activeTurn.deliveryState === 'cancelled'
+    ) {
+      return;
+    }
+
+    if (!Array.isArray(activeTurn.pendingBubbles) || activeTurn.pendingBubbles.length === 0) {
+      activeTurn.deliveryState = TURN_STATE.IDLE;
+      setAiTyping(null);
+      return;
+    }
+
+    const finalizeDelivery = () => {
+      const currentTurn = activeAiTurnRef.current;
+      if (
+        !currentTurn ||
+        currentTurn.generationId !== generationId ||
+        currentTurn.revision !== revision ||
+        currentTurn.deliveryState === 'cancelled'
+      ) {
+        return;
+      }
+
+      const bubbleToDeliver = currentTurn.pendingBubbles.shift();
+      if (!bubbleToDeliver) return;
+
+      currentTurn.deliveredBubbles.push(bubbleToDeliver);
+      aiBubbleIdsInFlightRef.current.delete(bubbleToDeliver._id);
+
+      setMessages((current) => {
+        if (current.some((m) => m._id === bubbleToDeliver._id)) return current;
+        return [...current, bubbleToDeliver];
+      });
+
+      if (currentTurn.pendingBubbles.length > 0) {
+        currentTurn.deliveryState = TURN_STATE.DELIVERING;
+        setAiTyping(null);
+
+        const pauseDuration = calculateInterBubblePause();
+        if (deliveryTimerRef.current) clearTimeout(deliveryTimerRef.current);
+        deliveryTimerRef.current = setTimeout(() => {
+          if (isUserTypingRef.current) {
+            currentTurn.deliveryState = TURN_STATE.PAUSED_FOR_USER;
+            currentTurn.remainingTypingDelay = calculateHumanCompositionTime(currentTurn.pendingBubbles[0]?.content);
+            return;
+          }
+          deliverNextAiBubbleRef.current?.(generationId, revision, null, false);
+        }, pauseDuration);
+      } else {
+        currentTurn.deliveryState = TURN_STATE.IDLE;
+        setAiTyping(null);
+      }
+    };
+
+    if (isResumeFinish) {
+      finalizeDelivery();
+      return;
+    }
+
+    const nextBubble = activeTurn.pendingBubbles[0];
+    const isFirstBubble = activeTurn.deliveredBubbles.length === 0;
+
+    let typingDelay;
+    if (isFirstBubble) {
+      const elapsed = elapsedGenerationTime != null ? elapsedGenerationTime : (Date.now() - activeTurn.startTime);
+      typingDelay = calculateRemainingTypingDelay(nextBubble.content, elapsed);
+    } else {
+      typingDelay = calculateHumanCompositionTime(nextBubble.content);
+    }
+
+    activeTurn.deliveryState = TURN_STATE.TYPING;
+    activeTurn.scheduledDeliveryTime = Date.now() + typingDelay;
+    activeTurn.remainingTypingDelay = typingDelay;
+
+    setAiTyping({
+      isTyping: true,
+      generationId,
+      revision,
+      user: friend,
+      identity: friendIdentity
+    });
+
+    if (deliveryTimerRef.current) clearTimeout(deliveryTimerRef.current);
+    deliveryTimerRef.current = setTimeout(finalizeDelivery, typingDelay);
+  }, [friend, friendIdentity]);
+
+  const resumePausedAiDelivery = useCallback(() => {
+    const turn = activeAiTurnRef.current;
+    if (
+      !turn ||
+      turn.deliveryState !== TURN_STATE.PAUSED_FOR_USER ||
+      !Array.isArray(turn.pendingBubbles) ||
+      turn.pendingBubbles.length === 0
+    ) {
+      return;
+    }
+
+    turn.deliveryState = TURN_STATE.TYPING;
+    const resumeDelay = Math.max(turn.remainingTypingDelay || 0, 380);
+    turn.scheduledDeliveryTime = Date.now() + resumeDelay;
+
+    setAiTyping({
+      isTyping: true,
+      generationId: turn.generationId,
+      revision: turn.revision,
+      user: friend,
+      identity: friendIdentity
+    });
+
+    if (deliveryTimerRef.current) clearTimeout(deliveryTimerRef.current);
+    deliveryTimerRef.current = setTimeout(() => {
+      deliverNextAiBubbleRef.current?.(turn.generationId, turn.revision, null, true);
+    }, resumeDelay);
+  }, [friend, friendIdentity]);
+
+  const commitTurnGeneration = useCallback(async (targetGenId = null, targetRevision = null) => {
+    const turn = activeAiTurnRef.current;
+    if (!turn) return;
+    if (targetGenId && turn.generationId !== targetGenId) return;
+    if (targetRevision && turn.revision !== targetRevision) return;
+    if (turn.deliveryState === 'cancelled') return;
+
+    turn.deliveryState = TURN_STATE.GENERATING;
+
+    // Reaction window before exposing typing indicator
+    const reactionDelay = calculateReactionDelay();
+    if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+    reactionTimerRef.current = setTimeout(() => {
+      const current = activeAiTurnRef.current;
+      if (
+        !current ||
+        current.generationId !== turn.generationId ||
+        current.revision !== turn.revision ||
+        current.deliveryState === 'cancelled'
+      ) {
+        return;
+      }
+      if (isUserTypingRef.current) {
+        current.deliveryState = TURN_STATE.PAUSED_FOR_USER;
+        return;
+      }
+      setAiTyping({
+        isTyping: true,
+        generationId: turn.generationId,
+        revision: turn.revision,
+        user: friend,
+        identity: friendIdentity
+      });
+    }, reactionDelay);
+
+    try {
+      const { data } = await api.post('/messages/ai-reply', {
+        receiverId: friendId
+      });
+
+      const current = activeAiTurnRef.current;
+      if (
+        !current ||
+        current.generationId !== turn.generationId ||
+        current.revision !== turn.revision ||
+        current.deliveryState === 'cancelled'
+      ) {
+        console.log(`[Turn-Taking] Generation ${turn.generationId} superseded or cancelled; discarding.`);
+        return;
+      }
+
+      const elapsed = Date.now() - turn.startTime;
+      if (Array.isArray(data?.aiReplies) && data.aiReplies.length > 0) {
+        data.aiReplies.forEach((b) => aiBubbleIdsInFlightRef.current.add(b._id));
+        current.pendingBubbles = [...data.aiReplies];
+
+        if (isUserTypingRef.current) {
+          current.deliveryState = TURN_STATE.PAUSED_FOR_USER;
+          current.remainingTypingDelay = calculateRemainingTypingDelay(data.aiReplies[0].content, elapsed);
+          setAiTyping(null);
+        } else {
+          deliverNextAiBubble(turn.generationId, turn.revision, elapsed, false);
+        }
+      } else {
+        setAiTyping(null);
+        current.deliveryState = TURN_STATE.IDLE;
+        setTimeout(fetchMessages, 1500);
+        setTimeout(fetchMessages, 3500);
+      }
+    } catch (err) {
+      console.error('[Turn-Taking] AI generation failed:', err.message);
+      if (activeAiTurnRef.current?.generationId === turn.generationId) {
+        cancelActiveAiTurn('error');
+      }
+    }
+  }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friend, friendId, friendIdentity]);
+
+  const handleComposerTyping = useCallback((isTyping) => {
+    isUserTypingRef.current = isTyping;
+
+    if (userTypingDebounceTimerRef.current) {
+      clearTimeout(userTypingDebounceTimerRef.current);
+      userTypingDebounceTimerRef.current = null;
+    }
+
+    const isAiFriend = friendId === 'user_ai_lyra' || friend?.isAI;
+    if (!isAiFriend) return;
+
+    if (isTyping) {
+      if (gracePeriodTimerRef.current) {
+        clearTimeout(gracePeriodTimerRef.current);
+        gracePeriodTimerRef.current = null;
+      }
+
+      userTypingDebounceTimerRef.current = setTimeout(() => {
+        const turn = activeAiTurnRef.current;
+        if (!turn) return;
+
+        if (turn.deliveryState === TURN_STATE.LISTENING) {
+          if (microTurnTimerRef.current) {
+            clearTimeout(microTurnTimerRef.current);
+            microTurnTimerRef.current = null;
+          }
+          return;
+        }
+
+        if (
+          turn.deliveryState === TURN_STATE.TYPING ||
+          turn.deliveryState === 'typing' ||
+          turn.deliveryState === TURN_STATE.DELIVERING ||
+          turn.deliveryState === 'reacting'
+        ) {
+          const now = Date.now();
+          if (turn.scheduledDeliveryTime && turn.scheduledDeliveryTime > now) {
+            turn.remainingTypingDelay = Math.max(0, turn.scheduledDeliveryTime - now);
+          }
+          if (deliveryTimerRef.current) {
+            clearTimeout(deliveryTimerRef.current);
+            deliveryTimerRef.current = null;
+          }
+          if (reactionTimerRef.current) {
+            clearTimeout(reactionTimerRef.current);
+            reactionTimerRef.current = null;
+          }
+
+          turn.deliveryState = TURN_STATE.PAUSED_FOR_USER;
+          setAiTyping(null);
+
+          if (userIdleTimerRef.current) clearTimeout(userIdleTimerRef.current);
+          userIdleTimerRef.current = setTimeout(() => {
+            if (activeAiTurnRef.current?.deliveryState === TURN_STATE.PAUSED_FOR_USER) {
+              resumePausedAiDelivery();
+            }
+          }, TURN_CONFIG.USER_IDLE_TIMEOUT_MS);
+        }
+      }, TURN_CONFIG.USER_TYPING_DEBOUNCE_MS);
+    } else {
+      if (userIdleTimerRef.current) {
+        clearTimeout(userIdleTimerRef.current);
+        userIdleTimerRef.current = null;
+      }
+
+      const turn = activeAiTurnRef.current;
+      if (!turn) return;
+
+      if (turn.deliveryState === TURN_STATE.PAUSED_FOR_USER) {
+        if (gracePeriodTimerRef.current) clearTimeout(gracePeriodTimerRef.current);
+        gracePeriodTimerRef.current = setTimeout(() => {
+          if (activeAiTurnRef.current?.deliveryState === TURN_STATE.PAUSED_FOR_USER) {
+            resumePausedAiDelivery();
+          }
+        }, TURN_CONFIG.USER_STOP_GRACE_PERIOD_MS);
+      } else if (turn.deliveryState === TURN_STATE.LISTENING) {
+        if (microTurnTimerRef.current) clearTimeout(microTurnTimerRef.current);
+        microTurnTimerRef.current = setTimeout(() => {
+          commitTurnGenerationRef.current?.();
+        }, TURN_CONFIG.MICRO_TURN_WINDOW_MS);
+      }
+    }
+  }, [friend, friendId, resumePausedAiDelivery]);
+
+  useEffect(() => {
+    deliverNextAiBubbleRef.current = deliverNextAiBubble;
+  }, [deliverNextAiBubble]);
+
+  useEffect(() => {
+    commitTurnGenerationRef.current = commitTurnGeneration;
+  }, [commitTurnGeneration]);
+
+  // Invalidate turn and clear timers on conversation switch
+  useEffect(() => {
+    cancelActiveAiTurn('conversation_change');
+    aiBubbleIdsInFlightRef.current.clear();
+    isUserTypingRef.current = false;
+  }, [friendId, cancelActiveAiTurn]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      cancelActiveAiTurn('unmount');
+    };
+  }, [cancelActiveAiTurn]);
 
   useEffect(() => {
     if (!colorPickerOpen) return undefined;
@@ -78,20 +455,7 @@ const Chat = () => {
       .catch(() => navigate('/friends'));
   }, [friendId, navigate]);
 
-  // Fetch message history — depends on user so it re-runs if auth reloads
-  const fetchMessages = useCallback(async () => {
-    if (!friendId || !user) return;
-    setLoading(true);
-    try {
-      const { data } = await api.get(`/messages/with/${friendId}?limit=80`);
-      setMessages(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
-    } catch (err) {
-      console.error('Failed to load messages:', err.message);
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [friendId, user]);
+
 
   useEffect(() => {
     fetchMessages();
@@ -109,13 +473,49 @@ const Chat = () => {
   const sendPendingMessage = useCallback(async (pending) => {
     if (pendingSendInFlightRef.current.has(pending.clientMessageId)) return;
     pendingSendInFlightRef.current.add(pending.clientMessageId);
+
+    const isAiFriend = friendId === 'user_ai_lyra' || friend?.isAI;
+    let generationId = null;
+    let turnRevision = null;
+
+    if (isAiFriend) {
+      turnRevision = ++conversationRevisionRef.current;
+      generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+      // Cancel older generation / undelivered response (RECONSIDER)
+      cancelActiveAiTurn('reconsider_new_message');
+
+      const newTurn = {
+        generationId,
+        revision: turnRevision,
+        clientMessageId: pending.clientMessageId,
+        deliveryState: TURN_STATE.LISTENING,
+        startTime: Date.now(),
+        pendingBubbles: [],
+        deliveredBubbles: [],
+        scheduledDeliveryTime: null,
+        remainingTypingDelay: 0
+      };
+      activeAiTurnRef.current = newTurn;
+
+      // Adaptive micro-turn window: wait briefly before committing AI generation
+      if (microTurnTimerRef.current) clearTimeout(microTurnTimerRef.current);
+      microTurnTimerRef.current = setTimeout(() => {
+        if (!isUserTypingRef.current) {
+          commitTurnGenerationRef.current?.(generationId, turnRevision);
+        }
+      }, TURN_CONFIG.MICRO_TURN_WINDOW_MS);
+    }
+
     try {
+      // User message is persisted and broadcast immediately with generateAiReply: false
       const { data } = await api.post('/messages', {
         receiverId: friendId,
         content: pending.content,
         media: pending.media,
         replyTo: pending.replyToId || null,
-        clientMessageId: pending.clientMessageId
+        clientMessageId: pending.clientMessageId,
+        generateAiReply: false
       });
       setMessages((current) => current.map((message) => (
         message.clientMessageId === pending.clientMessageId
@@ -123,19 +523,6 @@ const Chat = () => {
           : message
       )));
       removePendingMessage(user?._id, pending.clientMessageId);
-      if (Array.isArray(data.aiReplies) && data.aiReplies.length > 0) {
-        data.aiReplies.forEach((aiMsg, idx) => {
-          setTimeout(() => {
-            setMessages((current) => {
-              if (current.some((m) => m._id === aiMsg._id)) return current;
-              return [...current, aiMsg];
-            });
-          }, (idx + 1) * 750);
-        });
-      } else if (friendId === 'user_ai_lyra' || friend?.isAI) {
-        setTimeout(fetchMessages, 1500);
-        setTimeout(fetchMessages, 3500);
-      }
     } catch (err) {
       console.error('Send failed:', err.message);
       savePendingMessage(user?._id, { ...pending, deliveryStatus: 'failed' });
@@ -144,11 +531,13 @@ const Chat = () => {
           ? { ...message, deliveryStatus: 'failed' }
           : message
       )));
+      if (isAiFriend && activeAiTurnRef.current?.generationId === generationId) {
+        cancelActiveAiTurn('error');
+      }
     } finally {
       pendingSendInFlightRef.current.delete(pending.clientMessageId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [friendId, user?._id]);
+  }, [cancelActiveAiTurn, friend, friendId, user?._id]);
 
   useEffect(() => {
     if (!connected || !user?._id || !friendId) return;
@@ -177,6 +566,24 @@ const Chat = () => {
 
     const onMessage = (msg) => {
       const senderId = msg.senderId?._id || msg.senderId;
+
+      // If this message belongs to an AI generation that the coordinator is currently pacing,
+      // let the coordinator deliver it at the natural typing moment rather than popping in early
+      if (aiBubbleIdsInFlightRef.current.has(msg._id)) {
+        return;
+      }
+
+      // If an active AI turn is in-flight for this chat, stash ID to let coordinator deliver it naturally
+      if (
+        (senderId === 'user_ai_lyra' || (friend && (friend._id === senderId || friendId === senderId) && friend.isAI)) &&
+        activeAiTurnRef.current &&
+        activeAiTurnRef.current.deliveryState !== 'completed' &&
+        activeAiTurnRef.current.deliveryState !== 'cancelled'
+      ) {
+        aiBubbleIdsInFlightRef.current.add(msg._id);
+        return;
+      }
+
       setMessages((prev) => {
         const existing = prev.find((m) => m._id === msg._id || (
           msg.clientMessageId && m.clientMessageId === msg.clientMessageId
@@ -223,6 +630,10 @@ const Chat = () => {
 
     const onTyping = ({ from, isTyping }) => {
       if (!from || from._id === user._id) return;
+      // Do not let raw server typing pulses override the natural pacing coordinator for AI
+      if (from._id === 'user_ai_lyra' || (friend && (friend._id === from._id || friendId === from._id) && friend.isAI)) {
+        return;
+      }
       clearTimeout(typingRef.current[from._id]);
       if (isTyping) {
         setTypingUsers((prev) => {
@@ -281,7 +692,7 @@ const Chat = () => {
       socket.off('user_updated', onUserUpdated);
       socket.off('connect', fetchMessages);
     };
-  }, [socket, friendId, user, fetchMessages]);
+  }, [socket, friendId, user, fetchMessages, friend]);
 
   // A fetched message has reached this client even if it arrived while the
   // recipient was offline. Delivery is acknowledged once per message.
@@ -470,8 +881,6 @@ const Chat = () => {
   const formatSearchTime = (ts) =>
     new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  const friendIdentity = getPastelColor(chatColor) || getPastelColor(friend?.chatColor) || getPastelIdentity(friendId);
 
   const selectChatColor = (colorId) => {
     setChatColor(colorId);
@@ -888,6 +1297,8 @@ const Chat = () => {
             messages={messages}
             loading={loading}
             typingUsers={typingUsers}
+            aiTyping={aiTyping}
+            friend={friend}
             onReply={(msg) => setReplyingTo(msg)}
             onRecall={handleRecall}
             onReaction={handleReaction}
@@ -903,6 +1314,7 @@ const Chat = () => {
             replyingTo={replyingTo}
             onCancelReply={() => setReplyingTo(null)}
             disabled={loading}
+            onComposerTyping={handleComposerTyping}
           />
         </div>
       </div>
