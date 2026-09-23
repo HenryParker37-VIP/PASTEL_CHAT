@@ -15,7 +15,7 @@ const durableStorageRequired = Boolean(process.env.VERCEL || process.env.SERVERL
 const durableStateSchema = new mongoose.Schema({
   key: { type: String, unique: true, required: true },
   data: { type: mongoose.Schema.Types.Mixed, required: true }
-}, { collection: 'pastelchat_state', timestamps: true });
+}, { collection: 'pastelchat_state', timestamps: true, bufferCommands: false });
 const DurableState = mongoose.models.PastelChatState || mongoose.model('PastelChatState', durableStateSchema);
 let mongoConnected = false;
 let durableSaveTimer;
@@ -440,6 +440,47 @@ async function flushPersist() {
   }
 }
 
+let cachedMongo = global.__pastelMongo;
+if (!cachedMongo) {
+  cachedMongo = global.__pastelMongo = { conn: null, promise: null };
+}
+
+async function connectDurableStore() {
+  if (!MONGODB_URI) return null;
+  if (cachedMongo.conn && mongoose.connection.readyState === 1) {
+    mongoConnected = true;
+    return cachedMongo.conn;
+  }
+  if (!cachedMongo.promise) {
+    console.log('[DB] Connecting to MongoDB Atlas...');
+    cachedMongo.promise = mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 6000,
+      connectTimeoutMS: 8000,
+      maxPoolSize: 5,
+      retryWrites: true
+    }).then((m) => {
+      mongoConnected = true;
+      cachedMongo.conn = m;
+      console.log('[DB] Connected to MongoDB Atlas successfully');
+      return m;
+    }).catch((err) => {
+      mongoConnected = false;
+      cachedMongo.promise = null;
+      console.error('[DB] MongoDB Atlas connection error:', err.message);
+      throw err;
+    });
+  }
+  try {
+    cachedMongo.conn = await cachedMongo.promise;
+    mongoConnected = true;
+    return cachedMongo.conn;
+  } catch (err) {
+    cachedMongo.promise = null;
+    throw err;
+  }
+}
+
 let inFlightHydration = null;
 
 async function hydrateFromDurableStore() {
@@ -460,18 +501,7 @@ async function hydrateFromDurableStore() {
         await writeDurableSnapshot();
       }
 
-      if (mongoose.connection.readyState !== 1) {
-        if (mongoose.connection.readyState === 3) {
-          await mongoose.disconnect().catch(() => {});
-        }
-        await mongoose.connect(MONGODB_URI, {
-          serverSelectionTimeoutMS: 10000,
-          connectTimeoutMS: 10000,
-          maxPoolSize: 5,
-          retryWrites: true
-        });
-      }
-      mongoConnected = true;
+      await connectDurableStore();
 
       const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {

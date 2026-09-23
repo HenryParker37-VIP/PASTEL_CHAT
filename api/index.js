@@ -1,29 +1,30 @@
 const { app } = require('../backend/src/app');
 const storeDb = require('../backend/src/db/store');
 
-module.exports = async (req, res) => {
-  // If durable store is not yet enabled/connected, attempt to connect and hydrate
-  let justHydrated = false;
-  if (!storeDb.isDurableStorageEnabled()) {
-    try {
-      await storeDb.hydrateFromDurableStore();
-      justHydrated = true;
-    } catch (err) {
-      console.error('[Vercel Serverless] Store hydration failed:', err.message);
-    }
-  }
+let readyPromise = null;
 
+module.exports = async (req, res) => {
   const rawUrl = req.url || '';
   const pathOnly = rawUrl.split('?')[0];
   const isHealthOrDiagnostic = pathOnly === '/health' || pathOnly === '/api/version' || req.path === '/health' || req.path === '/api/version';
+
+  // Fast-path health probes immediately so monitoring/readiness never blocks
+  if (isHealthOrDiagnostic) {
+    return app(req, res);
+  }
+
+  // Ensure durable store hydration is resolved before processing application traffic
+  if (!readyPromise) {
+    readyPromise = Promise.resolve(storeDb.ready).catch((err) => {
+      console.error('[Vercel Serverless] Store hydration failed:', err.message);
+    });
+  }
+  await readyPromise;
 
   // Vercel functions have no shared, durable filesystem. Refuse to handle
   // authenticated product traffic until the durable store is ready so that
   // account discovery, requests, and friendships cannot silently disappear.
   if (storeDb.isDurableStorageRequired() && !storeDb.isDurableStorageEnabled()) {
-    if (isHealthOrDiagnostic) {
-      return app(req, res);
-    }
     return res.status(503).json({
       status: 'unavailable',
       storage: 'durable-storage-required',
@@ -31,15 +32,11 @@ module.exports = async (req, res) => {
     });
   }
 
-  if (isHealthOrDiagnostic) {
-    return app(req, res);
-  }
-
   // A Vercel request can land on a different warm lambda than the previous
   // request. Reload the durable snapshot before every request so a newly
   // registered user, pending request, or accepted friendship is immediately
   // visible instead of waiting for a per-instance refresh interval.
-  if (storeDb.isDurableStorageEnabled() && !justHydrated) {
+  if (storeDb.isDurableStorageEnabled()) {
     try {
       await storeDb.hydrateFromDurableStore();
     } catch (err) {
