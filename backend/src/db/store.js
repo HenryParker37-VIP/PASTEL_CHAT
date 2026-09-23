@@ -421,24 +421,34 @@ let cachedDb = global.__pastelMongoDb;
 async function getDurableCollection() {
   if (!MONGODB_URI) return null;
   if (!cachedClient) {
-    try {
-      console.log('[DB] Connecting to MongoDB Atlas with native MongoClient...');
-      const client = new MongoClient(MONGODB_URI, {
-        serverSelectionTimeoutMS: 12000,
-        connectTimeoutMS: 12000,
-        maxPoolSize: 5
-      });
-      await client.connect();
-      cachedClient = global.__pastelMongoClient = client;
-      cachedDb = global.__pastelMongoDb = client.db();
-      mongoConnected = true;
-      console.log('[DB] Connected to MongoDB Atlas successfully (native client)');
-    } catch (err) {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`[DB] Connecting to MongoDB Atlas with native MongoClient (attempt ${attempt})...`);
+        const client = new MongoClient(MONGODB_URI, {
+          serverSelectionTimeoutMS: 8000,
+          connectTimeoutMS: 8000,
+          maxPoolSize: 5
+        });
+        await client.connect();
+        cachedClient = global.__pastelMongoClient = client;
+        cachedDb = global.__pastelMongoDb = client.db();
+        mongoConnected = true;
+        console.log('[DB] Connected to MongoDB Atlas successfully (native client)');
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[DB] MongoDB Atlas connection attempt ${attempt} failed:`, err.message);
+        if (attempt === 1) await new Promise(r => setTimeout(r, 200));
+      }
+    }
+    if (lastErr) {
       mongoConnected = false;
       cachedClient = global.__pastelMongoClient = null;
       cachedDb = global.__pastelMongoDb = null;
-      console.error('[DB] MongoDB Atlas connection error:', err.message);
-      throw err;
+      console.error('[DB] MongoDB Atlas connection error after retries:', lastErr.message);
+      throw lastErr;
     }
   }
   return cachedDb.collection('pastelchat_state');
