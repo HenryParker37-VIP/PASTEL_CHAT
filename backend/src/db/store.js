@@ -552,96 +552,100 @@ async function hydrateFromDurableStore() {
         {
           $project: {
             sizeBytes: { $bsonSize: "$$ROOT" },
-            usersCount: { $size: { $ifNull: ["$data.users", []] } },
-            usersSize: { $bsonSize: { $ifNull: ["$data.users", []] } },
-            messagesCount: { $size: { $ifNull: ["$data.messages", []] } },
-            messagesSize: { $bsonSize: { $ifNull: ["$data.messages", []] } },
-            sharedPhotosCount: { $size: { $ifNull: ["$data.sharedPhotos", []] } },
-            sharedPhotosSize: { $bsonSize: { $ifNull: ["$data.sharedPhotos", []] } },
-            aiCharactersSize: { $bsonSize: { $ifNull: ["$data.aiCharacters", []] } },
             updatedAt: 1
           }
         }
       ]).toArray();
       const meta = sizeAgg[0];
-      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms:`, JSON.stringify(meta));
+      const sizeBytes = meta?.sizeBytes || 0;
+      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms: size = ${sizeBytes} bytes (${Math.round(sizeBytes / 1024)} KB)`);
 
-      const isBloated = (meta?.sizeBytes || 0) > 300000;
+      const isBloated = sizeBytes > 300000;
       let snapshot = null;
       const t1 = Date.now();
 
       if (isBloated) {
-        console.warn(`[DB] Primary snapshot is bloated (${Math.round((meta.sizeBytes || 0) / 1024)} KB). Using exclusion projection to avoid Vercel timeout...`);
-        const projection = {
-          'data.sharedPhotos': 0,
-          'data.messages.media.dataUrl': 0
-        };
-        if ((meta?.usersSize || 0) > 200000) {
-          projection['data.users.avatar'] = 0;
-        }
-        if ((meta?.aiCharactersSize || 0) > 200000) {
-          projection['data.aiCharacters.avatar'] = 0;
-        }
-
-        try {
-          snapshot = await col.findOne({ key: 'primary' }, { projection });
-        } catch (projErr) {
-          console.warn('[DB] Projection find failed, falling back to minimal fields aggregation:', projErr.message);
-          const fallbackAgg = await col.aggregate([
-            { $match: { key: 'primary' } },
-            {
-              $project: {
-                key: 1,
-                updatedAt: 1,
-                'data.users': 1,
-                'data.friendships': 1,
-                'data.friendRequests': 1,
-                'data.aiCharacters': 1,
-                'data.aiCharacterState': 1,
-                'data.aiRelationshipState': 1,
-                'data.aiMemories': 1,
-                'data.aiLifeEvents': 1,
-                'data.groups': 1,
-                'data.notes': 1,
-                'data.reminders': 1,
-                'data.birthdays': 1,
-                'data.notifications': 1,
-                'data.releases': 1,
-                'data.sessions': 1,
-                'data.accessCodes': 1,
-                'data.reports': 1,
-                'data.announcements': 1,
-                'data.auditLogs': 1,
-                'data.messages': {
-                  $map: {
-                    input: { $ifNull: ["$data.messages", []] },
-                    as: "m",
-                    in: {
-                      _id: "$$m._id",
-                      senderId: "$$m.senderId",
-                      receiverId: "$$m.receiverId",
-                      content: "$$m.content",
-                      timestamp: "$$m.timestamp",
-                      clientMessageId: "$$m.clientMessageId",
-                      deliveredAt: "$$m.deliveredAt",
-                      readAt: "$$m.readAt",
-                      replyTo: "$$m.replyTo",
-                      reactions: "$$m.reactions",
-                      media: {
-                        type: "$$m.media.type",
-                        name: "$$m.media.name",
-                        size: "$$m.media.size",
-                        url: "$$m.media.url",
-                        previewUrl: "$$m.media.previewUrl"
+        console.warn(`[DB] Primary snapshot is bloated (${Math.round(sizeBytes / 1024)} KB). Using aggregation projection to eliminate multi-MB transfer delay...`);
+        const slimAgg = await col.aggregate([
+          { $match: { key: 'primary' } },
+          {
+            $project: {
+              key: 1,
+              updatedAt: 1,
+              'data.users': {
+                $map: {
+                  input: { $ifNull: ["$data.users", []] },
+                  as: "u",
+                  in: {
+                    _id: "$$u._id",
+                    name: "$$u.name",
+                    loginCode: "$$u.loginCode",
+                    bio: "$$u.bio",
+                    status: "$$u.status",
+                    chatColor: "$$u.chatColor",
+                    isOnline: "$$u.isOnline",
+                    isAI: "$$u.isAI",
+                    aiCharacterId: "$$u.aiCharacterId",
+                    email: "$$u.email",
+                    createdAt: "$$u.createdAt",
+                    lastSeen: "$$u.lastSeen",
+                    avatar: {
+                      $cond: {
+                        if: { $gt: [{ $strLenCP: { $ifNull: ["$$u.avatar", ""] } }, 10000] },
+                        then: "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50",
+                        else: "$$u.avatar"
                       }
+                    }
+                  }
+                }
+              },
+              'data.friendships': 1,
+              'data.friendRequests': 1,
+              'data.aiCharacters': 1,
+              'data.aiCharacterState': 1,
+              'data.aiRelationshipState': 1,
+              'data.aiMemories': 1,
+              'data.aiLifeEvents': 1,
+              'data.groups': 1,
+              'data.notes': 1,
+              'data.reminders': 1,
+              'data.birthdays': 1,
+              'data.notifications': 1,
+              'data.releases': 1,
+              'data.sessions': 1,
+              'data.accessCodes': 1,
+              'data.reports': 1,
+              'data.announcements': 1,
+              'data.auditLogs': 1,
+              'data.messages': {
+                $map: {
+                  input: { $ifNull: ["$data.messages", []] },
+                  as: "m",
+                  in: {
+                    _id: "$$m._id",
+                    senderId: "$$m.senderId",
+                    receiverId: "$$m.receiverId",
+                    content: "$$m.content",
+                    timestamp: "$$m.timestamp",
+                    clientMessageId: "$$m.clientMessageId",
+                    deliveredAt: "$$m.deliveredAt",
+                    readAt: "$$m.readAt",
+                    replyTo: "$$m.replyTo",
+                    reactions: "$$m.reactions",
+                    media: {
+                      type: "$$m.media.type",
+                      name: "$$m.media.name",
+                      size: "$$m.media.size",
+                      url: "$$m.media.url",
+                      previewUrl: "$$m.media.previewUrl"
                     }
                   }
                 }
               }
             }
-          ]).toArray();
-          snapshot = fallbackAgg[0];
-        }
+          }
+        ]).toArray();
+        snapshot = slimAgg[0];
       } else {
         snapshot = await col.findOne({ key: 'primary' });
       }
