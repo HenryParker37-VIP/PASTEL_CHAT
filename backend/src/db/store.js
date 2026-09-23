@@ -15,7 +15,7 @@ const durableStorageRequired = Boolean(process.env.VERCEL || process.env.SERVERL
 const durableStateSchema = new mongoose.Schema({
   key: { type: String, unique: true, required: true },
   data: { type: mongoose.Schema.Types.Mixed, required: true }
-}, { collection: 'pastelchat_state', timestamps: true, bufferCommands: false });
+}, { collection: 'pastelchat_state', timestamps: true });
 const DurableState = mongoose.models.PastelChatState || mongoose.model('PastelChatState', durableStateSchema);
 let mongoConnected = false;
 let durableSaveTimer;
@@ -412,29 +412,6 @@ function persist() {
   }
 }
 
-let connectPromise = null;
-async function ensureMongoConnected() {
-  if (mongoose.connection.readyState === 1) {
-    mongoConnected = true;
-    return;
-  }
-  if (!connectPromise) {
-    connectPromise = mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      maxPoolSize: 5,
-      bufferCommands: false
-    }).then(() => {
-      mongoConnected = true;
-    }).catch((err) => {
-      mongoConnected = false;
-      connectPromise = null;
-      throw err;
-    });
-  }
-  await connectPromise;
-}
-
 let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
@@ -463,46 +440,50 @@ async function flushPersist() {
   }
 }
 
-let inFlightHydration = null;
-
 async function hydrateFromDurableStore() {
   if (!MONGODB_URI) {
     console.warn('[DB] MONGODB_URI is not configured; using local JSON store.');
     return;
   }
-  if (inFlightHydration) {
-    return inFlightHydration;
-  }
 
-  inFlightHydration = (async () => {
-    try {
-      await ensureMongoConnected();
-
-      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
-
-      if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
-        applySnapshot(snapshot.data);
-        lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
-        ensureAICharacter();
-        console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
-      } else {
-        if (seedData) applySnapshot(seedData);
-        ensureAICharacter();
-        await writeDurableSnapshot();
-        console.log('[DB] Initialized durable MongoDB state from local store / seed data');
+  try {
+    if (mongoose.connection.readyState === 1) {
+      mongoConnected = true;
+    } else if (mongoose.connection.readyState === 2) {
+      await mongoose.connection.asPromise();
+      mongoConnected = true;
+    } else {
+      if (mongoose.connection.readyState === 3) {
+        await mongoose.disconnect().catch(() => {});
       }
-    } catch (e) {
-      mongoConnected = false;
-      if (mongoConfigured) {
-        throw new Error(`Durable MongoDB unavailable; refusing ephemeral fallback: ${e.message}`);
-      }
-      console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 10000,
+        maxPoolSize: 5,
+        retryWrites: true
+      });
+      mongoConnected = true;
     }
-  })().finally(() => {
-    inFlightHydration = null;
-  });
 
-  return inFlightHydration;
+    const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
+    if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
+      applySnapshot(snapshot.data);
+      lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
+      ensureAICharacter();
+      console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
+    } else {
+      if (seedData) applySnapshot(seedData);
+      ensureAICharacter();
+      await writeDurableSnapshot();
+      console.log('[DB] Initialized durable MongoDB state from local store / seed data');
+    }
+  } catch (e) {
+    mongoConnected = false;
+    if (mongoConfigured) {
+      throw new Error(`Durable MongoDB unavailable; refusing ephemeral fallback: ${e.message}`);
+    }
+    console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
+  }
 }
 
 function normalizeAccessCode(value) {
