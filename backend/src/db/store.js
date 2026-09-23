@@ -420,8 +420,8 @@ async function ensureMongoConnected() {
   }
   if (!connectPromise) {
     connectPromise = mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
       maxPoolSize: 5,
       bufferCommands: false
     }).then(() => {
@@ -446,7 +446,7 @@ async function writeDurableSnapshot() {
     ).exec();
     pendingDurableWrite = writeOp;
 
-    const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Write timeout')), 4000));
+    const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Write timeout')), 8000));
     await Promise.race([writeOp, timeoutOp]);
 
     isDirty = false;
@@ -483,7 +483,7 @@ async function hydrateFromDurableStore() {
       await ensureMongoConnected();
 
       const fetchOp = DurableState.findOne({ key: 'primary' }).lean().exec();
-      const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 4000));
+      const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 8000));
       const snapshot = await Promise.race([fetchOp, timeoutOp]);
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
