@@ -402,7 +402,7 @@ function persist() {
 
   if (mongoConnected) {
     if (process.env.VERCEL || process.env.SERVERLESS) {
-      writeDurableSnapshot().catch((e) => console.error('[DB] Durable save error:', e.message));
+      // In serverless, res.end handles flushPersist() cleanly before lambda freezes.
     } else {
       clearTimeout(durableSaveTimer);
       durableSaveTimer = setTimeout(() => {
@@ -470,38 +470,19 @@ async function hydrateFromDurableStore() {
       applySnapshot(snapshot.data);
       lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
 
-      // Merge seed users, friendships, and messages if missing from durable store
+      // Ensure seed demo users exist without blocking hydration with a write
       if (seedData && Array.isArray(seedData.users)) {
-        let merged = false;
         seedData.users.forEach((seedUser) => {
-          if (!store.users.some((u) => u._id === seedUser._id || (seedUser.loginCode && u.loginCode === seedUser.loginCode))) {
+          if (!store.users.some((u) => String(u._id) === String(seedUser._id) || (seedUser.loginCode && u.loginCode === seedUser.loginCode))) {
             store.users.push(seedUser);
-            merged = true;
+            isDirty = true;
           }
         });
-        if (Array.isArray(seedData.friendships)) {
-          seedData.friendships.forEach((seedFriendship) => {
-            if (!store.friendships.some((f) => f._id === seedFriendship._id)) {
-              store.friendships.push(seedFriendship);
-              merged = true;
-            }
-          });
-        }
-        if (Array.isArray(seedData.messages)) {
-          seedData.messages.forEach((seedMsg) => {
-            if (!store.messages.some((m) => m._id === seedMsg._id)) {
-              store.messages.push(seedMsg);
-              merged = true;
-            }
-          });
-        }
-        if (merged) {
-          await writeDurableSnapshot();
-        }
       }
       ensureAICharacter();
       console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
     } else {
+      if (seedData) applySnapshot(seedData);
       ensureAICharacter();
       await writeDurableSnapshot();
       console.log('[DB] Initialized durable MongoDB state from local store / seed data');
@@ -1112,54 +1093,62 @@ function populateMessage(msg, viewerId = null) {
   return populated;
 }
 // Fetch 1-on-1 messages between userA and userB (either direction)
-function getConversation(userA, userB, { limit = 100, before = null } = {}) {
-  let msgs = store.messages.filter(
-    (m) =>
-      (m.senderId === userA && m.receiverId === userB) ||
-      (m.senderId === userB && m.receiverId === userA)
-  );
+function getConversation(userA, userB, { limit = 100, before = null, since = null } = {}) {
+  const uidA = String(userA || '');
+  const uidB = String(userB || '');
+  let msgs = store.messages.filter((m) => {
+    const sId = String(m.senderId?._id || m.senderId || '');
+    const rId = String(m.receiverId?._id || m.receiverId || '');
+    return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
+  });
   if (before) {
     const cutoff = new Date(before);
     msgs = msgs.filter((m) => new Date(m.timestamp) < cutoff);
+  }
+  if (since) {
+    const cutoff = new Date(since);
+    msgs = msgs.filter((m) => new Date(m.timestamp) > cutoff);
   }
   msgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   msgs = msgs.slice(0, limit);
   return msgs.map((message) => populateMessage(message, userA)).reverse();
 }
 function getPinnedMessages(userA, userB) {
+  const uidA = String(userA || '');
+  const uidB = String(userB || '');
   return store.messages
-    .filter(
-      (m) =>
-        m.isPinned &&
-        !m.isRecalled &&
-        ((m.senderId === userA && m.receiverId === userB) ||
-          (m.senderId === userB && m.receiverId === userA))
-    )
-    .map(populateMessage);
+    .filter((m) => {
+      if (!m.isPinned || m.isRecalled) return false;
+      const sId = String(m.senderId?._id || m.senderId || '');
+      const rId = String(m.receiverId?._id || m.receiverId || '');
+      return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
+    })
+    .map((message) => populateMessage(message, userA));
 }
 function searchMessages(userA, userB, query) {
   if (!query || !query.trim()) return [];
   const q = query.trim().toLowerCase();
+  const uidA = String(userA || '');
+  const uidB = String(userB || '');
   return store.messages
-    .filter(
-      (m) =>
-        !m.isRecalled &&
-        m.content.toLowerCase().includes(q) &&
-        ((m.senderId === userA && m.receiverId === userB) ||
-          (m.senderId === userB && m.receiverId === userA))
-    )
+    .filter((m) => {
+      if (m.isRecalled || !m.content || !m.content.toLowerCase().includes(q)) return false;
+      const sId = String(m.senderId?._id || m.senderId || '');
+      const rId = String(m.receiverId?._id || m.receiverId || '');
+      return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
+    })
     .slice(-50)
-    .map(populateMessage);
+    .map((message) => populateMessage(message, userA));
 }
 function clearConversation(userA, userB) {
+  const uidA = String(userA || '');
+  const uidB = String(userB || '');
   const before = store.messages.length;
-  store.messages = store.messages.filter(
-    (m) =>
-      !(
-        (m.senderId === userA && m.receiverId === userB) ||
-        (m.senderId === userB && m.receiverId === userA)
-      )
-  );
+  store.messages = store.messages.filter((m) => {
+    const sId = String(m.senderId?._id || m.senderId || '');
+    const rId = String(m.receiverId?._id || m.receiverId || '');
+    return !((sId === uidA && rId === uidB) || (sId === uidB && rId === uidA));
+  });
   persist();
   return before - store.messages.length;
 }

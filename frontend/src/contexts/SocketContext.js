@@ -48,7 +48,7 @@ export const SocketProvider = ({ children }) => {
     });
     newSocket.on('online_users', (users) => setOnlineUsers(users));
     newSocket.on('connect_error', (err) => {
-      console.error('[Socket] Connection error:', err);
+      console.warn('[Socket] Realtime socket unavailable (using serverless sync):', err?.message || err);
     });
 
     socketRef.current = newSocket;

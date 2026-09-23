@@ -32,10 +32,11 @@ function canAccessConversation(userId, friendId) {
 router.get('/with/:friendId', authMiddleware, (req, res) => {
   try {
     if (!canAccessConversation(req.user._id, req.params.friendId)) return res.status(403).json({ message: 'Conversation access denied' });
-    const { limit = 100, before } = req.query;
+    const { limit = 100, before, since } = req.query;
     const msgs = getConversation(req.user._id, req.params.friendId, {
       limit: Math.min(Number(limit) || 100, 500),
-      before: before || null
+      before: before || null,
+      since: since || null
     });
     res.json(msgs);
   } catch (e) {
