@@ -498,10 +498,18 @@ async function hydrateFromDurableStore() {
       const col = await getDurableCollection();
       if (!col) return;
 
-      console.log('[DB] Querying primary snapshot from native collection...');
+      console.log('[DB] Checking primary snapshot metadata and size...');
       const t0 = Date.now();
-      const snapshot = await col.findOne({ key: 'primary' }, { maxTimeMS: 6000 });
-      console.log(`[DB] Primary snapshot returned in ${Date.now() - t0}ms:`, snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
+      const sizeAgg = await col.aggregate([
+        { $match: { key: 'primary' } },
+        { $project: { sizeBytes: { $bsonSize: "$$ROOT" }, updatedAt: 1 } }
+      ]).toArray();
+      const meta = sizeAgg[0];
+      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms: size = ${meta?.sizeBytes || 0} bytes (${Math.round((meta?.sizeBytes || 0) / 1024)} KB)`);
+
+      const t1 = Date.now();
+      const snapshot = await col.findOne({ key: 'primary' });
+      console.log(`[DB] Primary snapshot payload returned in ${Date.now() - t1}ms:`, snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
         applySnapshot(snapshot.data);
