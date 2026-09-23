@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -16,7 +16,6 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
   const { confirm } = useConfirm();
   const [now, setNow] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
-  const mobileAvatarInputRef = useRef(null);
 
   // Whether this chat peer is the Lyra AI (eligible for mobile avatar tap)
   const isLyraContact = !!(friend?.isAI || friend?._id === 'user_ai_lyra' || friendId === 'user_ai_lyra');
@@ -108,23 +107,19 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
           </div>
           {(friend || friendId === 'user_ai_lyra') && (
             <div className="mobile-chat-peer">
-              {/* Lyra avatar — tap to change photo on mobile */}
+              {/* Lyra avatar — transparent <input type="file"> sits directly over the
+                  image so the user's tap hits the input itself. This is the only
+                  approach that reliably opens the native picker on iOS Safari:
+                  - No label indirection (label+display:none is blocked by iOS)
+                  - No programmatic .click() (blocked in async callbacks on iOS)
+                  - No z-index interference (input is in the same stacking context
+                    as the avatar, positioned absolute inside a relative wrapper
+                    that has explicit pointer-events:auto and z-index above toolbar)
+              */}
               {isLyraContact && onMobileAvatarChange ? (
-                <label
-                  className="mobile-avatar-picker"
-                  aria-label={avatarUploading ? 'Uploading avatar…' : 'Tap to change avatar'}
-                  title={avatarUploading ? 'Uploading…' : 'Tap to change avatar'}
-                  style={{
-                    position: 'relative',
-                    display: 'flex',
-                    cursor: avatarUploading ? 'not-allowed' : 'pointer',
-                    flexShrink: 0,
-                    /* Extend touch target without changing visual size */
-                    padding: 4,
-                    margin: -4,
-                    borderRadius: '50%',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
+                <div
+                  className="mobile-avatar-tap-wrap"
+                  aria-label={avatarUploading ? 'Uploading…' : 'Tap to change Lyra\'s photo'}
                 >
                   <img
                     src={resolveCharacterAvatar({
@@ -136,40 +131,61 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
                     alt=""
                     style={{
                       borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)',
-                      opacity: avatarUploading ? 0.55 : 1,
-                      transition: 'opacity 0.2s'
+                      opacity: avatarUploading ? 0.5 : 1,
+                      transition: 'opacity 0.2s',
+                      display: 'block'
                     }}
                   />
+                  {/* Uploading spinner overlay */}
                   {avatarUploading && (
                     <span style={{
                       position: 'absolute',
-                      inset: 4,
+                      inset: 0,
                       borderRadius: '50%',
-                      background: 'rgba(0,0,0,0.28)',
+                      background: 'rgba(0,0,0,0.3)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 10,
+                      fontSize: 9,
                       color: 'white',
                       fontWeight: 700,
                       pointerEvents: 'none'
                     }}>⏳</span>
                   )}
-                  <input
-                    ref={mobileAvatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    disabled={avatarUploading}
-                    onChange={onMobileAvatarChange}
-                  />
-                </label>
+                  {/* The input IS the touch target — positioned to cover the whole
+                      wrapper. opacity:0 keeps it invisible while remaining in the
+                      accessibility tree and receiving native touch events. */}
+                  {!avatarUploading && (
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={onMobileAvatarChange}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer',
+                        /* Must NOT be display:none — iOS won't open picker */
+                        margin: 0,
+                        padding: 0,
+                        border: 'none'
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
-                /* Non-AI peer: avatar taps open profile as before */
+                /* Non-AI peer: avatar taps open profile */
                 <button
                   type="button"
                   onClick={onOpenProfile}
-                  style={{ background: 'none', border: 'none', padding: 4, margin: -4, borderRadius: '50%', cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}
+                  style={{
+                    background: 'none', border: 'none',
+                    padding: 0, margin: 0, flexShrink: 0,
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
                   aria-label="View profile"
                 >
                   <img
@@ -180,7 +196,7 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
                       userId: user?._id
                     })}
                     alt=""
-                    style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }}
+                    style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)', display: 'block' }}
                   />
                 </button>
               )}
@@ -190,12 +206,20 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
                 type="button"
                 onClick={onOpenProfile}
                 aria-label={`View ${friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : 'User')}'s profile`}
-                style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', minWidth: 0, textAlign: 'left', color: 'white', WebkitTapHighlightColor: 'transparent' }}
+                style={{
+                  background: 'none', border: 'none',
+                  padding: 0, margin: 0,
+                  cursor: 'pointer', minWidth: 0,
+                  textAlign: 'left', color: 'white',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
               >
                 <span>
                   <strong>{friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : '')}</strong>
                   <small style={{ color: friend?.status ? '#B08ABD' : (friend?.isOnline || friendId === 'user_ai_lyra' ? '#4fa865' : '#bbb') }}>
-                    {avatarUploading ? 'Updating avatar…' : (friend?.status || (friend?.isOnline || friendId === 'user_ai_lyra' ? 'Online' : 'Offline'))}
+                    {avatarUploading
+                      ? 'Updating…'
+                      : (friend?.status || (friend?.isOnline || friendId === 'user_ai_lyra' ? 'Online' : 'Offline'))}
                   </small>
                 </span>
               </button>

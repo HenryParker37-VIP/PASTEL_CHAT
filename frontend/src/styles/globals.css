@@ -1703,8 +1703,19 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .mobile-chat-peer strong, .mobile-chat-peer small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-chat-peer strong { font-size: 11px; line-height: 1.15; }
   .mobile-chat-peer small { font-size: 10px; line-height: 1.15; }
-  /* Avatar picker label: no visual change, just tappable */
-  .mobile-avatar-picker { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  /* Avatar tap wrapper: sits above the chat-toolbar (z-index 20) so taps reach
+     the transparent <input type="file"> positioned inside it.
+     pointer-events:auto ensures no parent's pointer-events:none blocks it. */
+  .mobile-avatar-tap-wrap {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    border-radius: 50%;
+    z-index: 30;        /* above .chat-toolbar z-index:20 */
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
   .app-user-menu { display: none; }
   .chat-main { width: 100%; }
   .chat-toolbar {
