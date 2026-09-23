@@ -42,7 +42,7 @@ function sameSecret(left, right) {
 }
 
 // POST /auth/register - Create new user, return unique login code + JWT
-router.post('/register', rateLimit({ name: 'auth-register', max: 10 }), (req, res) => {
+router.post('/register', rateLimit({ name: 'auth-register', max: 60 }), (req, res) => {
   try {
     const { name } = req.body;
     const trimmed = (name || '').trim();
@@ -66,7 +66,7 @@ router.post('/register', rateLimit({ name: 'auth-register', max: 10 }), (req, re
 });
 
 // POST /auth/login - Login with code
-router.post('/login', rateLimit({ name: 'auth-login', max: 12 }), (req, res) => {
+router.post('/login', rateLimit({ name: 'auth-login', max: 60 }), (req, res) => {
   try {
     const { loginCode } = req.body;
     let code = (loginCode || '').trim().toUpperCase();

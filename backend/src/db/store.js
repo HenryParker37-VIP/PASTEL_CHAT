@@ -690,7 +690,7 @@ function createSession({ _id, userId, expiresAt, adminRole = null, accessCodeId 
 function findSession(id) { return store.sessions.find((session) => session._id === id); }
 function touchSession(id) {
   const session = findSession(id);
-  if (session) { session.lastUsedAt = new Date().toISOString(); persist(); }
+  if (session) { session.lastUsedAt = new Date().toISOString(); }
   return session;
 }
 function revokeSession(id) {
