@@ -120,14 +120,16 @@ const Chat = () => {
   const friendIdentity = getPastelColor(chatColor) || getPastelColor(friend?.chatColor) || getPastelIdentity(friendId);
 
   // Fetch message history — depends on user so it re-runs if auth reloads
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (isBackgroundSync = false) => {
     if (!friendId || !user?._id) return;
-    setMessages((current) => {
-      if (!current || current.length === 0) {
-        setLoading(true);
-      }
-      return current;
-    });
+    if (!isBackgroundSync) {
+      setMessages((current) => {
+        if (!current || current.length === 0) {
+          setLoading(true);
+        }
+        return current;
+      });
+    }
     try {
       const { data } = await api.get(`/messages/with/${friendId}?limit=80`);
       const serverMsgs = Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []);
@@ -139,10 +141,14 @@ const Chat = () => {
         return merged;
       });
     } catch (err) {
-      console.error('Failed to load messages:', err.message);
+      if (!isBackgroundSync) {
+        console.error('Failed to load messages:', err.message);
+      }
       // Retain existing cached messages on failure — never wipe to []
     } finally {
-      setLoading(false);
+      if (!isBackgroundSync) {
+        setLoading(false);
+      }
     }
   }, [friendId, user?._id]);
 
@@ -562,6 +568,45 @@ const Chat = () => {
     fetchMessages();
   }, [fetchMessages]);
 
+  // Adaptive real-time synchronization loop for Vercel Serverless & WebSocket fallback
+  useEffect(() => {
+    if (!friendId || !user?._id) return;
+
+    let syncTimer = null;
+    let isDisposed = false;
+
+    const performSync = async () => {
+      if (isDisposed) return;
+      try {
+        await fetchMessages(true);
+      } catch {}
+      if (!isDisposed) {
+        const interval = document.visibilityState === 'visible' ? 1500 : 15000;
+        syncTimer = setTimeout(performSync, interval);
+      }
+    };
+
+    // Recurring sync interval: 1.5s when tab is visible, 15s in background
+    syncTimer = setTimeout(performSync, 1500);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        clearTimeout(syncTimer);
+        performSync();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    return () => {
+      isDisposed = true;
+      clearTimeout(syncTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
+  }, [fetchMessages, friendId, user?._id]);
+
   useEffect(() => {
     if (friendId === 'user_ai_lyra' || friend?.isAI) {
       api.get('/ai/status')
@@ -627,6 +672,9 @@ const Chat = () => {
           : message
       )));
       removePendingMessage(user?._id, pending.clientMessageId);
+      setTimeout(() => fetchMessages(true), 400);
+      setTimeout(() => fetchMessages(true), 1200);
+      setTimeout(() => fetchMessages(true), 2500);
     } catch (err) {
       console.error('Send failed:', err.message);
       savePendingMessage(user?._id, { ...pending, deliveryStatus: 'failed' });
@@ -641,7 +689,7 @@ const Chat = () => {
     } finally {
       pendingSendInFlightRef.current.delete(pending.clientMessageId);
     }
-  }, [cancelActiveAiTurn, friend, friendId, user?._id]);
+  }, [cancelActiveAiTurn, fetchMessages, friend, friendId, user?._id]);
 
   useEffect(() => {
     if (!connected || !user?._id || !friendId) return;
@@ -813,12 +861,16 @@ const Chat = () => {
   // A fetched message has reached this client even if it arrived while the
   // recipient was offline. Delivery is acknowledged once per message.
   useEffect(() => {
-    if (!socket || !user || document.visibilityState !== 'visible') return;
+    if (!user || document.visibilityState !== 'visible') return;
     messages.forEach((message) => {
       const senderId = message.senderId?._id || message.senderId;
       if (senderId === user._id || deliveredAckRef.current.has(message._id)) return;
       deliveredAckRef.current.add(message._id);
-      socket.emit('message:delivered', { messageId: message._id });
+      if (socket && socket.connected) {
+        socket.emit('message:delivered', { messageId: message._id });
+      } else {
+        api.post(`/messages/${message._id}/delivered`).catch(() => {});
+      }
     });
   }, [messages, socket, user]);
 
@@ -928,9 +980,13 @@ const Chat = () => {
 
   const handleMessageVisible = useCallback((message) => {
     const senderId = message.senderId?._id || message.senderId;
-    if (!socket || !user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
+    if (!user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
     readAckRef.current.add(message._id);
-    socket.emit('message:read', { messageId: message._id });
+    if (socket && socket.connected) {
+      socket.emit('message:read', { messageId: message._id });
+    } else {
+      api.post(`/messages/${message._id}/read`).catch(() => {});
+    }
   }, [socket, user]);
 
   const handleRecall = (messageId) => {
