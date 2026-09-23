@@ -7,6 +7,7 @@ import PastelIcon from './PastelIcon';
 import { useConfirm, useToast } from './Toast';
 import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity } from '../utils/pastelIdentity';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -38,8 +39,16 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
 
   const isOwn = (message.senderId?._id || message.senderId) === user?._id;
   const sender = typeof message.senderId === 'object' ? message.senderId : null;
+  const senderId = message.senderId?._id || message.senderId;
   const senderName = isOwn ? 'You' : (peer?.customNickname || sender?.name || 'Friend');
-  const senderAvatar = sender?.avatar;
+  const isPeerMessage = !isOwn && peer && (String(peer._id) === String(senderId) || (peer.isAI && String(senderId) === 'user_ai_lyra'));
+  const senderAvatar = isOwn
+    ? user?.avatar
+    : resolveCharacterAvatar({
+        friend: isPeerMessage ? peer : null,
+        sender,
+        friendId: senderId
+      });
   const senderIdentity = getPastelIdentity(sender?._id || message.senderId);
   const bubbleIdentity = isOwn
     ? (conversationIdentity || getPastelColor(user?.chatColor) || getPastelIdentity(user?._id))
@@ -109,7 +118,7 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
             <img
               src={senderAvatar}
               alt={senderName}
-              style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${senderIdentity.accent}` }}
+              style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${senderIdentity.accent}`, objectFit: 'cover' }}
             />
           ) : (
             <div style={{

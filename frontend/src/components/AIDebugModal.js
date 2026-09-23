@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import PastelIcon from './PastelIcon';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const AIDebugModal = ({ onClose, onRefreshChat }) => {
   const [loading, setLoading] = useState(true);
@@ -137,7 +138,7 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ position: 'relative' }}>
               <img
-                src={aiStatus?.user?.avatar || "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50"}
+                src={resolveCharacterAvatar({ friend: aiStatus?.user, friendId: 'user_ai_lyra' })}
                 alt="Lyra"
                 style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid #b5ead7', objectFit: 'cover', display: 'block' }}
               />

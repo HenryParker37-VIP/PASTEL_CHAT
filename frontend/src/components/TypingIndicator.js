@@ -1,7 +1,8 @@
 import React from 'react';
 import { getPastelIdentity } from '../utils/pastelIdentity';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
-const TypingIndicator = ({ typingUsers = [], aiTyping = null, friend = null, conversationIdentity = null }) => {
+const TypingIndicator = ({ typingUsers = [], aiTyping = null, friend = null, messages = [], conversationIdentity = null }) => {
   const isAiTyping = Boolean(aiTyping && aiTyping.isTyping);
   const hasHumanTyping = Array.isArray(typingUsers) && typingUsers.length > 0;
 
@@ -12,7 +13,11 @@ const TypingIndicator = ({ typingUsers = [], aiTyping = null, friend = null, con
     const targetUser = aiTyping.user || friend || { name: 'Lyra', avatar: null, _id: 'user_ai_lyra' };
     const identity = aiTyping.identity || conversationIdentity || getPastelIdentity(targetUser._id || 'user_ai_lyra');
     const senderName = targetUser.name || 'Lyra';
-    const senderAvatar = targetUser.avatar;
+    const senderAvatar = resolveCharacterAvatar({
+      friend: targetUser || friend,
+      messages,
+      friendId: targetUser._id || friend?._id || 'user_ai_lyra'
+    });
     const accentColor = identity?.accent || '#E8A0D0';
     const softColor = identity?.soft || '#FBF0F8';
 
