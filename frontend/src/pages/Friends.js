@@ -8,6 +8,15 @@ import PastelIcon from '../components/PastelIcon';
 import { useConfirm, useToast } from '../components/Toast';
 import { getPastelIdentity } from '../utils/pastelIdentity';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
+import {
+  getCachedFriends,
+  setCachedFriends,
+  getCachedRequests,
+  setCachedRequests,
+  getCachedGroups,
+  setCachedGroups,
+  mergeFriends
+} from '../utils/friendsCache';
 
 const Friends = () => {
   const { user } = useAuth();
@@ -16,9 +25,11 @@ const Friends = () => {
   const { t } = useLang();
   const { push } = useToast();
   const { confirm } = useConfirm();
-  const [friends, setFriends] = useState([]);
-  const [requests, setRequests] = useState([]);
-  const [groups, setGroups] = useState([]);
+  const [friends, setFriends] = useState(() => getCachedFriends(user?._id) || []);
+  const [requests, setRequests] = useState(() => getCachedRequests(user?._id) || []);
+  const [groups, setGroups] = useState(() => getCachedGroups(user?._id) || []);
+  const [loadingFriends, setLoadingFriends] = useState(() => !(getCachedFriends(user?._id)?.length > 0));
+  const [hasLoadedFromServer, setHasLoadedFromServer] = useState(false);
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -35,29 +46,42 @@ const Friends = () => {
   const loadFriends = useCallback(async () => {
     try {
       const { data } = await api.get('/friends');
-      setFriends(Array.isArray(data) ? data : (Array.isArray(data?.friends) ? data.friends : []));
+      const raw = Array.isArray(data) ? data : (Array.isArray(data?.friends) ? data.friends : []);
+      setFriends((prev) => {
+        const merged = mergeFriends(prev, raw);
+        if (user?._id) setCachedFriends(user._id, merged);
+        return merged;
+      });
+      setHasLoadedFromServer(true);
     } catch {
-      setFriends([]);
+      // Retain cached friends on failure
+      setHasLoadedFromServer(true);
+    } finally {
+      setLoadingFriends(false);
     }
-  }, []);
+  }, [user?._id]);
 
   const loadRequests = useCallback(async () => {
     try {
       const { data } = await api.get('/friends/requests');
-      setRequests(Array.isArray(data) ? data : (Array.isArray(data?.requests) ? data.requests : []));
+      const raw = Array.isArray(data) ? data : (Array.isArray(data?.requests) ? data.requests : []);
+      setRequests(raw);
+      if (user?._id) setCachedRequests(user._id, raw);
     } catch {
-      setRequests([]);
+      // Retain cached requests on failure
     }
-  }, []);
+  }, [user?._id]);
 
   const loadGroups = useCallback(async () => {
     try {
       const { data } = await api.get('/groups');
-      setGroups(Array.isArray(data) ? data : (Array.isArray(data?.groups) ? data.groups : []));
+      const raw = Array.isArray(data) ? data : (Array.isArray(data?.groups) ? data.groups : []);
+      setGroups(raw);
+      if (user?._id) setCachedGroups(user._id, raw);
     } catch {
-      setGroups([]);
+      // Retain cached groups on failure
     }
-  }, []);
+  }, [user?._id]);
 
   useEffect(() => { loadFriends(); loadRequests(); loadGroups(); }, [loadFriends, loadRequests, loadGroups]);
 
@@ -144,21 +168,35 @@ const Friends = () => {
   const handleRemove = async (friendId) => {
     const accepted = await confirm({ title: t('friendsRemoveTitle'), message: t('friendsRemove'), confirmLabel: t('friendsRemove'), tone: 'danger', icon: 'trash' });
     if (!accepted) return;
+    setFriends((prev) => {
+      const updated = prev.filter((f) => f.friendId !== friendId);
+      if (user?._id) setCachedFriends(user._id, updated);
+      return updated;
+    });
     try {
       await api.delete(`/friends/${friendId}`);
-      loadFriends();
       push({ icon: 'check', title: t('feedbackFriendRemoved'), tone: 'success' });
     } catch {
+      loadFriends();
       push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
     }
   };
 
   const saveNickname = async (friendId) => {
-    if (!editValue.trim()) return;
-    await api.put(`/friends/${friendId}`, { customNickname: editValue.trim() });
+    const trimmed = editValue.trim();
+    if (!trimmed) return;
+    setFriends((prev) => {
+      const updated = prev.map((f) => (f.friendId === friendId ? { ...f, customNickname: trimmed } : f));
+      if (user?._id) setCachedFriends(user._id, updated);
+      return updated;
+    });
     setEditingId(null);
     setEditValue('');
-    loadFriends();
+    try {
+      await api.put(`/friends/${friendId}`, { customNickname: trimmed });
+    } catch {
+      loadFriends();
+    }
   };
 
   const toggleMember = (friendId) => {
@@ -260,7 +298,21 @@ const Friends = () => {
         )}
       </div>
 
-      {safeFriends.length === 0 && (
+      {loadingFriends && safeFriends.length === 0 && (
+        <div className="friend-list" style={{ marginBottom: 28 }} aria-label="Loading friends">
+          {[1, 2].map((n) => (
+            <div key={n} className="friend-tile" style={{ opacity: 0.6, pointerEvents: 'none' }}>
+              <div className="avatar" style={{ background: '#f0e6f6', borderRadius: '50%', width: 44, height: 44 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ background: '#f0e6f6', width: '40%', height: 16, borderRadius: 4 }} />
+                <div style={{ background: '#f8f4fa', width: '25%', height: 12, borderRadius: 4 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loadingFriends && hasLoadedFromServer && safeFriends.length === 0 && (
         <div className="card" style={{ textAlign: 'center', marginBottom: 20 }}>
           <p style={{ margin: 0, color: '#888' }}>{t('friendsNoFriends')}</p>
         </div>

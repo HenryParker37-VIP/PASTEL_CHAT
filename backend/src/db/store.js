@@ -380,8 +380,12 @@ function load() {
 }
 
 let saveTimer;
+let isDirty = false;
+let lastHydratedUpdatedAt = 0;
+
 function persist() {
   if (process.env.PASTELCHAT_DISABLE_PERSIST === '1') return;
+  isDirty = true;
   if (!mongoConfigured) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -412,9 +416,11 @@ async function writeDurableSnapshot() {
     pendingDurableWrite = DurableState.findOneAndUpdate(
       { key: 'primary' },
       { key: 'primary', data: store },
-      { upsert: true, setDefaultsOnInsert: true }
+      { upsert: true, setDefaultsOnInsert: true, new: true }
     ).exec();
-    await pendingDurableWrite;
+    const doc = await pendingDurableWrite;
+    isDirty = false;
+    lastHydratedUpdatedAt = doc?.updatedAt ? new Date(doc.updatedAt).getTime() : Date.now();
   } catch (err) {
     console.error('[DB] Durable snapshot write error:', err.message);
   } finally {
@@ -426,7 +432,7 @@ async function flushPersist() {
   if (!mongoConnected) return;
   if (pendingDurableWrite) {
     await pendingDurableWrite;
-  } else {
+  } else if (isDirty) {
     await writeDurableSnapshot();
   }
 }
@@ -442,11 +448,23 @@ async function hydrateFromDurableStore() {
       await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
     }
     mongoConnected = true;
+
+    // Fast check: if in-memory store is already hydrated and no remote mutation occurred
+    if (lastHydratedUpdatedAt > 0 && !isDirty) {
+      const meta = await DurableState.findOne({ key: 'primary' }, { updatedAt: 1 }).lean().exec();
+      const remoteUpdatedAt = meta?.updatedAt ? new Date(meta.updatedAt).getTime() : 0;
+      if (remoteUpdatedAt > 0 && remoteUpdatedAt <= lastHydratedUpdatedAt) {
+        return;
+      }
+    }
+
     const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
     if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
       Object.keys(store).forEach((key) => {
         if (Array.isArray(snapshot.data[key])) store[key] = snapshot.data[key];
       });
+
+      lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
 
       // Merge seed users, friendships, and messages if missing from durable store
       if (seedData && Array.isArray(seedData.users)) {
@@ -1552,7 +1570,7 @@ ready.then(() => {
 }).catch(() => {});
 
 module.exports = {
-  store, persist, flushPersist, hydrateFromDurableStore, ready, isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
+  store, persist, flushPersist, hydrateFromDurableStore, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
