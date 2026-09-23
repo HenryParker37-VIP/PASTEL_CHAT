@@ -6,8 +6,9 @@ import NotificationButton from './NotificationButton';
 import PastelIcon from './PastelIcon';
 import { useConfirm } from './Toast';
 import { useLang } from '../i18n';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
-const Header = ({ friend, friendIdentity, onOpenProfile }) => {
+const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = [] }) => {
   const { user, logout } = useAuth();
   const { onlineUsers, connected } = useSocket();
   const navigate = useNavigate();
@@ -101,18 +102,27 @@ const Header = ({ friend, friendIdentity, onOpenProfile }) => {
               {onlineUsers.length} online
             </span>
           </div>
-          {friend && (
+          {(friend || friendId === 'user_ai_lyra') && (
             <button
               className="mobile-chat-peer"
               type="button"
               onClick={onOpenProfile}
-              aria-label={`View ${friend.name}'s profile`}
+              aria-label={`View ${friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : 'User')}'s profile`}
             >
-              <img src={friend.avatar} alt="" style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }} />
+              <img
+                src={resolveCharacterAvatar({
+                  friend,
+                  messages,
+                  friendId: friend?._id || friendId,
+                  userId: user?._id
+                })}
+                alt=""
+                style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)' }}
+              />
               <span>
-                <strong>{friend.name}</strong>
-                <small style={{ color: friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb') }}>
-                  {friend.status || (friend.isOnline ? 'Online' : 'Offline')}
+                <strong>{friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : '')}</strong>
+                <small style={{ color: friend?.status ? '#B08ABD' : (friend?.isOnline || friendId === 'user_ai_lyra' ? '#4fa865' : '#bbb') }}>
+                  {friend?.status || (friend?.isOnline || friendId === 'user_ai_lyra' ? 'Online' : 'Offline')}
                 </small>
               </span>
             </button>
