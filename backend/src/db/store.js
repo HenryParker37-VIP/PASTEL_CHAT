@@ -416,11 +416,11 @@ let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
-    pendingDurableWrite = DurableState.updateOne(
+    pendingDurableWrite = DurableState.findOneAndUpdate(
       { key: 'primary' },
-      { $set: { key: 'primary', data: store } },
-      { upsert: true }
-    ).exec();
+      { key: 'primary', data: store },
+      { upsert: true, setDefaultsOnInsert: true }
+    ).maxTimeMS(6000).exec();
     await pendingDurableWrite;
     isDirty = false;
     lastHydratedUpdatedAt = Date.now();
@@ -503,7 +503,10 @@ async function hydrateFromDurableStore() {
 
       await connectDurableStore();
 
-      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
+      console.log('[DB] Querying primary snapshot (readyState =', mongoose.connection.readyState, ')...');
+      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().maxTimeMS(6000).exec();
+      console.log('[DB] Primary snapshot returned:', snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
+
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
         applySnapshot(snapshot.data);
         lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();

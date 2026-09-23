@@ -2,6 +2,7 @@ const { app } = require('../backend/src/app');
 const storeDb = require('../backend/src/db/store');
 
 let readyPromise = null;
+let lastHydrateAt = 0;
 
 module.exports = async (req, res) => {
   const rawUrl = req.url || '';
@@ -15,7 +16,9 @@ module.exports = async (req, res) => {
 
   // Ensure durable store hydration is resolved before processing application traffic
   if (!readyPromise) {
-    readyPromise = Promise.resolve(storeDb.ready).catch((err) => {
+    readyPromise = Promise.resolve(storeDb.ready).then(() => {
+      lastHydrateAt = Date.now();
+    }).catch((err) => {
       console.error('[Vercel Serverless] Store hydration failed:', err.message);
     });
   }
@@ -32,11 +35,10 @@ module.exports = async (req, res) => {
     });
   }
 
-  // A Vercel request can land on a different warm lambda than the previous
-  // request. Reload the durable snapshot before every request so a newly
-  // registered user, pending request, or accepted friendship is immediately
-  // visible instead of waiting for a per-instance refresh interval.
-  if (storeDb.isDurableStorageEnabled()) {
+  // Re-sync across lambdas at most once every 1.5 seconds
+  const now = Date.now();
+  if (storeDb.isDurableStorageEnabled() && now - lastHydrateAt > 1500) {
+    lastHydrateAt = now;
     try {
       await storeDb.hydrateFromDurableStore();
     } catch (err) {
