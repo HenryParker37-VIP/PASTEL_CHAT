@@ -455,8 +455,8 @@ async function connectDurableStore() {
     console.log('[DB] Connecting to MongoDB Atlas...');
     cachedMongo.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 6000,
-      connectTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 12000,
+      connectTimeoutMS: 12000,
       maxPoolSize: 5,
       retryWrites: true
     }).then((m) => {
