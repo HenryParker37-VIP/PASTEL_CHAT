@@ -231,8 +231,8 @@ export function mergeMessages(cachedMessages = [], serverMessages = [], pendingM
   // 4. Sort chronologically by timestamp
   const result = Array.from(messageMap.values());
   result.sort((a, b) => {
-    const timeA = new Date(a.timestamp || 0).getTime();
-    const timeB = new Date(b.timestamp || 0).getTime();
+    const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+    const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
     if (timeA !== timeB) return timeA - timeB;
     return String(a._id || '').localeCompare(String(b._id || ''));
   });

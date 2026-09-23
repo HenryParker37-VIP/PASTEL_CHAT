@@ -35,13 +35,13 @@ export const DEFAULT_LYRA_AVATAR =
  * @returns {string|null} Resolved avatar URL or data URI, or null
  */
 export function resolveCharacterAvatar({ friend = null, sender = null, messages = [], friendId = null, userId = null } = {}) {
-  // 1. Live friend object from active chat state (highest priority)
-  if (friend && typeof friend.avatar === 'string' && friend.avatar.trim()) {
+  // 1. Live friend object from active chat state (if custom/non-default)
+  if (friend && typeof friend.avatar === 'string' && friend.avatar.trim() && friend.avatar.trim() !== DEFAULT_LYRA_AVATAR) {
     return friend.avatar.trim();
   }
 
-  // 2. Sender object on a message
-  if (sender && typeof sender.avatar === 'string' && sender.avatar.trim()) {
+  // 2. Sender object on a message (if custom/non-default)
+  if (sender && typeof sender.avatar === 'string' && sender.avatar.trim() && sender.avatar.trim() !== DEFAULT_LYRA_AVATAR) {
     return sender.avatar.trim();
   }
 
@@ -55,7 +55,7 @@ export function resolveCharacterAvatar({ friend = null, sender = null, messages 
       const msgSenderId = msgSender?._id || msg.senderId;
       if (String(msgSenderId) === String(targetId) && msgSender?.avatar && typeof msgSender.avatar === 'string') {
         const trimmed = msgSender.avatar.trim();
-        if (trimmed) return trimmed;
+        if (trimmed && trimmed !== DEFAULT_LYRA_AVATAR) return trimmed;
       }
     }
   }
@@ -63,9 +63,17 @@ export function resolveCharacterAvatar({ friend = null, sender = null, messages 
   // 4. Persistent client cache lookup (preserves customized avatar across unmount/navigation)
   if (targetId) {
     const cached = getCachedAvatar(userId, targetId);
-    if (cached && typeof cached === 'string' && cached.trim()) {
+    if (cached && typeof cached === 'string' && cached.trim() && cached.trim() !== DEFAULT_LYRA_AVATAR) {
       return cached.trim();
     }
+  }
+
+  // If friend or sender has an avatar that happens to match default, return it
+  if (friend && typeof friend.avatar === 'string' && friend.avatar.trim()) {
+    return friend.avatar.trim();
+  }
+  if (sender && typeof sender.avatar === 'string' && sender.avatar.trim()) {
+    return sender.avatar.trim();
   }
 
   // 5. Default fallback for Lyra / AI contact when no customized avatar exists

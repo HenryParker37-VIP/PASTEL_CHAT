@@ -23,10 +23,11 @@ import {
   TURN_STATE,
   TURN_CONFIG
 } from '../utils/aiTurnTaking';
-import { resolveCharacterAvatar } from '../utils/characterAvatar';
+import { resolveCharacterAvatar, DEFAULT_LYRA_AVATAR } from '../utils/characterAvatar';
 import {
   getCachedConversation,
   setCachedConversation,
+  getCachedAvatar,
   mergeMessages
 } from '../utils/conversationCache';
 
@@ -43,7 +44,14 @@ const Chat = () => {
 
   const initialCache = getCachedConversation(user?._id, friendId);
   const [messages, setMessages] = useState(() => initialCache?.messages || []);
-  const [friend, setFriend] = useState(() => initialCache?.friend || null);
+  const [friend, setFriend] = useState(() => initialCache?.friend || (friendId === 'user_ai_lyra' ? {
+    _id: 'user_ai_lyra',
+    name: 'Lyra',
+    isAI: true,
+    isOnline: true,
+    status: 'Online',
+    avatar: getCachedAvatar(user?._id, 'user_ai_lyra') || DEFAULT_LYRA_AVATAR
+  } : null));
   const [loading, setLoading] = useState(() => !initialCache?.messages?.length);
   const [replyingTo, setReplyingTo] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -1043,7 +1051,9 @@ const Chat = () => {
     }}>
       <Header
         friend={friend}
+        friendId={friendId}
         friendIdentity={friendIdentity}
+        messages={messages}
         onOpenProfile={() => setProfileOpen(v => !v)}
       />
 
