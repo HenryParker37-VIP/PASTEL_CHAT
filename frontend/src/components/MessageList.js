@@ -181,6 +181,7 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
           <MessageItem
             key={item.id}
             message={item.data}
+            peer={friend}
             onReply={onReply}
             onRecall={onRecall}
             onReaction={onReaction}
@@ -195,6 +196,7 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
         typingUsers={typingUsers}
         aiTyping={aiTyping}
         friend={friend}
+        messages={safeMessages}
         conversationIdentity={conversationIdentity}
       />
 

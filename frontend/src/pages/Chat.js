@@ -23,6 +23,7 @@ import {
   TURN_STATE,
   TURN_CONFIG
 } from '../utils/aiTurnTaking';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const isMobile = () => window.innerWidth <= 700;
 const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 };
@@ -59,6 +60,11 @@ const Chat = () => {
   const aiBubbleIdsInFlightRef = useRef(new Set());
   const deliverNextAiBubbleRef = useRef();
   const commitTurnGenerationRef = useRef();
+  const friendRef = useRef(friend);
+
+  useEffect(() => {
+    friendRef.current = friend;
+  }, [friend]);
 
   // Human-like Turn-Taking refs
   const isUserTypingRef = useRef(false);
@@ -205,17 +211,28 @@ const Chat = () => {
     activeTurn.scheduledDeliveryTime = Date.now() + typingDelay;
     activeTurn.remainingTypingDelay = typingDelay;
 
+    const currentFriend = friendRef.current || friend;
+    const resolvedAvatar = resolveCharacterAvatar({
+      friend: currentFriend,
+      sender: nextBubble?.senderId,
+      messages,
+      friendId: currentFriend?._id || friendId || 'user_ai_lyra'
+    });
+    const targetUser = currentFriend
+      ? { ...currentFriend, avatar: resolvedAvatar }
+      : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: resolvedAvatar, isAI: true };
+
     setAiTyping({
       isTyping: true,
       generationId,
       revision,
-      user: friend,
+      user: targetUser,
       identity: friendIdentity
     });
 
     if (deliveryTimerRef.current) clearTimeout(deliveryTimerRef.current);
     deliveryTimerRef.current = setTimeout(finalizeDelivery, typingDelay);
-  }, [friend, friendIdentity]);
+  }, [friend, friendId, friendIdentity, messages]);
 
   const resumePausedAiDelivery = useCallback(() => {
     const turn = activeAiTurnRef.current;
@@ -232,11 +249,22 @@ const Chat = () => {
     const resumeDelay = Math.max(turn.remainingTypingDelay || 0, 380);
     turn.scheduledDeliveryTime = Date.now() + resumeDelay;
 
+    const currentFriend = friendRef.current || friend;
+    const resolvedAvatar = resolveCharacterAvatar({
+      friend: currentFriend,
+      sender: turn.pendingBubbles[0]?.senderId,
+      messages,
+      friendId: currentFriend?._id || friendId || 'user_ai_lyra'
+    });
+    const targetUser = currentFriend
+      ? { ...currentFriend, avatar: resolvedAvatar }
+      : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: resolvedAvatar, isAI: true };
+
     setAiTyping({
       isTyping: true,
       generationId: turn.generationId,
       revision: turn.revision,
-      user: friend,
+      user: targetUser,
       identity: friendIdentity
     });
 
@@ -244,7 +272,7 @@ const Chat = () => {
     deliveryTimerRef.current = setTimeout(() => {
       deliverNextAiBubbleRef.current?.(turn.generationId, turn.revision, null, true);
     }, resumeDelay);
-  }, [friend, friendIdentity]);
+  }, [friend, friendId, friendIdentity, messages]);
 
   const commitTurnGeneration = useCallback(async (targetGenId = null, targetRevision = null) => {
     const turn = activeAiTurnRef.current;
@@ -272,11 +300,22 @@ const Chat = () => {
         current.deliveryState = TURN_STATE.PAUSED_FOR_USER;
         return;
       }
+
+      const currentFriend = friendRef.current || friend;
+      const resolvedAvatar = resolveCharacterAvatar({
+        friend: currentFriend,
+        messages,
+        friendId: currentFriend?._id || friendId || 'user_ai_lyra'
+      });
+      const targetUser = currentFriend
+        ? { ...currentFriend, avatar: resolvedAvatar }
+        : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: resolvedAvatar, isAI: true };
+
       setAiTyping({
         isTyping: true,
         generationId: turn.generationId,
         revision: turn.revision,
-        user: friend,
+        user: targetUser,
         identity: friendIdentity
       });
     }, reactionDelay);
@@ -321,7 +360,7 @@ const Chat = () => {
         cancelActiveAiTurn('error');
       }
     }
-  }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friend, friendId, friendIdentity]);
+  }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friend, friendId, friendIdentity, messages]);
 
   const handleComposerTyping = useCallback((isTyping) => {
     isUserTypingRef.current = isTyping;
@@ -650,7 +689,12 @@ const Chat = () => {
 
     const onUserUpdated = (data) => {
       if (data && data.userId === friendId) {
-        setFriend((prev) => prev ? { ...prev, avatar: data.avatar } : prev);
+        setFriend((prev) => {
+          const updated = prev ? { ...prev, avatar: data.avatar } : { _id: friendId, avatar: data.avatar };
+          friendRef.current = updated;
+          return updated;
+        });
+        setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: data.avatar } } : null));
       }
     };
 
@@ -850,7 +894,13 @@ const Chat = () => {
         try {
           const res = await api.post('/ai/avatar', { avatar: base64Data });
           if (res.data?.success) {
-            setFriend((prev) => prev ? { ...prev, avatar: res.data.avatar } : prev);
+            const newAvatar = res.data.avatar;
+            setFriend((prev) => {
+              const updated = prev ? { ...prev, avatar: newAvatar } : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: newAvatar, isAI: true };
+              friendRef.current = updated;
+              return updated;
+            });
+            setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: newAvatar } } : null));
             push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
           }
         } catch (err) {
@@ -869,7 +919,13 @@ const Chat = () => {
       try {
         const res = await api.post('/ai/avatar', { avatar: url.trim() });
         if (res.data?.success) {
-          setFriend((prev) => prev ? { ...prev, avatar: res.data.avatar } : prev);
+          const newAvatar = res.data.avatar;
+          setFriend((prev) => {
+            const updated = prev ? { ...prev, avatar: newAvatar } : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: newAvatar, isAI: true };
+            friendRef.current = updated;
+            return updated;
+          });
+          setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: newAvatar } } : null));
           push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
         }
       } catch (err) {
@@ -999,7 +1055,7 @@ const Chat = () => {
                   title="View profile"
                 >
                   <img
-                    src={friend.avatar}
+                    src={resolveCharacterAvatar({ friend, messages, friendId })}
                     alt=""
                     style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${friendIdentity.accent}`, objectFit: 'cover' }}
                   />
@@ -1131,7 +1187,7 @@ const Chat = () => {
             }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <img
-                  src={friend.avatar}
+                  src={resolveCharacterAvatar({ friend, messages, friendId })}
                   alt=""
                   style={{ width: 56, height: 56, borderRadius: '50%', border: `3px solid ${friendIdentity.accent}`, objectFit: 'cover', display: 'block' }}
                 />
