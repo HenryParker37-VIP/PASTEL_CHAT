@@ -160,6 +160,8 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
                       type="file"
                       accept="image/*"
                       onChange={onMobileAvatarChange}
+                      aria-label="Change Lyra's photo"
+                      title="Change Lyra's photo"
                       style={{
                         position: 'absolute',
                         inset: 0,
