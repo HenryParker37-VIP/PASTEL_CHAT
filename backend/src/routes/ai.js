@@ -152,9 +152,9 @@ router.post('/avatar', authMiddleware, (req, res) => {
       });
     }
 
-    // Size limit check (approx 5MB max for base64 payload)
-    if (trimmed.length > 7 * 1024 * 1024) {
-      return res.status(400).json({ message: 'Image too large. Maximum size is 5MB.' });
+    // Size limit check (approx 50KB max for base64 payload to prevent snapshot bloat)
+    if (trimmed.length > 50 * 1024) {
+      return res.status(400).json({ message: 'Image too large. Maximum size is 50KB, or provide an image URL.' });
     }
 
     const updated = storeDb.updateAIAvatar(trimmed);
