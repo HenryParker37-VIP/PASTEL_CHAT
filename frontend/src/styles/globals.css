@@ -1659,7 +1659,7 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     -webkit-backdrop-filter: blur(12px) saturate(1.08) !important;
     backdrop-filter: blur(12px) saturate(1.08) !important;
     box-shadow: 0 1px 5px rgba(74, 50, 74, 0.06) !important;
-    /* The toolbar owns the action buttons and must paint above this surface. */
+    /* The toolbar's action controls paint above this shared mobile band. */
     z-index: 10 !important;
     pointer-events: none;
   }
@@ -1703,15 +1703,14 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .mobile-chat-peer strong, .mobile-chat-peer small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-chat-peer strong { font-size: 11px; line-height: 1.15; }
   .mobile-chat-peer small { font-size: 10px; line-height: 1.15; }
-  /* Avatar tap wrapper: sits above the chat-toolbar (z-index 20) so taps reach
-     the transparent <input type="file"> positioned inside it.
-     pointer-events:auto ensures no parent's pointer-events:none blocks it. */
+  /* The toolbar passes through taps outside its four action buttons, so this
+     direct native file-input target receives the avatar tap on touch devices. */
   .mobile-avatar-tap-wrap {
     position: relative;
     display: flex;
     flex-shrink: 0;
     border-radius: 50%;
-    z-index: 30;        /* above .chat-toolbar z-index:20 */
+    z-index: 1;
     pointer-events: auto;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -1728,6 +1727,9 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     isolation: isolate;
     background: transparent !important;
     border-bottom: 1px solid rgba(255,255,255,0.28) !important;
+    /* This layer spans the full header band only for layout. Let the Lyra
+       avatar receive taps everywhere except the actual action controls. */
+    pointer-events: none;
   }
   .chat-toolbar > button { display: none; }
   .chat-contact { flex: 0 0 auto !important; gap: 0 !important; }
