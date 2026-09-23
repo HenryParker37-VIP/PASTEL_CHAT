@@ -444,12 +444,59 @@ async function getDurableCollection() {
   return cachedDb.collection('pastelchat_state');
 }
 
+function sanitizeForDurableStorage(data) {
+  if (!data || typeof data !== 'object') return data;
+
+  // 1. Sanitize messages: strip oversized base64 dataUrl (protecting against multi-MB blobs)
+  if (Array.isArray(data.messages)) {
+    for (const msg of data.messages) {
+      if (msg && msg.media && typeof msg.media === 'object') {
+        if (msg.media.dataUrl && typeof msg.media.dataUrl === 'string' && msg.media.dataUrl.length > 30000) {
+          delete msg.media.dataUrl;
+        }
+      }
+    }
+  }
+
+  // 2. Sanitize users: ensure no giant base64 avatars
+  if (Array.isArray(data.users)) {
+    for (const u of data.users) {
+      if (u && u.avatar && typeof u.avatar === 'string' && u.avatar.length > 30000) {
+        u.avatar = (u.isAI || String(u._id) === AI_USER_ID)
+          ? 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50'
+          : `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${encodeURIComponent(u.name || 'User')}&radius=50`;
+      }
+    }
+  }
+
+  // 3. Sanitize aiCharacters: ensure avatar is compact URL
+  if (Array.isArray(data.aiCharacters)) {
+    for (const c of data.aiCharacters) {
+      if (c && c.avatar && typeof c.avatar === 'string' && c.avatar.length > 30000) {
+        c.avatar = 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50';
+      }
+    }
+  }
+
+  // 4. Sanitize sharedPhotos: strip oversized dataUrls
+  if (Array.isArray(data.sharedPhotos)) {
+    for (const p of data.sharedPhotos) {
+      if (p && p.dataUrl && typeof p.dataUrl === 'string' && p.dataUrl.length > 30000) {
+        p.dataUrl = null;
+      }
+    }
+  }
+
+  return data;
+}
+
 let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
     const col = await getDurableCollection();
     if (!col) return;
+    sanitizeForDurableStorage(store);
     const now = new Date();
     pendingDurableWrite = col.updateOne(
       { key: 'primary' },
@@ -502,20 +549,123 @@ async function hydrateFromDurableStore() {
       const t0 = Date.now();
       const sizeAgg = await col.aggregate([
         { $match: { key: 'primary' } },
-        { $project: { sizeBytes: { $bsonSize: "$$ROOT" }, updatedAt: 1 } }
+        {
+          $project: {
+            sizeBytes: { $bsonSize: "$$ROOT" },
+            usersCount: { $size: { $ifNull: ["$data.users", []] } },
+            usersSize: { $bsonSize: { $ifNull: ["$data.users", []] } },
+            messagesCount: { $size: { $ifNull: ["$data.messages", []] } },
+            messagesSize: { $bsonSize: { $ifNull: ["$data.messages", []] } },
+            sharedPhotosCount: { $size: { $ifNull: ["$data.sharedPhotos", []] } },
+            sharedPhotosSize: { $bsonSize: { $ifNull: ["$data.sharedPhotos", []] } },
+            aiCharactersSize: { $bsonSize: { $ifNull: ["$data.aiCharacters", []] } },
+            updatedAt: 1
+          }
+        }
       ]).toArray();
       const meta = sizeAgg[0];
-      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms: size = ${meta?.sizeBytes || 0} bytes (${Math.round((meta?.sizeBytes || 0) / 1024)} KB)`);
+      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms:`, JSON.stringify(meta));
 
+      const isBloated = (meta?.sizeBytes || 0) > 300000;
+      let snapshot = null;
       const t1 = Date.now();
-      const snapshot = await col.findOne({ key: 'primary' });
+
+      if (isBloated) {
+        console.warn(`[DB] Primary snapshot is bloated (${Math.round((meta.sizeBytes || 0) / 1024)} KB). Using exclusion projection to avoid Vercel timeout...`);
+        const projection = {
+          'data.sharedPhotos': 0,
+          'data.messages.media.dataUrl': 0
+        };
+        if ((meta?.usersSize || 0) > 200000) {
+          projection['data.users.avatar'] = 0;
+        }
+        if ((meta?.aiCharactersSize || 0) > 200000) {
+          projection['data.aiCharacters.avatar'] = 0;
+        }
+
+        try {
+          snapshot = await col.findOne({ key: 'primary' }, { projection });
+        } catch (projErr) {
+          console.warn('[DB] Projection find failed, falling back to minimal fields aggregation:', projErr.message);
+          const fallbackAgg = await col.aggregate([
+            { $match: { key: 'primary' } },
+            {
+              $project: {
+                key: 1,
+                updatedAt: 1,
+                'data.users': 1,
+                'data.friendships': 1,
+                'data.friendRequests': 1,
+                'data.aiCharacters': 1,
+                'data.aiCharacterState': 1,
+                'data.aiRelationshipState': 1,
+                'data.aiMemories': 1,
+                'data.aiLifeEvents': 1,
+                'data.groups': 1,
+                'data.notes': 1,
+                'data.reminders': 1,
+                'data.birthdays': 1,
+                'data.notifications': 1,
+                'data.releases': 1,
+                'data.sessions': 1,
+                'data.accessCodes': 1,
+                'data.reports': 1,
+                'data.announcements': 1,
+                'data.auditLogs': 1,
+                'data.messages': {
+                  $map: {
+                    input: { $ifNull: ["$data.messages", []] },
+                    as: "m",
+                    in: {
+                      _id: "$$m._id",
+                      senderId: "$$m.senderId",
+                      receiverId: "$$m.receiverId",
+                      content: "$$m.content",
+                      timestamp: "$$m.timestamp",
+                      clientMessageId: "$$m.clientMessageId",
+                      deliveredAt: "$$m.deliveredAt",
+                      readAt: "$$m.readAt",
+                      replyTo: "$$m.replyTo",
+                      reactions: "$$m.reactions",
+                      media: {
+                        type: "$$m.media.type",
+                        name: "$$m.media.name",
+                        size: "$$m.media.size",
+                        url: "$$m.media.url",
+                        previewUrl: "$$m.media.previewUrl"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]).toArray();
+          snapshot = fallbackAgg[0];
+        }
+      } else {
+        snapshot = await col.findOne({ key: 'primary' });
+      }
       console.log(`[DB] Primary snapshot payload returned in ${Date.now() - t1}ms:`, snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
+        if (isBloated) {
+          sanitizeForDurableStorage(snapshot.data);
+        }
         applySnapshot(snapshot.data);
         lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
         ensureAICharacter();
         console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
+
+        if (isBloated) {
+          console.log('[DB] Writing slim, sanitized snapshot back to MongoDB Atlas to permanently fix document bloat...');
+          const tSlim = Date.now();
+          await col.updateOne(
+            { key: 'primary' },
+            { $set: { key: 'primary', data: store, updatedAt: new Date() } },
+            { upsert: true }
+          );
+          console.log(`[DB] Successfully wrote slim snapshot (${store.users.length} users, ${store.messages.length} msgs) in ${Date.now() - tSlim}ms!`);
+        }
       } else {
         if (seedData) applySnapshot(seedData);
         ensureAICharacter();

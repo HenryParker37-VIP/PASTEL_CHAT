@@ -116,10 +116,10 @@ router.post('/', authMiddleware, async (req, res) => {
           duration: media.duration || null
         };
       }
-      // Legacy format (base64 dataUrl) - keep for backward compatibility
+      // Legacy format (base64 dataUrl) - keep for backward compatibility, capped to prevent bloat
       else if (media.dataUrl && media.name) {
         const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
-        if (sizeBytes > 8 * 1024 * 1024) return res.status(400).json({ message: 'File too large (max 8MB)' });
+        if (sizeBytes > 64 * 1024) return res.status(400).json({ message: 'Direct embed file too large (max 64KB). Please use an image or file URL.' });
         validMedia = {
           type: media.type === 'image' ? 'image' : 'file',
           dataUrl: media.dataUrl,
