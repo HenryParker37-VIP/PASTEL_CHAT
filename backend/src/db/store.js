@@ -15,7 +15,7 @@ const durableStorageRequired = Boolean(process.env.VERCEL || process.env.SERVERL
 const durableStateSchema = new mongoose.Schema({
   key: { type: String, unique: true, required: true },
   data: { type: mongoose.Schema.Types.Mixed, required: true }
-}, { collection: 'pastelchat_state', timestamps: true });
+}, { collection: 'pastelchat_state', timestamps: true, bufferCommands: false });
 const DurableState = mongoose.models.PastelChatState || mongoose.model('PastelChatState', durableStateSchema);
 let mongoConnected = false;
 let durableSaveTimer;
@@ -412,16 +412,43 @@ function persist() {
   }
 }
 
+let connectPromise = null;
+async function ensureMongoConnected() {
+  if (mongoose.connection.readyState === 1) {
+    mongoConnected = true;
+    return;
+  }
+  if (!connectPromise) {
+    connectPromise = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      maxPoolSize: 5,
+      bufferCommands: false
+    }).then(() => {
+      mongoConnected = true;
+    }).catch((err) => {
+      mongoConnected = false;
+      connectPromise = null;
+      throw err;
+    });
+  }
+  await connectPromise;
+}
+
 let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
-    pendingDurableWrite = DurableState.updateOne(
+    const writeOp = DurableState.updateOne(
       { key: 'primary' },
       { $set: { key: 'primary', data: store } },
       { upsert: true }
     ).exec();
-    await pendingDurableWrite;
+    pendingDurableWrite = writeOp;
+
+    const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Write timeout')), 4000));
+    await Promise.race([writeOp, timeoutOp]);
+
     isDirty = false;
     lastHydratedUpdatedAt = Date.now();
   } catch (err) {
@@ -443,33 +470,22 @@ async function flushPersist() {
 let inFlightHydration = null;
 
 async function hydrateFromDurableStore() {
+  if (!MONGODB_URI) {
+    console.warn('[DB] MONGODB_URI is not configured; using local JSON store.');
+    return;
+  }
   if (inFlightHydration) {
     return inFlightHydration;
   }
 
   inFlightHydration = (async () => {
-    if (!MONGODB_URI) {
-      console.warn('[DB] MONGODB_URI is not configured; using local JSON store.');
-      return;
-    }
-
     try {
-      if (mongoose.connection.readyState === 1) {
-        mongoConnected = true;
-      } else {
-        if (mongoose.connection.readyState !== 0) {
-          await mongoose.disconnect().catch(() => {});
-        }
-        await mongoose.connect(MONGODB_URI, {
-          serverSelectionTimeoutMS: 5000,
-          connectTimeoutMS: 5000,
-          maxPoolSize: 5,
-          retryWrites: true
-        });
-        mongoConnected = true;
-      }
+      await ensureMongoConnected();
 
-      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
+      const fetchOp = DurableState.findOne({ key: 'primary' }).lean().exec();
+      const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 4000));
+      const snapshot = await Promise.race([fetchOp, timeoutOp]);
+
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
         applySnapshot(snapshot.data);
         lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
