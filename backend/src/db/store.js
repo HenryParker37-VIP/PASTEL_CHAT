@@ -439,16 +439,12 @@ let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
-    const writeOp = DurableState.updateOne(
+    pendingDurableWrite = DurableState.updateOne(
       { key: 'primary' },
       { $set: { key: 'primary', data: store } },
       { upsert: true }
     ).exec();
-    pendingDurableWrite = writeOp;
-
-    const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Write timeout')), 8000));
-    await Promise.race([writeOp, timeoutOp]);
-
+    await pendingDurableWrite;
     isDirty = false;
     lastHydratedUpdatedAt = Date.now();
   } catch (err) {
@@ -482,9 +478,7 @@ async function hydrateFromDurableStore() {
     try {
       await ensureMongoConnected();
 
-      const fetchOp = DurableState.findOne({ key: 'primary' }).lean().exec();
-      const timeoutOp = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 8000));
-      const snapshot = await Promise.race([fetchOp, timeoutOp]);
+      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
         applySnapshot(snapshot.data);
