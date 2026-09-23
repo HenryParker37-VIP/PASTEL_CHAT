@@ -7,6 +7,7 @@ import { useLang } from '../i18n';
 import PastelIcon from '../components/PastelIcon';
 import { useConfirm, useToast } from '../components/Toast';
 import { getPastelIdentity } from '../utils/pastelIdentity';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const Friends = () => {
   const { user } = useAuth();
@@ -249,7 +250,13 @@ const Friends = () => {
       <div className="friend-list" style={{ marginBottom: 28 }}>
         {safeFriends.map(f => (
           <div key={f.friendId} className="friend-tile pop-in" style={{ boxShadow: `inset 3px 0 0 ${getPastelIdentity(f.friendId).accent}` }}>
-            <img className="avatar" src={f.avatar} alt="" style={{ border: `2px solid ${getPastelIdentity(f.friendId).accent}` }} onClick={() => navigate(`/chat/${f.friendId}`)} />
+            <img
+              className="avatar"
+              src={resolveCharacterAvatar({ friend: f, friendId: f.friendId, userId: user?._id }) || f.avatar}
+              alt=""
+              style={{ border: `2px solid ${getPastelIdentity(f.friendId).accent}`, objectFit: 'cover' }}
+              onClick={() => navigate(`/chat/${f.friendId}`)}
+            />
             <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate(`/chat/${f.friendId}`)}>
               {editingId === f.friendId ? (
                 <input

@@ -11,6 +11,8 @@
  * resolve and display the exact same updated avatar.
  */
 
+import { getCachedAvatar } from './conversationCache.js';
+
 export const DEFAULT_LYRA_AVATAR =
   'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50';
 
@@ -21,16 +23,18 @@ export const DEFAULT_LYRA_AVATAR =
  * 1. Current friend object avatar (live state in chat header & coordinator)
  * 2. Message sender avatar (persisted on message object)
  * 3. Most recent message from this sender in conversation history
- * 4. Default character fallback if no custom avatar exists
+ * 4. Persistent conversation & avatar cache (instant across component remounts)
+ * 5. Default character fallback if no custom avatar exists
  *
  * @param {Object} options
  * @param {Object} [options.friend] - Current friend/character object from state
  * @param {Object} [options.sender] - Sender object from message.senderId
  * @param {Array} [options.messages] - Message history array
  * @param {string} [options.friendId] - Explicit friend or character user ID
+ * @param {string} [options.userId] - Current authenticated user ID
  * @returns {string|null} Resolved avatar URL or data URI, or null
  */
-export function resolveCharacterAvatar({ friend = null, sender = null, messages = [], friendId = null } = {}) {
+export function resolveCharacterAvatar({ friend = null, sender = null, messages = [], friendId = null, userId = null } = {}) {
   // 1. Live friend object from active chat state (highest priority)
   if (friend && typeof friend.avatar === 'string' && friend.avatar.trim()) {
     return friend.avatar.trim();
@@ -56,7 +60,15 @@ export function resolveCharacterAvatar({ friend = null, sender = null, messages 
     }
   }
 
-  // 4. Default fallback for Lyra / AI contact when no customized avatar exists
+  // 4. Persistent client cache lookup (preserves customized avatar across unmount/navigation)
+  if (targetId) {
+    const cached = getCachedAvatar(userId, targetId);
+    if (cached && typeof cached === 'string' && cached.trim()) {
+      return cached.trim();
+    }
+  }
+
+  // 5. Default fallback for Lyra / AI contact when no customized avatar exists
   const isLyra = targetId === 'user_ai_lyra' || friend?.isAI || sender?.isAI;
   if (isLyra) {
     return DEFAULT_LYRA_AVATAR;

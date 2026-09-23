@@ -152,7 +152,7 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
         background: 'var(--cream)'
       }}
     >
-      {loading && <LoadingAnimation />}
+      {loading && safeMessages.length === 0 && <LoadingAnimation />}
 
       {!loading && safeMessages.length === 0 && (
         <div style={{
@@ -169,7 +169,7 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
         </div>
       )}
 
-      {!loading && items.map((item) => {
+      {items.map((item) => {
         if (item.type === 'dateSeparator') {
           return (
             <div key={item.id} className="date-pill" style={{ userSelect: 'none' }}>
