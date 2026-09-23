@@ -3,6 +3,7 @@ import api from '../services/api';
 import { syncExistingSubscription, unsubscribeFromPush } from '../services/push';
 import { initializeCapacitorPush } from '../services/capacitor-push';
 import { initMsal } from '../services/microsoft-auth';
+import { clearFriendsCache } from '../utils/friendsCache';
 
 async function trySubscribePush() {
   try {
@@ -193,6 +194,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    if (user?._id) {
+      clearFriendsCache(user._id);
+    } else {
+      clearFriendsCache();
+    }
     api.post('/auth/logout').catch(() => {});
     unsubscribeFromPush().catch(() => {});
     localStorage.removeItem('token');

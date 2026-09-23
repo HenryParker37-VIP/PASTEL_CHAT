@@ -5,7 +5,10 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
-const rawMongo = (process.env.MONGODB_URI || '').trim();
+let rawMongo = (process.env.MONGODB_URI || '').trim();
+if ((rawMongo.startsWith('"') && rawMongo.endsWith('"')) || (rawMongo.startsWith("'") && rawMongo.endsWith("'"))) {
+  rawMongo = rawMongo.slice(1, -1).trim();
+}
 const MONGODB_URI = (rawMongo && !rawMongo.includes('<username>') && !rawMongo.includes('xxxxx')) ? rawMongo : '';
 const mongoConfigured = Boolean(MONGODB_URI);
 const durableStorageRequired = Boolean(process.env.VERCEL || process.env.SERVERLESS);
@@ -444,26 +447,27 @@ async function hydrateFromDurableStore() {
   }
 
   try {
-    if (mongoose.connection.readyState !== 1) {
-      await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
-    }
-    mongoConnected = true;
-
-    // Fast check: if in-memory store is already hydrated and no remote mutation occurred
-    if (lastHydratedUpdatedAt > 0 && !isDirty) {
-      const meta = await DurableState.findOne({ key: 'primary' }, { updatedAt: 1 }).lean().exec();
-      const remoteUpdatedAt = meta?.updatedAt ? new Date(meta.updatedAt).getTime() : 0;
-      if (remoteUpdatedAt > 0 && remoteUpdatedAt <= lastHydratedUpdatedAt) {
-        return;
+    if (mongoose.connection.readyState === 1) {
+      mongoConnected = true;
+    } else if (mongoose.connection.readyState === 2) {
+      await mongoose.connection.asPromise();
+      mongoConnected = true;
+    } else {
+      if (mongoose.connection.readyState === 3) {
+        await mongoose.disconnect().catch(() => {});
       }
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 10000,
+        maxPoolSize: 5,
+        retryWrites: true
+      });
+      mongoConnected = true;
     }
 
     const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
     if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
-      Object.keys(store).forEach((key) => {
-        if (Array.isArray(snapshot.data[key])) store[key] = snapshot.data[key];
-      });
-
+      applySnapshot(snapshot.data);
       lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
 
       // Merge seed users, friendships, and messages if missing from durable store
@@ -495,8 +499,10 @@ async function hydrateFromDurableStore() {
           await writeDurableSnapshot();
         }
       }
+      ensureAICharacter();
       console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
     } else {
+      ensureAICharacter();
       await writeDurableSnapshot();
       console.log('[DB] Initialized durable MongoDB state from local store / seed data');
     }
@@ -651,7 +657,13 @@ function findUser(filter) {
 }
 function findUserById(id) {
   if (!id) return null;
-  return store.users.find((u) => String(u._id) === String(id));
+  const sid = String(id);
+  let user = (store.users || []).find((u) => u && String(u._id) === sid);
+  if (!user && (sid === AI_USER_ID || sid === AI_CHARACTER_ID)) {
+    ensureAICharacter();
+    user = (store.users || []).find((u) => u && (String(u._id) === AI_USER_ID || u.aiCharacterId === AI_CHARACTER_ID));
+  }
+  return user || null;
 }
 function findUserByVerificationCode(code) {
   if (!code) return null;
@@ -792,11 +804,23 @@ function userSearchResult(user, viewerId) {
 function searchUsers(query, exceptId) {
   const q = normalizeUserName(query);
   if (!q) return [];
+  ensureAICharacter();
+  const rawQ = String(query || '').trim().toUpperCase();
+  const rawQClean = rawQ.replace(/[^A-Z0-9]/g, '');
   const eid = String(exceptId || '');
   return (store.users || [])
     .filter((u) => {
       if (!u || String(u._id) === eid) return false;
-      return normalizeUserName(u.name).includes(q);
+      const nameNorm = normalizeUserName(u.name);
+      if (nameNorm.includes(q)) return true;
+      if (u.username && normalizeUserName(u.username).includes(q)) return true;
+      if (u.loginCode) {
+        const codeUpper = String(u.loginCode).toUpperCase();
+        if (codeUpper.includes(rawQ)) return true;
+        const codeClean = codeUpper.replace(/[^A-Z0-9]/g, '');
+        if (rawQClean.length >= 3 && codeClean.includes(rawQClean)) return true;
+      }
+      return false;
     })
     .sort((a, b) => {
       const aName = normalizeUserName(a.name);
@@ -829,6 +853,7 @@ function userPublic(u) {
 // A adds B with nickname "Buddy" → A sees B as "Buddy". B doesn't automatically see A.
 function getFriends(userId) {
   if (!store.friendships || !Array.isArray(store.friendships)) return [];
+  ensureAICharacter();
   const uid = String(userId || '');
   if (uid && uid !== AI_USER_ID) {
     ensureAIFriendship(uid);

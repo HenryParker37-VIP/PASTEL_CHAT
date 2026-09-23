@@ -40,3 +40,5 @@ output/
 .claude/
 *.app
 
+.vercel
+.env*
