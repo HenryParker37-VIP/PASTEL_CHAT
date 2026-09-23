@@ -440,50 +440,63 @@ async function flushPersist() {
   }
 }
 
+let inFlightHydration = null;
+
 async function hydrateFromDurableStore() {
   if (!MONGODB_URI) {
     console.warn('[DB] MONGODB_URI is not configured; using local JSON store.');
     return;
   }
 
-  try {
-    if (mongoose.connection.readyState === 1) {
-      mongoConnected = true;
-    } else if (mongoose.connection.readyState === 2) {
-      await mongoose.connection.asPromise();
-      mongoConnected = true;
-    } else {
-      if (mongoose.connection.readyState === 3) {
-        await mongoose.disconnect().catch(() => {});
-      }
-      await mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 8000,
-        connectTimeoutMS: 10000,
-        maxPoolSize: 5,
-        retryWrites: true
-      });
-      mongoConnected = true;
-    }
-
-    const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
-    if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
-      applySnapshot(snapshot.data);
-      lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
-      ensureAICharacter();
-      console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
-    } else {
-      if (seedData) applySnapshot(seedData);
-      ensureAICharacter();
-      await writeDurableSnapshot();
-      console.log('[DB] Initialized durable MongoDB state from local store / seed data');
-    }
-  } catch (e) {
-    mongoConnected = false;
-    if (mongoConfigured) {
-      throw new Error(`Durable MongoDB unavailable; refusing ephemeral fallback: ${e.message}`);
-    }
-    console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
+  if (inFlightHydration) {
+    return inFlightHydration;
   }
+
+  inFlightHydration = (async () => {
+    try {
+      if (pendingDurableWrite) {
+        await pendingDurableWrite;
+      } else if (isDirty) {
+        await writeDurableSnapshot();
+      }
+
+      if (mongoose.connection.readyState !== 1) {
+        if (mongoose.connection.readyState === 3) {
+          await mongoose.disconnect().catch(() => {});
+        }
+        await mongoose.connect(MONGODB_URI, {
+          serverSelectionTimeoutMS: 10000,
+          connectTimeoutMS: 10000,
+          maxPoolSize: 5,
+          retryWrites: true
+        });
+      }
+      mongoConnected = true;
+
+      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().exec();
+      if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
+        applySnapshot(snapshot.data);
+        lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
+        ensureAICharacter();
+        console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
+      } else {
+        if (seedData) applySnapshot(seedData);
+        ensureAICharacter();
+        await writeDurableSnapshot();
+        console.log('[DB] Initialized durable MongoDB state from local store / seed data');
+      }
+    } catch (e) {
+      mongoConnected = false;
+      if (mongoConfigured) {
+        throw new Error(`Durable MongoDB unavailable; refusing ephemeral fallback: ${e.message}`);
+      }
+      console.error('[DB] Durable MongoDB unavailable; continuing with local store:', e.message);
+    } finally {
+      inFlightHydration = null;
+    }
+  })();
+
+  return inFlightHydration;
 }
 
 function normalizeAccessCode(value) {

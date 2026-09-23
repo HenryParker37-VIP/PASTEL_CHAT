@@ -13,7 +13,9 @@ module.exports = async (req, res) => {
     }
   }
 
-  const isHealthOrDiagnostic = req.url === '/health' || req.path === '/health' || req.url === '/api/version' || req.path === '/api/version';
+  const rawUrl = req.url || '';
+  const pathOnly = rawUrl.split('?')[0];
+  const isHealthOrDiagnostic = pathOnly === '/health' || pathOnly === '/api/version' || req.path === '/health' || req.path === '/api/version';
 
   // Vercel functions have no shared, durable filesystem. Refuse to handle
   // authenticated product traffic until the durable store is ready so that
@@ -46,8 +48,11 @@ module.exports = async (req, res) => {
   }
 
   // Intercept res.end to guarantee MongoDB writes complete before serverless container pauses
+  let ended = false;
   const originalEnd = res.end;
   res.end = function (...args) {
+    if (ended) return;
+    ended = true;
     const finish = () => originalEnd.apply(res, args);
     if (storeDb.isDurableStorageEnabled() && storeDb.isDirty?.()) {
       storeDb.flushPersist()
