@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
     const finish = () => originalEnd.apply(res, args);
     if (storeDb.isDurableStorageEnabled() && storeDb.isDirty?.()) {
       const flushPromise = storeDb.flushPersist();
-      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3500));
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 6000));
       Promise.race([flushPromise, timeoutPromise])
         .catch((err) => console.error('[Vercel Serverless] Flush error:', err.message))
         .finally(finish);
