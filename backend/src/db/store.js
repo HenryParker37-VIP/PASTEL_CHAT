@@ -552,103 +552,114 @@ async function hydrateFromDurableStore() {
         {
           $project: {
             sizeBytes: { $bsonSize: "$$ROOT" },
+            messagesSize: { $bsonSize: { k: { $ifNull: ["$data.messages", []] } } },
+            sharedPhotosSize: { $bsonSize: { k: { $ifNull: ["$data.sharedPhotos", []] } } },
+            usersSize: { $bsonSize: { k: { $ifNull: ["$data.users", []] } } },
+            aiCharactersSize: { $bsonSize: { k: { $ifNull: ["$data.aiCharacters", []] } } },
             updatedAt: 1
           }
         }
       ]).toArray();
       const meta = sizeAgg[0];
       const sizeBytes = meta?.sizeBytes || 0;
-      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms: size = ${sizeBytes} bytes (${Math.round(sizeBytes / 1024)} KB)`);
+      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms:`, JSON.stringify(meta));
 
       const isBloated = sizeBytes > 300000;
-      let snapshot = null;
-      const t1 = Date.now();
-
       if (isBloated) {
-        console.warn(`[DB] Primary snapshot is bloated (${Math.round(sizeBytes / 1024)} KB). Using aggregation projection to eliminate multi-MB transfer delay...`);
-        const slimAgg = await col.aggregate([
-          { $match: { key: 'primary' } },
-          {
-            $project: {
-              key: 1,
-              updatedAt: 1,
-              'data.users': {
-                $map: {
-                  input: { $ifNull: ["$data.users", []] },
-                  as: "u",
-                  in: {
-                    _id: "$$u._id",
-                    name: "$$u.name",
-                    loginCode: "$$u.loginCode",
-                    bio: "$$u.bio",
-                    status: "$$u.status",
-                    chatColor: "$$u.chatColor",
-                    isOnline: "$$u.isOnline",
-                    isAI: "$$u.isAI",
-                    aiCharacterId: "$$u.aiCharacterId",
-                    email: "$$u.email",
-                    createdAt: "$$u.createdAt",
-                    lastSeen: "$$u.lastSeen",
-                    avatar: {
-                      $cond: {
-                        if: { $gt: [{ $strLenCP: { $ifNull: ["$$u.avatar", ""] } }, 10000] },
-                        then: "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50",
-                        else: "$$u.avatar"
+        console.warn(`[DB] Primary snapshot is bloated (${Math.round(sizeBytes / 1024)} KB). Repairing directly in Atlas...`);
+        if ((meta?.sharedPhotosSize || 0) > 100000) {
+          console.log('[DB] Resetting bloated data.sharedPhotos in Atlas...');
+          await col.updateOne({ key: 'primary' }, { $set: { "data.sharedPhotos": [] } });
+        }
+        if ((meta?.aiCharactersSize || 0) > 100000) {
+          console.log('[DB] Resetting bloated Lyra avatar in Atlas...');
+          await col.updateOne({ key: 'primary' }, { $set: { "data.aiCharacters.0.avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50" } });
+        }
+        if ((meta?.messagesSize || 0) > 100000) {
+          console.log('[DB] Pruning media.dataUrl from data.messages in Atlas...');
+          try {
+            await col.updateOne(
+              { key: 'primary' },
+              [{
+                $set: {
+                  "data.messages": {
+                    $map: {
+                      input: { $ifNull: ["$data.messages", []] },
+                      as: "m",
+                      in: {
+                        _id: "$$m._id",
+                        senderId: "$$m.senderId",
+                        receiverId: "$$m.receiverId",
+                        content: "$$m.content",
+                        timestamp: "$$m.timestamp",
+                        clientMessageId: "$$m.clientMessageId",
+                        deliveredAt: "$$m.deliveredAt",
+                        readAt: "$$m.readAt",
+                        replyTo: "$$m.replyTo",
+                        reactions: "$$m.reactions",
+                        groupId: "$$m.groupId",
+                        deliveryReceipts: "$$m.deliveryReceipts",
+                        media: {
+                          $cond: {
+                            if: { $ne: ["$$m.media", null] },
+                            then: {
+                              type: "$$m.media.type",
+                              name: "$$m.media.name",
+                              size: "$$m.media.size",
+                              url: "$$m.media.url",
+                              previewUrl: "$$m.media.previewUrl"
+                            },
+                            else: null
+                          }
+                        }
                       }
                     }
                   }
                 }
-              },
-              'data.friendships': 1,
-              'data.friendRequests': 1,
-              'data.aiCharacters': 1,
-              'data.aiCharacterState': 1,
-              'data.aiRelationshipState': 1,
-              'data.aiMemories': 1,
-              'data.aiLifeEvents': 1,
-              'data.groups': 1,
-              'data.notes': 1,
-              'data.reminders': 1,
-              'data.birthdays': 1,
-              'data.notifications': 1,
-              'data.releases': 1,
-              'data.sessions': 1,
-              'data.accessCodes': 1,
-              'data.reports': 1,
-              'data.announcements': 1,
-              'data.auditLogs': 1,
-              'data.messages': {
-                $map: {
-                  input: { $ifNull: ["$data.messages", []] },
-                  as: "m",
-                  in: {
-                    _id: "$$m._id",
-                    senderId: "$$m.senderId",
-                    receiverId: "$$m.receiverId",
-                    content: "$$m.content",
-                    timestamp: "$$m.timestamp",
-                    clientMessageId: "$$m.clientMessageId",
-                    deliveredAt: "$$m.deliveredAt",
-                    readAt: "$$m.readAt",
-                    replyTo: "$$m.replyTo",
-                    reactions: "$$m.reactions",
-                    media: {
-                      type: "$$m.media.type",
-                      name: "$$m.media.name",
-                      size: "$$m.media.size",
-                      url: "$$m.media.url",
-                      previewUrl: "$$m.media.previewUrl"
+              }]
+            );
+          } catch (msgErr) {
+            console.warn('[DB] Could not pipeline update messages:', msgErr.message);
+          }
+        }
+        if ((meta?.usersSize || 0) > 100000) {
+          console.log('[DB] Resetting giant user avatars in Atlas...');
+          try {
+            await col.updateOne(
+              { key: 'primary' },
+              [{
+                $set: {
+                  "data.users": {
+                    $map: {
+                      input: { $ifNull: ["$data.users", []] },
+                      as: "u",
+                      in: {
+                        $mergeObjects: [
+                          "$$u",
+                          {
+                            avatar: {
+                              $cond: {
+                                if: { $gt: [{ $strLenBytes: { $ifNull: ["$$u.avatar", ""] } }, 10000] },
+                                then: "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50",
+                                else: "$$u.avatar"
+                              }
+                            }
+                          }
+                        ]
+                      }
                     }
                   }
                 }
-              }
-            }
+              }]
+            );
+          } catch (uErr) {
+            console.warn('[DB] Could not pipeline update users:', uErr.message);
           }
-        ]).toArray();
-        snapshot = slimAgg[0];
-      } else {
-        snapshot = await col.findOne({ key: 'primary' });
+        }
       }
+
+      const t1 = Date.now();
+      const snapshot = await col.findOne({ key: 'primary' });
       console.log(`[DB] Primary snapshot payload returned in ${Date.now() - t1}ms:`, snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
