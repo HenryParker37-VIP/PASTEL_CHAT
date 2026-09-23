@@ -24,6 +24,11 @@ import {
   TURN_CONFIG
 } from '../utils/aiTurnTaking';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
+import {
+  getCachedConversation,
+  setCachedConversation,
+  mergeMessages
+} from '../utils/conversationCache';
 
 const isMobile = () => window.innerWidth <= 700;
 const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 };
@@ -36,9 +41,10 @@ const Chat = () => {
   const { push } = useToast();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState([]);
-  const [friend, setFriend] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const initialCache = getCachedConversation(user?._id, friendId);
+  const [messages, setMessages] = useState(() => initialCache?.messages || []);
+  const [friend, setFriend] = useState(() => initialCache?.friend || null);
+  const [loading, setLoading] = useState(() => !initialCache?.messages?.length);
   const [replyingTo, setReplyingTo] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile());
@@ -60,11 +66,30 @@ const Chat = () => {
   const aiBubbleIdsInFlightRef = useRef(new Set());
   const deliverNextAiBubbleRef = useRef();
   const commitTurnGenerationRef = useRef();
-  const friendRef = useRef(friend);
+  const friendRef = useRef(initialCache?.friend || null);
 
   useEffect(() => {
     friendRef.current = friend;
   }, [friend]);
+
+  // Synchronize state when switching friends/conversations while Chat is mounted
+  useEffect(() => {
+    const cached = getCachedConversation(user?._id, friendId);
+    if (cached?.messages && cached.messages.length > 0) {
+      setMessages(cached.messages);
+      setLoading(false);
+    } else {
+      setMessages([]);
+      setLoading(true);
+    }
+    if (cached?.friend) {
+      setFriend(cached.friend);
+      friendRef.current = cached.friend;
+    } else {
+      setFriend(null);
+      friendRef.current = null;
+    }
+  }, [friendId, user?._id]);
 
   // Human-like Turn-Taking refs
   const isUserTypingRef = useRef(false);
@@ -87,18 +112,30 @@ const Chat = () => {
 
   // Fetch message history — depends on user so it re-runs if auth reloads
   const fetchMessages = useCallback(async () => {
-    if (!friendId || !user) return;
-    setLoading(true);
+    if (!friendId || !user?._id) return;
+    setMessages((current) => {
+      if (!current || current.length === 0) {
+        setLoading(true);
+      }
+      return current;
+    });
     try {
       const { data } = await api.get(`/messages/with/${friendId}?limit=80`);
-      setMessages(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
+      const serverMsgs = Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []);
+      const pending = loadPendingMessages(user._id).filter((m) => m.receiverId === friendId);
+
+      setMessages((current) => {
+        const merged = mergeMessages(current, serverMsgs, pending);
+        setCachedConversation(user._id, friendId, { messages: merged });
+        return merged;
+      });
     } catch (err) {
       console.error('Failed to load messages:', err.message);
-      setMessages([]);
+      // Retain existing cached messages on failure — never wipe to []
     } finally {
       setLoading(false);
     }
-  }, [friendId, user]);
+  }, [friendId, user?._id]);
 
   const cancelActiveAiTurn = useCallback((reason = 'cancelled') => {
     if (reactionTimerRef.current) {
@@ -168,7 +205,9 @@ const Chat = () => {
 
       setMessages((current) => {
         if (current.some((m) => m._id === bubbleToDeliver._id)) return current;
-        return [...current, bubbleToDeliver];
+        const next = [...current, bubbleToDeliver];
+        if (user?._id) setCachedConversation(user._id, friendId, { messages: next });
+        return next;
       });
 
       if (currentTurn.pendingBubbles.length > 0) {
@@ -216,7 +255,8 @@ const Chat = () => {
       friend: currentFriend,
       sender: nextBubble?.senderId,
       messages,
-      friendId: currentFriend?._id || friendId || 'user_ai_lyra'
+      friendId: currentFriend?._id || friendId || 'user_ai_lyra',
+      userId: user?._id
     });
     const targetUser = currentFriend
       ? { ...currentFriend, avatar: resolvedAvatar }
@@ -232,7 +272,7 @@ const Chat = () => {
 
     if (deliveryTimerRef.current) clearTimeout(deliveryTimerRef.current);
     deliveryTimerRef.current = setTimeout(finalizeDelivery, typingDelay);
-  }, [friend, friendId, friendIdentity, messages]);
+  }, [friend, friendId, friendIdentity, messages, user?._id]);
 
   const resumePausedAiDelivery = useCallback(() => {
     const turn = activeAiTurnRef.current;
@@ -254,7 +294,8 @@ const Chat = () => {
       friend: currentFriend,
       sender: turn.pendingBubbles[0]?.senderId,
       messages,
-      friendId: currentFriend?._id || friendId || 'user_ai_lyra'
+      friendId: currentFriend?._id || friendId || 'user_ai_lyra',
+      userId: user?._id
     });
     const targetUser = currentFriend
       ? { ...currentFriend, avatar: resolvedAvatar }
@@ -272,7 +313,7 @@ const Chat = () => {
     deliveryTimerRef.current = setTimeout(() => {
       deliverNextAiBubbleRef.current?.(turn.generationId, turn.revision, null, true);
     }, resumeDelay);
-  }, [friend, friendId, friendIdentity, messages]);
+  }, [friend, friendId, friendIdentity, messages, user?._id]);
 
   const commitTurnGeneration = useCallback(async (targetGenId = null, targetRevision = null) => {
     const turn = activeAiTurnRef.current;
@@ -305,7 +346,8 @@ const Chat = () => {
       const resolvedAvatar = resolveCharacterAvatar({
         friend: currentFriend,
         messages,
-        friendId: currentFriend?._id || friendId || 'user_ai_lyra'
+        friendId: currentFriend?._id || friendId || 'user_ai_lyra',
+        userId: user?._id
       });
       const targetUser = currentFriend
         ? { ...currentFriend, avatar: resolvedAvatar }
@@ -360,7 +402,7 @@ const Chat = () => {
         cancelActiveAiTurn('error');
       }
     }
-  }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friend, friendId, friendIdentity, messages]);
+  }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friend, friendId, friendIdentity, messages, user?._id]);
 
   const handleComposerTyping = useCallback((isTyping) => {
     isUserTypingRef.current = isTyping;
@@ -490,14 +532,28 @@ const Chat = () => {
   useEffect(() => {
     if (!friendId) return;
     api.get(`/users/${friendId}`)
-      .then(({ data }) => setFriend(data))
-      .catch(() => navigate('/friends'));
-  }, [friendId, navigate]);
-
-
+      .then(({ data }) => {
+        if (!data) return;
+        setFriend(data);
+        friendRef.current = data;
+        if (user?._id) {
+          setCachedConversation(user._id, friendId, { friend: data });
+        }
+      })
+      .catch((err) => {
+        console.warn('[Chat] Failed to refresh friend profile:', err.message);
+        const cached = getCachedConversation(user?._id, friendId);
+        if (!cached?.friend && !friendRef.current) {
+          navigate('/friends');
+        }
+      });
+  }, [friendId, navigate, user?._id]);
 
   useEffect(() => {
     fetchMessages();
+  }, [fetchMessages]);
+
+  useEffect(() => {
     if (friendId === 'user_ai_lyra' || friend?.isAI) {
       api.get('/ai/status')
         .then(res => {
@@ -507,7 +563,7 @@ const Chat = () => {
         })
         .catch(() => {});
     }
-  }, [fetchMessages, friendId, friend?.isAI]);
+  }, [friendId, friend?.isAI]);
 
   const sendPendingMessage = useCallback(async (pending) => {
     if (pendingSendInFlightRef.current.has(pending.clientMessageId)) return;
@@ -627,12 +683,13 @@ const Chat = () => {
         const existing = prev.find((m) => m._id === msg._id || (
           msg.clientMessageId && m.clientMessageId === msg.clientMessageId
         ));
-        if (existing) {
-          return prev.map((message) => message === existing
+        const updated = existing
+          ? prev.map((message) => message === existing
             ? { ...msg, deliveryStatus: message.deliveryStatus === 'failed' ? 'failed' : 'sent' }
-            : message);
-        }
-        return [...prev, msg];
+            : message)
+          : [...prev, msg];
+        if (user?._id) setCachedConversation(user._id, friendId, { messages: updated });
+        return updated;
       });
       if (senderId !== user._id && document.visibilityState === 'visible') {
         if (!deliveredAckRef.current.has(msg._id)) {
@@ -695,6 +752,12 @@ const Chat = () => {
           return updated;
         });
         setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: data.avatar } } : null));
+        if (user?._id) {
+          setCachedConversation(user._id, friendId, {
+            friend: { ...(friendRef.current || {}), avatar: data.avatar },
+            resolvedAvatar: data.avatar
+          });
+        }
       }
     };
 
@@ -832,7 +895,11 @@ const Chat = () => {
       isPinned: false,
       reactions: {}
     };
-    setMessages((current) => [...current, pending]);
+    setMessages((current) => {
+      const next = [...current, pending];
+      if (user?._id) setCachedConversation(user._id, friendId, { messages: next });
+      return next;
+    });
     savePendingMessage(user._id, pending);
     setReplyingTo(null);
     void sendPendingMessage(pending);
@@ -901,6 +968,12 @@ const Chat = () => {
               return updated;
             });
             setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: newAvatar } } : null));
+            if (user?._id) {
+              setCachedConversation(user._id, friendId || 'user_ai_lyra', {
+                friend: { ...(friendRef.current || {}), avatar: newAvatar },
+                resolvedAvatar: newAvatar
+              });
+            }
             push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
           }
         } catch (err) {
@@ -926,6 +999,12 @@ const Chat = () => {
             return updated;
           });
           setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: newAvatar } } : null));
+          if (user?._id) {
+            setCachedConversation(user._id, friendId || 'user_ai_lyra', {
+              friend: { ...(friendRef.current || {}), avatar: newAvatar },
+              resolvedAvatar: newAvatar
+            });
+          }
           push({ title: 'Avatar updated successfully', tone: 'ok', icon: 'check' });
         }
       } catch (err) {
@@ -1046,7 +1125,7 @@ const Chat = () => {
               {sidebarOpen ? '◀ Hide' : '▶ Online'}
             </button>
 
-            {friend && (
+            {(friend || friendId === 'user_ai_lyra') && (
               <div className="chat-contact" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                 {/* Clickable avatar — opens profile card */}
                 <button
@@ -1055,7 +1134,7 @@ const Chat = () => {
                   title="View profile"
                 >
                   <img
-                    src={resolveCharacterAvatar({ friend, messages, friendId })}
+                    src={resolveCharacterAvatar({ friend, messages, friendId, userId: user?._id })}
                     alt=""
                     style={{ width: 32, height: 32, borderRadius: '50%', display: 'block', border: `2px solid ${friendIdentity.accent}`, objectFit: 'cover' }}
                   />
@@ -1067,11 +1146,11 @@ const Chat = () => {
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       display: 'block'
                     }}>
-                      {friend.name}
+                      {friend?.name || (friendId === 'user_ai_lyra' ? 'Lyra' : '')}
                     </span>
                   </div>
-                  <span style={{ fontSize: 11, color: (friend.status ? '#B08ABD' : (friend.isOnline ? '#4fa865' : '#bbb')) }}>
-                    {friend.status || (aiActivity ? `☕ ${aiActivity}` : (friend.isOnline ? 'Online' : 'Offline'))}
+                  <span style={{ fontSize: 11, color: (friend?.status ? '#B08ABD' : (friend?.isOnline || friendId === 'user_ai_lyra' ? '#4fa865' : '#bbb')) }}>
+                    {friend?.status || (aiActivity ? `☕ ${aiActivity}` : (friend?.isOnline || friendId === 'user_ai_lyra' ? 'Online' : 'Offline'))}
                   </span>
                 </div>
 
@@ -1187,7 +1266,7 @@ const Chat = () => {
             }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <img
-                  src={resolveCharacterAvatar({ friend, messages, friendId })}
+                  src={resolveCharacterAvatar({ friend, messages, friendId, userId: user?._id })}
                   alt=""
                   style={{ width: 56, height: 56, borderRadius: '50%', border: `3px solid ${friendIdentity.accent}`, objectFit: 'cover', display: 'block' }}
                 />

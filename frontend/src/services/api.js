@@ -7,7 +7,8 @@ console.log('[App] Target API Base:', BACKEND_URL || '(same-origin)');
 
 const api = axios.create({
   baseURL: BACKEND_URL,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 15000
 });
 
 // Attach JWT from localStorage on every request
