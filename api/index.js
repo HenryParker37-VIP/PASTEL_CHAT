@@ -22,6 +22,11 @@ module.exports = async (req, res) => {
     });
   }
 
+  const isHealthCheck = req.url === '/health' || req.path === '/health';
+  if (isHealthCheck) {
+    return app(req, res);
+  }
+
   // A Vercel request can land on a different warm lambda than the previous
   // request. Reload the durable snapshot before every request so a newly
   // registered user, pending request, or accepted friendship is immediately
@@ -38,7 +43,7 @@ module.exports = async (req, res) => {
   const originalEnd = res.end;
   res.end = function (...args) {
     const finish = () => originalEnd.apply(res, args);
-    if (storeDb.isDurableStorageEnabled()) {
+    if (storeDb.isDurableStorageEnabled() && storeDb.isDirty?.()) {
       storeDb.flushPersist()
         .catch((err) => console.error('[Vercel Serverless] Flush error:', err.message))
         .finally(finish);

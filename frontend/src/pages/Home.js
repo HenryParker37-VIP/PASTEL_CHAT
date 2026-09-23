@@ -8,6 +8,8 @@ import NotificationButton from '../components/NotificationButton';
 import LanguagePickerModal from '../components/LanguagePickerModal';
 import OnboardingTutorial from '../components/OnboardingTutorial';
 import PastelIcon from '../components/PastelIcon';
+import api from '../services/api';
+import { prefetchFriends } from '../utils/friendsCache';
 
 const TILES = [
   {
@@ -147,6 +149,12 @@ const Home = () => {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    if (user?._id) {
+      prefetchFriends(api, user._id);
+    }
+  }, [user?._id]);
 
   if (isMobile) {
     return (
