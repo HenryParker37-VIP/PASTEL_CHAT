@@ -12,10 +12,11 @@ if ((rawMongo.startsWith('"') && rawMongo.endsWith('"')) || (rawMongo.startsWith
 const MONGODB_URI = (rawMongo && !rawMongo.includes('<username>') && !rawMongo.includes('xxxxx')) ? rawMongo : '';
 const mongoConfigured = Boolean(MONGODB_URI);
 const durableStorageRequired = Boolean(process.env.VERCEL || process.env.SERVERLESS);
+mongoose.set('autoIndex', false);
 const durableStateSchema = new mongoose.Schema({
   key: { type: String, unique: true, required: true },
   data: { type: mongoose.Schema.Types.Mixed, required: true }
-}, { collection: 'pastelchat_state', timestamps: true, bufferCommands: false });
+}, { collection: 'pastelchat_state', timestamps: true, bufferCommands: false, autoIndex: false });
 const DurableState = mongoose.models.PastelChatState || mongoose.model('PastelChatState', durableStateSchema);
 let mongoConnected = false;
 let durableSaveTimer;
@@ -412,18 +413,35 @@ function persist() {
   }
 }
 
+function getDurableCollection() {
+  if (mongoose.connection?.db) {
+    return mongoose.connection.db.collection('pastelchat_state');
+  }
+  return null;
+}
+
 let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
-    pendingDurableWrite = DurableState.findOneAndUpdate(
-      { key: 'primary' },
-      { key: 'primary', data: store },
-      { upsert: true, setDefaultsOnInsert: true }
-    ).maxTimeMS(6000).exec();
+    const col = getDurableCollection();
+    const now = new Date();
+    if (col) {
+      pendingDurableWrite = col.updateOne(
+        { key: 'primary' },
+        { $set: { key: 'primary', data: store, updatedAt: now }, $setOnInsert: { createdAt: now } },
+        { upsert: true }
+      );
+    } else {
+      pendingDurableWrite = DurableState.findOneAndUpdate(
+        { key: 'primary' },
+        { key: 'primary', data: store },
+        { upsert: true, setDefaultsOnInsert: true }
+      ).maxTimeMS(6000).exec();
+    }
     await pendingDurableWrite;
     isDirty = false;
-    lastHydratedUpdatedAt = Date.now();
+    lastHydratedUpdatedAt = now.getTime();
   } catch (err) {
     console.error('[DB] Durable snapshot write error:', err.message);
   } finally {
@@ -504,8 +522,15 @@ async function hydrateFromDurableStore() {
       await connectDurableStore();
 
       console.log('[DB] Querying primary snapshot (readyState =', mongoose.connection.readyState, ')...');
-      const snapshot = await DurableState.findOne({ key: 'primary' }).lean().maxTimeMS(6000).exec();
-      console.log('[DB] Primary snapshot returned:', snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
+      const col = getDurableCollection();
+      const t0 = Date.now();
+      let snapshot = null;
+      if (col) {
+        snapshot = await col.findOne({ key: 'primary' }, { maxTimeMS: 6000 });
+      } else {
+        snapshot = await DurableState.findOne({ key: 'primary' }).lean().maxTimeMS(6000).exec();
+      }
+      console.log(`[DB] Primary snapshot returned in ${Date.now() - t0}ms:`, snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
         applySnapshot(snapshot.data);
