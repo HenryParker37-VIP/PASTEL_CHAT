@@ -416,14 +416,14 @@ let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
-    pendingDurableWrite = DurableState.findOneAndUpdate(
+    pendingDurableWrite = DurableState.updateOne(
       { key: 'primary' },
-      { key: 'primary', data: store },
-      { upsert: true, setDefaultsOnInsert: true, new: true }
+      { $set: { key: 'primary', data: store } },
+      { upsert: true }
     ).exec();
-    const doc = await pendingDurableWrite;
+    await pendingDurableWrite;
     isDirty = false;
-    lastHydratedUpdatedAt = doc?.updatedAt ? new Date(doc.updatedAt).getTime() : Date.now();
+    lastHydratedUpdatedAt = Date.now();
   } catch (err) {
     console.error('[DB] Durable snapshot write error:', err.message);
   } finally {
@@ -469,16 +469,6 @@ async function hydrateFromDurableStore() {
     if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
       applySnapshot(snapshot.data);
       lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
-
-      // Ensure seed demo users exist without blocking hydration with a write
-      if (seedData && Array.isArray(seedData.users)) {
-        seedData.users.forEach((seedUser) => {
-          if (!store.users.some((u) => String(u._id) === String(seedUser._id) || (seedUser.loginCode && u.loginCode === seedUser.loginCode))) {
-            store.users.push(seedUser);
-            isDirty = true;
-          }
-        });
-      }
       ensureAICharacter();
       console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
     } else {
