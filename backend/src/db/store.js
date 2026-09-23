@@ -413,32 +413,49 @@ function persist() {
   }
 }
 
-function getDurableCollection() {
-  if (mongoose.connection?.db) {
-    return mongoose.connection.db.collection('pastelchat_state');
+const { MongoClient } = mongoose.mongo;
+
+let cachedClient = global.__pastelMongoClient;
+let cachedDb = global.__pastelMongoDb;
+
+async function getDurableCollection() {
+  if (!MONGODB_URI) return null;
+  if (!cachedClient) {
+    try {
+      console.log('[DB] Connecting to MongoDB Atlas with native MongoClient...');
+      const client = new MongoClient(MONGODB_URI, {
+        serverSelectionTimeoutMS: 12000,
+        connectTimeoutMS: 12000,
+        maxPoolSize: 5
+      });
+      await client.connect();
+      cachedClient = global.__pastelMongoClient = client;
+      cachedDb = global.__pastelMongoDb = client.db();
+      mongoConnected = true;
+      console.log('[DB] Connected to MongoDB Atlas successfully (native client)');
+    } catch (err) {
+      mongoConnected = false;
+      cachedClient = global.__pastelMongoClient = null;
+      cachedDb = global.__pastelMongoDb = null;
+      console.error('[DB] MongoDB Atlas connection error:', err.message);
+      throw err;
+    }
   }
-  return null;
+  return cachedDb.collection('pastelchat_state');
 }
 
 let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
   if (!mongoConnected) return;
   try {
-    const col = getDurableCollection();
+    const col = await getDurableCollection();
+    if (!col) return;
     const now = new Date();
-    if (col) {
-      pendingDurableWrite = col.updateOne(
-        { key: 'primary' },
-        { $set: { key: 'primary', data: store, updatedAt: now }, $setOnInsert: { createdAt: now } },
-        { upsert: true }
-      );
-    } else {
-      pendingDurableWrite = DurableState.findOneAndUpdate(
-        { key: 'primary' },
-        { key: 'primary', data: store },
-        { upsert: true, setDefaultsOnInsert: true }
-      ).maxTimeMS(6000).exec();
-    }
+    pendingDurableWrite = col.updateOne(
+      { key: 'primary' },
+      { $set: { key: 'primary', data: store, updatedAt: now }, $setOnInsert: { createdAt: now } },
+      { upsert: true }
+    );
     await pendingDurableWrite;
     isDirty = false;
     lastHydratedUpdatedAt = now.getTime();
@@ -455,47 +472,6 @@ async function flushPersist() {
     await pendingDurableWrite;
   } else if (isDirty) {
     await writeDurableSnapshot();
-  }
-}
-
-let cachedMongo = global.__pastelMongo;
-if (!cachedMongo) {
-  cachedMongo = global.__pastelMongo = { conn: null, promise: null };
-}
-
-async function connectDurableStore() {
-  if (!MONGODB_URI) return null;
-  if (cachedMongo.conn && mongoose.connection.readyState === 1) {
-    mongoConnected = true;
-    return cachedMongo.conn;
-  }
-  if (!cachedMongo.promise) {
-    console.log('[DB] Connecting to MongoDB Atlas...');
-    cachedMongo.promise = mongoose.connect(MONGODB_URI, {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 12000,
-      connectTimeoutMS: 12000,
-      maxPoolSize: 5,
-      retryWrites: true
-    }).then((m) => {
-      mongoConnected = true;
-      cachedMongo.conn = m;
-      console.log('[DB] Connected to MongoDB Atlas successfully');
-      return m;
-    }).catch((err) => {
-      mongoConnected = false;
-      cachedMongo.promise = null;
-      console.error('[DB] MongoDB Atlas connection error:', err.message);
-      throw err;
-    });
-  }
-  try {
-    cachedMongo.conn = await cachedMongo.promise;
-    mongoConnected = true;
-    return cachedMongo.conn;
-  } catch (err) {
-    cachedMongo.promise = null;
-    throw err;
   }
 }
 
@@ -519,17 +495,12 @@ async function hydrateFromDurableStore() {
         await writeDurableSnapshot();
       }
 
-      await connectDurableStore();
+      const col = await getDurableCollection();
+      if (!col) return;
 
-      console.log('[DB] Querying primary snapshot (readyState =', mongoose.connection.readyState, ')...');
-      const col = getDurableCollection();
+      console.log('[DB] Querying primary snapshot from native collection...');
       const t0 = Date.now();
-      let snapshot = null;
-      if (col) {
-        snapshot = await col.findOne({ key: 'primary' }, { maxTimeMS: 6000 });
-      } else {
-        snapshot = await DurableState.findOne({ key: 'primary' }).lean().maxTimeMS(6000).exec();
-      }
+      const snapshot = await col.findOne({ key: 'primary' }, { maxTimeMS: 6000 });
       console.log(`[DB] Primary snapshot returned in ${Date.now() - t0}ms:`, snapshot ? `found (${snapshot.data?.users?.length || 0} users, ${snapshot.data?.messages?.length || 0} msgs)` : 'not found');
 
       if (snapshot?.data && Array.isArray(snapshot.data.users) && snapshot.data.users.length > 0) {
