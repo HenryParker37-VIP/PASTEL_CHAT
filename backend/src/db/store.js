@@ -552,109 +552,53 @@ async function hydrateFromDurableStore() {
         {
           $project: {
             sizeBytes: { $bsonSize: "$$ROOT" },
-            messagesSize: { $bsonSize: { k: { $ifNull: ["$data.messages", []] } } },
-            sharedPhotosSize: { $bsonSize: { k: { $ifNull: ["$data.sharedPhotos", []] } } },
-            usersSize: { $bsonSize: { k: { $ifNull: ["$data.users", []] } } },
-            aiCharactersSize: { $bsonSize: { k: { $ifNull: ["$data.aiCharacters", []] } } },
+            rootFields: {
+              $map: {
+                input: { $objectToArray: "$$ROOT" },
+                as: "rf",
+                in: { k: "$$rf.k", sz: { $bsonSize: { k: "$$rf.v" } } }
+              }
+            },
+            dataFields: {
+              $map: {
+                input: { $objectToArray: { $ifNull: ["$data", {}] } },
+                as: "df",
+                in: { k: "$$df.k", sz: { $bsonSize: { k: "$$df.v" } } }
+              }
+            },
             updatedAt: 1
           }
         }
       ]).toArray();
       const meta = sizeAgg[0];
       const sizeBytes = meta?.sizeBytes || 0;
-      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms:`, JSON.stringify(meta));
+      console.log(`[DB] Metadata returned in ${Date.now() - t0}ms: size = ${sizeBytes} bytes (${Math.round(sizeBytes / 1024)} KB)`);
+      if (meta?.rootFields) console.log('[DB] Root fields sizes:', JSON.stringify(meta.rootFields));
+      if (meta?.dataFields) console.log('[DB] Data fields sizes:', JSON.stringify(meta.dataFields));
 
       const isBloated = sizeBytes > 300000;
       if (isBloated) {
         console.warn(`[DB] Primary snapshot is bloated (${Math.round(sizeBytes / 1024)} KB). Repairing directly in Atlas...`);
-        if ((meta?.sharedPhotosSize || 0) > 100000) {
-          console.log('[DB] Resetting bloated data.sharedPhotos in Atlas...');
-          await col.updateOne({ key: 'primary' }, { $set: { "data.sharedPhotos": [] } });
+        // Dynamically clear any bloated fields in data (notes, auditLogs, pushSubscriptions, etc.)
+        for (const f of meta?.dataFields || []) {
+          if (f && f.sz > 100000 && !['users', 'messages', 'friendships', 'friendRequests', 'aiCharacters'].includes(f.k)) {
+            console.log(`[DB] Clearing bloated data.${f.k} (${Math.round(f.sz / 1024)} KB)...`);
+            await col.updateOne({ key: 'primary' }, { $set: { [`data.${f.k}`]: [] } });
+          }
         }
-        if ((meta?.aiCharactersSize || 0) > 100000) {
+        // Dynamically unset any bloated fields on root document (legacy backups, temp dumps)
+        for (const f of meta?.rootFields || []) {
+          if (f && f.sz > 100000 && f.k !== 'data' && f.k !== 'key') {
+            console.log(`[DB] Unsetting bloated root.${f.k} (${Math.round(f.sz / 1024)} KB)...`);
+            await col.updateOne({ key: 'primary' }, { $unset: { [f.k]: "" } });
+          }
+        }
+
+        // Check if aiCharacters has giant avatar
+        const aiField = (meta?.dataFields || []).find(f => f.k === 'aiCharacters');
+        if (aiField && aiField.sz > 50000) {
           console.log('[DB] Resetting bloated Lyra avatar in Atlas...');
           await col.updateOne({ key: 'primary' }, { $set: { "data.aiCharacters.0.avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50" } });
-        }
-        if ((meta?.messagesSize || 0) > 100000) {
-          console.log('[DB] Pruning media.dataUrl from data.messages in Atlas...');
-          try {
-            await col.updateOne(
-              { key: 'primary' },
-              [{
-                $set: {
-                  "data.messages": {
-                    $map: {
-                      input: { $ifNull: ["$data.messages", []] },
-                      as: "m",
-                      in: {
-                        _id: "$$m._id",
-                        senderId: "$$m.senderId",
-                        receiverId: "$$m.receiverId",
-                        content: "$$m.content",
-                        timestamp: "$$m.timestamp",
-                        clientMessageId: "$$m.clientMessageId",
-                        deliveredAt: "$$m.deliveredAt",
-                        readAt: "$$m.readAt",
-                        replyTo: "$$m.replyTo",
-                        reactions: "$$m.reactions",
-                        groupId: "$$m.groupId",
-                        deliveryReceipts: "$$m.deliveryReceipts",
-                        media: {
-                          $cond: {
-                            if: { $ne: ["$$m.media", null] },
-                            then: {
-                              type: "$$m.media.type",
-                              name: "$$m.media.name",
-                              size: "$$m.media.size",
-                              url: "$$m.media.url",
-                              previewUrl: "$$m.media.previewUrl"
-                            },
-                            else: null
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }]
-            );
-          } catch (msgErr) {
-            console.warn('[DB] Could not pipeline update messages:', msgErr.message);
-          }
-        }
-        if ((meta?.usersSize || 0) > 100000) {
-          console.log('[DB] Resetting giant user avatars in Atlas...');
-          try {
-            await col.updateOne(
-              { key: 'primary' },
-              [{
-                $set: {
-                  "data.users": {
-                    $map: {
-                      input: { $ifNull: ["$data.users", []] },
-                      as: "u",
-                      in: {
-                        $mergeObjects: [
-                          "$$u",
-                          {
-                            avatar: {
-                              $cond: {
-                                if: { $gt: [{ $strLenBytes: { $ifNull: ["$$u.avatar", ""] } }, 10000] },
-                                then: "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50",
-                                else: "$$u.avatar"
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  }
-                }
-              }]
-            );
-          } catch (uErr) {
-            console.warn('[DB] Could not pipeline update users:', uErr.message);
-          }
         }
       }
 
