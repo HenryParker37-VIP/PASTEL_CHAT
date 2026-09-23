@@ -14,7 +14,7 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
+const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled, onComposerTyping }) => {
   const draftKey = to ? `pastelchat.draft:${to}` : null;
   const [text, setText] = useState(() => {
     try { return draftKey ? localStorage.getItem(draftKey) || '' : ''; } catch { return ''; }
@@ -53,9 +53,18 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     } catch { /* private mode or storage unavailable */ }
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-    emitTyping(true);
+
+    const isMeaningful = nextText.trim().length > 0;
+    emitTyping(isMeaningful);
+    onComposerTyping?.(isMeaningful);
+
     clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => emitTyping(false), 2000);
+    if (isMeaningful) {
+      typingTimerRef.current = setTimeout(() => {
+        emitTyping(false);
+        onComposerTyping?.(false);
+      }, 3500);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -87,6 +96,7 @@ const MessageInput = ({ onSend, to, replyingTo, onCancelReply, disabled }) => {
     setSending(true);
     clearTimeout(typingTimerRef.current);
     emitTyping(false);
+    onComposerTyping?.(false);
     try {
       const mediaPayload = media
         ? { type: media.type, dataUrl: media.dataUrl, name: media.name, size: media.size }

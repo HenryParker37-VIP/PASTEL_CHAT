@@ -4,7 +4,7 @@ import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 import PastelIcon from './PastelIcon';
 
-const MessageList = ({ messages = [], loading, typingUsers = [], onReply, onRecall, onReaction, onRetry, highlightId, conversationIdentity, onMessageVisible }) => {
+const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null, friend = null, onReply, onRecall, onReaction, onRetry, highlightId, conversationIdentity, onMessageVisible }) => {
   const containerRef = useRef(null);
   const initialPositionedRef = useRef(false);
   const previousMessageCountRef = useRef(0);
@@ -39,6 +39,14 @@ const MessageList = ({ messages = [], loading, typingUsers = [], onReply, onReca
       container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
   }, [safeMessages.length]);
+
+  // Keep bottom anchor when AI typing indicator appears
+  useEffect(() => {
+    if (!initialPositionedRef.current || !nearBottomRef.current || !aiTyping?.isTyping) return;
+    const container = containerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }, [aiTyping?.isTyping]);
 
   // The flex layout reduces this container when the iPhone keyboard opens.
   // Re-anchor only if the user was already reading the bottom; never move a
@@ -183,7 +191,12 @@ const MessageList = ({ messages = [], loading, typingUsers = [], onReply, onReca
         );
       })}
 
-      <TypingIndicator typingUsers={typingUsers} />
+      <TypingIndicator
+        typingUsers={typingUsers}
+        aiTyping={aiTyping}
+        friend={friend}
+        conversationIdentity={conversationIdentity}
+      />
 
       <div style={{ height: '4px' }} />
     </div>
