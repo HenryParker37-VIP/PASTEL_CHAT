@@ -8,6 +8,7 @@ const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 const rawMongo = (process.env.MONGODB_URI || '').trim();
 const MONGODB_URI = (rawMongo && !rawMongo.includes('<username>') && !rawMongo.includes('xxxxx')) ? rawMongo : '';
 const mongoConfigured = Boolean(MONGODB_URI);
+const durableStorageRequired = Boolean(process.env.VERCEL || process.env.SERVERLESS);
 const durableStateSchema = new mongoose.Schema({
   key: { type: String, unique: true, required: true },
   data: { type: mongoose.Schema.Types.Mixed, required: true }
@@ -639,13 +640,13 @@ function findUserByVerificationCode(code) {
   return store.users.find((u) => u.telegramVerificationCode === code.toUpperCase());
 }
 function findUserByName(name) {
-  if (!name) return null;
-  const lower = name.trim().toLowerCase();
-  return store.users.find((u) => u.name.toLowerCase() === lower);
+  const normalized = normalizeUserName(name);
+  if (!normalized) return null;
+  return store.users.find((u) => normalizeUserName(u?.name) === normalized);
 }
 function isNameTaken(name, exceptId = null) {
   const u = findUserByName(name);
-  return !!(u && u._id !== exceptId);
+  return !!(u && String(u._id) !== String(exceptId || ''));
 }
 function createUser(doc) {
   const user = {
@@ -742,19 +743,51 @@ function createAnnouncement(input) {
   store.announcements.unshift(announcement); persist(); return announcement;
 }
 function getStorageStatus() { return { configured: mongoConfigured, connected: mongoConnected }; }
+function normalizeUserName(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase();
+}
+function userSearchResult(user, viewerId) {
+  if (!user) return null;
+  const viewer = String(viewerId || '');
+  const target = String(user._id || '');
+  let relationship = { status: 'none' };
+  if (findFriendship(viewer, target) || findFriendship(target, viewer)) {
+    relationship = { status: 'friends' };
+  } else {
+    const outgoing = findRequest(viewer, target);
+    const incoming = findRequest(target, viewer);
+    if (outgoing) relationship = { status: 'outgoing', requestId: outgoing._id };
+    if (incoming) relationship = { status: 'incoming', requestId: incoming._id };
+  }
+  return {
+    _id: user._id,
+    name: user.name,
+    avatar: user.avatar || '',
+    isOnline: !!user.isOnline,
+    relationship
+  };
+}
 function searchUsers(query, exceptId) {
-  if (!query || !query.trim()) return [];
-  const q = query.trim().toLowerCase();
+  const q = normalizeUserName(query);
+  if (!q) return [];
   const eid = String(exceptId || '');
   return (store.users || [])
     .filter((u) => {
       if (!u || String(u._id) === eid) return false;
-      const nameMatch = u.name && u.name.toLowerCase().includes(q);
-      const codeMatch = u.loginCode && u.loginCode.toLowerCase().includes(q);
-      return nameMatch || codeMatch;
+      return normalizeUserName(u.name).includes(q);
+    })
+    .sort((a, b) => {
+      const aName = normalizeUserName(a.name);
+      const bName = normalizeUserName(b.name);
+      const rank = (name) => (name === q ? 0 : name.startsWith(q) ? 1 : 2);
+      return rank(aName) - rank(bName) || aName.localeCompare(bName);
     })
     .slice(0, 20)
-    .map(userPublic)
+    .map((user) => userSearchResult(user, eid))
     .filter(Boolean);
 }
 function getOnlineUsers() {
@@ -1519,11 +1552,11 @@ ready.then(() => {
 }).catch(() => {});
 
 module.exports = {
-  store, persist, flushPersist, hydrateFromDurableStore, ready, isDurableStorageEnabled: () => mongoConnected, genId, generateLoginCode,
+  store, persist, flushPersist, hydrateFromDurableStore, ready, isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,
-  createUser, updateUser, searchUsers, getOnlineUsers, userPublic,
+  createUser, updateUser, searchUsers, getOnlineUsers, userPublic, userSearchResult, normalizeUserName,
   createSession, findSession, touchSession, revokeSession, revokeUserSessions, getActiveSessionCount,
   createReport, updateReport, createAuditLog, createAnnouncement, getStorageStatus,
   getFriends, findFriendship, addFriend, updateFriend, removeFriend,

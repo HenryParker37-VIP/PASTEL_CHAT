@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "test": "node test/pushService.test.js && node test/pushRoutes.test.js && node test/release.test.js && node test/version.test.js && node test/aiEngine.test.js && node test/aiTypingPacing.test.js && node test/aiTurnTaking.test.js && node test/characterAvatar.test.js && node test/conversationCache.test.js && node test/mobileNavigationCache.test.js"
+    "test": "node test/pushService.test.js && node test/pushRoutes.test.js && node test/release.test.js && node test/version.test.js && node test/aiEngine.test.js && node test/aiTypingPacing.test.js && node test/aiTurnTaking.test.js && node test/characterAvatar.test.js && node test/conversationCache.test.js && node test/mobileNavigationCache.test.js && node test/friendshipFlow.test.js && node test/serverlessStorage.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
