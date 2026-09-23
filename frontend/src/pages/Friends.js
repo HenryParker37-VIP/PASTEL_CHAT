@@ -89,7 +89,11 @@ const Friends = () => {
     setBusy(true); setError('');
     try {
       const { data } = await api.post('/friends/request', { friendId: targetId });
-      setResults(r => (Array.isArray(r) ? r : []).filter(u => u && u._id !== targetId));
+      setResults((current) => (Array.isArray(current) ? current : []).map((result) => (
+        result?._id === targetId
+          ? { ...result, relationship: data?.autoAccepted ? { status: 'friends' } : { status: 'outgoing', requestId: data?._id } }
+          : result
+      )));
       if (data?.autoAccepted) {
         loadFriends();
         loadRequests();
@@ -110,6 +114,9 @@ const Friends = () => {
       await api.post(`/friends/accept/${reqId}`);
       loadRequests();
       loadFriends();
+      setResults((current) => (Array.isArray(current) ? current : []).map((result) => (
+        result?.relationship?.requestId === reqId ? { ...result, relationship: { status: 'friends' } } : result
+      )));
       push({ icon: 'check', title: t('feedbackFriendRequestAccepted'), tone: 'success' });
     } catch (err) {
       loadRequests();
@@ -186,6 +193,15 @@ const Friends = () => {
   const safeRequests = Array.isArray(requests) ? requests : [];
   const safeGroups = Array.isArray(groups) ? groups : [];
   const safeResults = Array.isArray(results) ? results : [];
+  const relationshipAction = (result) => {
+    const relationship = result?.relationship || { status: 'none' };
+    if (relationship.status === 'friends') return { label: t('friendsAlreadyFriends'), disabled: true };
+    if (relationship.status === 'outgoing') return { label: t('friendsRequestSent'), disabled: true };
+    if (relationship.status === 'incoming') {
+      return { label: t('friendsAccept'), onClick: () => handleAccept(relationship.requestId) };
+    }
+    return { label: t('friendsAdd'), onClick: () => handleRequest(result._id), disabled: busy };
+  };
 
   return (
     <div className="container">
@@ -234,7 +250,10 @@ const Friends = () => {
                   <p className="name">{u.name}</p>
                   <p className="sub"><PastelIcon name={isOnline(u._id) ? 'online' : 'offline'} size={10} /> {isOnline(u._id) ? t('online') : t('offline')}</p>
                 </div>
-                <button className="btn" disabled={busy} onClick={() => handleRequest(u._id)}>{t('friendsRequest')}</button>
+                {(() => {
+                  const action = relationshipAction(u);
+                  return <button className="btn" disabled={action.disabled} onClick={action.onClick}>{action.label}</button>;
+                })()}
               </div>
             ))}
           </div>

@@ -7,10 +7,21 @@ let lastHydrateAt = 0;
 module.exports = async (req, res) => {
   if (!readyPromise) {
     readyPromise = storeDb.ready.catch((err) => {
-      console.error('[Vercel Serverless] Store hydration warning:', err.message);
+      console.error('[Vercel Serverless] Store hydration failed:', err.message);
     });
   }
   await readyPromise;
+
+  // Vercel functions have no shared, durable filesystem. Refuse to handle
+  // authenticated product traffic until the durable store is ready so that
+  // account discovery, requests, and friendships cannot silently disappear.
+  if (storeDb.isDurableStorageRequired() && !storeDb.isDurableStorageEnabled()) {
+    return res.status(503).json({
+      status: 'unavailable',
+      storage: 'durable-storage-required',
+      message: 'Pastel Chat storage is temporarily unavailable. Please try again shortly.'
+    });
+  }
 
   // If connected to MongoDB, periodically re-sync state across lambda instances (e.g. every 2s)
   const now = Date.now();
