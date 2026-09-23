@@ -126,11 +126,50 @@ export function setCachedGroups(userId, groups) {
   safeStorageSet(key, groups);
 }
 
+export function clearFriendsCache(userId) {
+  if (userId) {
+    const uid = String(userId);
+    const friendsKey = getKey(FRIENDS_PREFIX, uid);
+    const requestsKey = getKey(REQUESTS_PREFIX, uid);
+    const groupsKey = getKey(GROUPS_PREFIX, uid);
+
+    if (friendsKey) {
+      MEMORY_FRIENDS.delete(friendsKey);
+      try { window.localStorage.removeItem(friendsKey); } catch {}
+    }
+    if (requestsKey) {
+      MEMORY_REQUESTS.delete(requestsKey);
+      try { window.localStorage.removeItem(requestsKey); } catch {}
+    }
+    if (groupsKey) {
+      MEMORY_GROUPS.delete(groupsKey);
+      try { window.localStorage.removeItem(groupsKey); } catch {}
+    }
+  } else {
+    MEMORY_FRIENDS.clear();
+    MEMORY_REQUESTS.clear();
+    MEMORY_GROUPS.clear();
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && (key.startsWith(FRIENDS_PREFIX) || key.startsWith(REQUESTS_PREFIX) || key.startsWith(GROUPS_PREFIX))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+      } catch {}
+    }
+  }
+}
+
 /**
  * Reconcile cached friends with fresh server data.
  * - Server list is authoritative for membership (additions/removals).
  * - Matches by stable friendId / _id.
  * - Preserves existing custom nickname or avatar if server doesn't override with non-empty.
+ * - Preserves Lyra (AI contact) if server response momentarily omits her.
  */
 export function mergeFriends(cachedFriends = [], serverFriends = []) {
   if (!Array.isArray(serverFriends)) return Array.isArray(cachedFriends) ? cachedFriends : [];
@@ -143,7 +182,7 @@ export function mergeFriends(cachedFriends = [], serverFriends = []) {
     if (fid) cachedMap.set(fid, f);
   });
 
-  return serverFriends.map((serverFriend) => {
+  const merged = serverFriends.map((serverFriend) => {
     if (!serverFriend) return null;
     const fid = String(serverFriend.friendId || serverFriend._id || '');
     const cached = cachedMap.get(fid);
@@ -158,6 +197,18 @@ export function mergeFriends(cachedFriends = [], serverFriends = []) {
       avatar: serverFriend.avatar || cached.avatar
     };
   }).filter(Boolean);
+
+  // If Lyra (AI character) existed in cache but was omitted from the server response,
+  // protect Lyra so she never disappears from the UI.
+  const hasLyra = merged.some((f) => f && (f.isAI || String(f.friendId) === 'user_ai_lyra' || f.aiCharacterId === 'char_lyra'));
+  if (!hasLyra) {
+    const cachedLyra = cachedFriends.find((f) => f && (f.isAI || String(f.friendId) === 'user_ai_lyra' || f.aiCharacterId === 'char_lyra'));
+    if (cachedLyra) {
+      merged.unshift(cachedLyra);
+    }
+  }
+
+  return merged;
 }
 
 // ===== PREFETCH / WARMING =====

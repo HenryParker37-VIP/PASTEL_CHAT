@@ -1,3 +1,3 @@
 // Generated at build time. Do not edit.
 export const APP_VERSION = "1.1.0";
-export const BUILD_ID = "4c4672956356";
+export const BUILD_ID = "84efc95cef2f";

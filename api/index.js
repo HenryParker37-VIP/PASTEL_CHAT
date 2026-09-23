@@ -1,20 +1,27 @@
 const { app } = require('../backend/src/app');
 const storeDb = require('../backend/src/db/store');
 
-let readyPromise = null;
-
 module.exports = async (req, res) => {
-  if (!readyPromise) {
-    readyPromise = storeDb.ready.catch((err) => {
+  // If durable store is not yet enabled/connected, attempt to connect and hydrate
+  let justHydrated = false;
+  if (!storeDb.isDurableStorageEnabled()) {
+    try {
+      await storeDb.hydrateFromDurableStore();
+      justHydrated = true;
+    } catch (err) {
       console.error('[Vercel Serverless] Store hydration failed:', err.message);
-    });
+    }
   }
-  await readyPromise;
+
+  const isHealthOrDiagnostic = req.url === '/health' || req.path === '/health' || req.url === '/api/version' || req.path === '/api/version';
 
   // Vercel functions have no shared, durable filesystem. Refuse to handle
   // authenticated product traffic until the durable store is ready so that
   // account discovery, requests, and friendships cannot silently disappear.
   if (storeDb.isDurableStorageRequired() && !storeDb.isDurableStorageEnabled()) {
+    if (isHealthOrDiagnostic) {
+      return app(req, res);
+    }
     return res.status(503).json({
       status: 'unavailable',
       storage: 'durable-storage-required',
@@ -22,8 +29,7 @@ module.exports = async (req, res) => {
     });
   }
 
-  const isHealthCheck = req.url === '/health' || req.path === '/health';
-  if (isHealthCheck) {
+  if (isHealthOrDiagnostic) {
     return app(req, res);
   }
 
@@ -31,7 +37,7 @@ module.exports = async (req, res) => {
   // request. Reload the durable snapshot before every request so a newly
   // registered user, pending request, or accepted friendship is immediately
   // visible instead of waiting for a per-instance refresh interval.
-  if (storeDb.isDurableStorageEnabled()) {
+  if (storeDb.isDurableStorageEnabled() && !justHydrated) {
     try {
       await storeDb.hydrateFromDurableStore();
     } catch (err) {
