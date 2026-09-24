@@ -99,6 +99,7 @@ async function triggerProactiveTick(storeDb, io, targetUserId = null, { now = ne
       const fingerprint = crypto.createHash('sha256').update(content.toLowerCase()).digest('hex').slice(0, 16);
       if (!content || freshEligibility.history.some(item => item.fingerprint === fingerprint || tooSimilar(item.sample, content))) continue;
       const msg = storeDb.createMessage({ senderId: aiUser._id, receiverId: user._id, content, clientMessageId: `proactive:${eligibility.window.key}:${user._id}` });
+      await storeDb.flushMessageWrites?.();
       model.recordRecentOutputs?.(key, [content]);
       const populated = storeDb.populateMessage(msg, user._id);
       const previous = freshEligibility.history;

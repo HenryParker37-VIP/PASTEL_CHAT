@@ -46,6 +46,21 @@ module.exports = async (req, res) => {
     }
   }
 
+  if (storeDb.isDurableStorageRequired() && !storeDb.isDurableStorageEnabled()) {
+    return res.status(503).json({ status: 'unavailable', message: 'Durable storage is temporarily unavailable' });
+  }
+
+  // Messages live in per-message documents. Refresh them on every request;
+  // the snapshot throttle must never hide another worker's new message.
+  if (storeDb.isDurableStorageEnabled()) {
+    try {
+      await storeDb.refreshDurableMessages();
+    } catch (err) {
+      console.error('[Vercel Serverless] Message refresh failed:', err.message);
+      return res.status(503).json({ status: 'unavailable', message: 'Message storage is temporarily unavailable' });
+    }
+  }
+
   // Intercept res.end to guarantee MongoDB writes complete before serverless container pauses
   let ended = false;
   const originalEnd = res.end;
@@ -55,8 +70,15 @@ module.exports = async (req, res) => {
     const finish = () => originalEnd.apply(res, args);
     if (storeDb.isDurableStorageEnabled() && storeDb.isDirty?.()) {
       storeDb.flushPersist()
-        .catch((err) => console.error('[Vercel Serverless] Flush error:', err.message))
-        .finally(finish);
+        .then(finish)
+        .catch((err) => {
+          console.error('[Vercel Serverless] Flush error:', err.message);
+          if (res.headersSent) return finish();
+          res.statusCode = 503;
+          res.removeHeader?.('Content-Length');
+          res.setHeader?.('Content-Type', 'application/json');
+          originalEnd.call(res, JSON.stringify({ status: 'unavailable', message: 'Storage write failed' }));
+        });
     } else {
       finish();
     }

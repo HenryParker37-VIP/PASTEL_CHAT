@@ -50,6 +50,8 @@ const store = {
 };
 let legacyAiMemories = [];
 let legacyAiRelationships = [];
+let legacyMessages = [];
+const pendingMessageWrites = new Map();
 
 let seedData = null;
 try {
@@ -405,6 +407,7 @@ function applySnapshot(loaded) {
   store.friendships = Array.isArray(loaded.friendships) ? loaded.friendships : [];
   store.friendRequests = Array.isArray(loaded.friendRequests) ? loaded.friendRequests : [];
   store.messages = Array.isArray(loaded.messages) ? loaded.messages : [];
+  if (MONGODB_URI) legacyMessages = JSON.parse(JSON.stringify(store.messages));
   store.groups = Array.isArray(loaded.groups) ? loaded.groups : [];
   store.feedback = Array.isArray(loaded.feedback) ? loaded.feedback : [];
   store.notes = Array.isArray(loaded.notes) ? loaded.notes : [];
@@ -620,6 +623,151 @@ async function getDurableCollection() {
   return db ? db.collection('pastelchat_state') : null;
 }
 
+let inFlightMessageFlush = null;
+function queueMessageWrite(message, fields = null, deleted = false) {
+  if (!MONGODB_URI) { persist(); return; }
+  pendingMessageWrites.set(Symbol(), {
+    id: String(message._id),
+    base: JSON.parse(JSON.stringify(message)),
+    fields: fields ? JSON.parse(JSON.stringify(fields)) : null,
+    deleted
+  });
+  if (mongoConnected && !process.env.VERCEL && !process.env.SERVERLESS) {
+    clearTimeout(durableSaveTimer);
+    durableSaveTimer = setTimeout(() => flushMessageWrites().catch(error => console.error('[DB] Message save error:', error.message)), 100);
+  }
+}
+
+async function flushMessageWrites() {
+  if (process.env.WRITE_MODE === 'read-only' || !MONGODB_URI) return;
+  if (inFlightMessageFlush) await inFlightMessageFlush;
+  if (!pendingMessageWrites.size) return;
+  inFlightMessageFlush = (async () => {
+    const collection = (await getDurableDatabase()).collection('pastelchat_messages');
+    while (pendingMessageWrites.size) {
+      const [key, write] = pendingMessageWrites.entries().next().value;
+      await collection.updateOne({ _id: write.id }, { $setOnInsert: { data: write.base, createdAt: new Date(write.base.timestamp) } }, { upsert: true, writeConcern: { w: 'majority' } });
+      if (write.fields) {
+        const fields = Object.fromEntries(Object.entries(write.fields).map(([name, value]) => [`data.${name}`, value]));
+        await collection.updateOne({ _id: write.id }, { $set: fields }, { writeConcern: { w: 'majority' } });
+      }
+      if (write.deleted) await collection.updateOne({ _id: write.id }, { $set: { deletedAt: new Date() } }, { writeConcern: { w: 'majority' } });
+      pendingMessageWrites.delete(key);
+    }
+  })();
+  try { await inFlightMessageFlush; } finally { inFlightMessageFlush = null; }
+}
+
+function applyDurableMessageDocs(docs) {
+  const merged = new Map(legacyMessages.map(message => [String(message._id), message]));
+  for (const doc of docs) {
+    if (!doc?._id) continue;
+    if (doc.deletedAt) merged.delete(String(doc._id));
+    else if (doc.data && String(doc.data._id) === String(doc._id)) merged.set(String(doc._id), doc.data);
+  }
+  store.messages = [...merged.values()];
+}
+
+async function refreshDurableMessages() {
+  if (!MONGODB_URI) return;
+  await flushMessageWrites();
+  const db = await getDurableDatabase();
+  const docs = await db.collection('pastelchat_messages').find({}).toArray();
+  applyDurableMessageDocs(docs);
+}
+
+async function getDurableMessageById(messageId) {
+  if (!MONGODB_URI) return findMessage(messageId);
+  await flushMessageWrites();
+  const db = await getDurableDatabase();
+  const doc = await db.collection('pastelchat_messages').findOne({ _id: String(messageId) });
+  if (doc?.deletedAt) return null;
+  return doc?.data || legacyMessages.find(message => String(message._id) === String(messageId)) || null;
+}
+
+function aiTurnId(userId, characterId) { return JSON.stringify([String(userId), String(characterId)]); }
+async function allocateAITurnSequence(userId, characterId) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('AI turn writes are disabled');
+  if (!MONGODB_URI) return null;
+  const db = await getDurableDatabase();
+  const doc = await db.collection('pastelchat_ai_turns').findOneAndUpdate(
+    { _id: aiTurnId(userId, characterId) },
+    { $inc: { nextSequence: 1 }, $setOnInsert: { userId: String(userId), characterId: String(characterId) } },
+    { upsert: true, returnDocument: 'after', writeConcern: { w: 'majority' } }
+  );
+  return doc.nextSequence;
+}
+async function registerAITurn(userId, characterId, message) {
+  if (process.env.WRITE_MODE === 'read-only') return false;
+  if (!MONGODB_URI) return true;
+  await flushMessageWrites();
+  const db = await getDurableDatabase();
+  const _id = aiTurnId(userId, characterId);
+  const messageAt = new Date(message.timestamp);
+  if (Number.isNaN(messageAt.getTime())) throw new Error('AI turn message timestamp is invalid');
+  const sequence = Number(message.aiTurnSequence);
+  const hasSequence = Number.isSafeInteger(sequence) && sequence > 0;
+  const collection = db.collection('pastelchat_ai_turns');
+  try {
+    await collection.updateOne(
+      hasSequence
+        ? { _id, $or: [{ latestSequence: { $lt: sequence } }, { latestSequence: { $exists: false } }] }
+        : { _id, latestSequence: { $exists: false }, $or: [{ latestAt: { $lte: messageAt } }, { latestAt: { $exists: false } }] },
+      { $set: { userId: String(userId), characterId: String(characterId), latestMessageId: String(message._id), latestAt: messageAt,
+        ...(hasSequence ? { latestSequence: sequence } : {}), updatedAt: new Date() } },
+      { upsert: true, writeConcern: { w: 'majority' } }
+    );
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+  }
+  return isCurrentAITurn(userId, characterId, message._id);
+}
+
+async function isCurrentAITurn(userId, characterId, messageId) {
+  if (!MONGODB_URI) return true;
+  const db = await getDurableDatabase();
+  return Boolean(await db.collection('pastelchat_ai_turns').findOne({ _id: aiTurnId(userId, characterId), latestMessageId: String(messageId) }, { projection: { _id: 1 } }));
+}
+
+async function getCurrentAITurnMessageId(userId, characterId) {
+  if (!MONGODB_URI) return null;
+  const db = await getDurableDatabase();
+  const doc = await db.collection('pastelchat_ai_turns').findOne({ _id: aiTurnId(userId, characterId) }, { projection: { latestMessageId: 1 } });
+  return doc?.latestMessageId || null;
+}
+
+function makeMessage(doc) {
+  return { _id: genId(), timestamp: new Date().toISOString(), isRecalled: false, isPinned: false, replyTo: null,
+    reactions: {}, clientMessageId: null, deliveredAt: null, readAt: null, deliveryReceipts: {}, media: null, ...doc };
+}
+
+async function commitAIBubble(userId, characterId, userMessageId, doc) {
+  if (process.env.WRITE_MODE === 'read-only') return null;
+  if (!MONGODB_URI) return createMessage(doc);
+  const db = await getDurableDatabase();
+  if (!cachedClient?.startSession) throw new Error('MongoDB transaction support is required for AI delivery');
+  const message = makeMessage(doc);
+  const session = cachedClient.startSession();
+  let committed = false;
+  try {
+    await session.withTransaction(async () => {
+      committed = false;
+      const claim = await db.collection('pastelchat_ai_turns').updateOne(
+        { _id: aiTurnId(userId, characterId), latestMessageId: String(userMessageId) },
+        { $inc: { deliveryRevision: 1 } }, { session }
+      );
+      if (!claim.matchedCount) return;
+      await db.collection('pastelchat_messages').updateOne(
+        { _id: message._id }, { $setOnInsert: { data: message, createdAt: new Date(message.timestamp) } }, { upsert: true, session }
+      );
+      committed = true;
+    }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } });
+  } finally { await session.endSession(); }
+  if (!committed) return null;
+  if (!findMessage(message._id)) store.messages.push(message);
+  return message;
+}
+
 async function storeAIAvatarMedia({ version, buffer, contentType }) {
   if (process.env.WRITE_MODE === 'read-only') throw new Error('Avatar media writes are disabled in read-only mode');
   if (!/^[a-f0-9]{64}$/i.test(String(version || '')) || !Buffer.isBuffer(buffer) || !['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
@@ -706,7 +854,7 @@ function sanitizeForDurableStorage(data) {
 
 let pendingDurableWrite = null;
 function durableSnapshotData() {
-  return { ...store, aiMemories: legacyAiMemories, aiRelationshipState: legacyAiRelationships };
+  return { ...store, messages: MONGODB_URI ? legacyMessages : store.messages, aiMemories: legacyAiMemories, aiRelationshipState: legacyAiRelationships };
 }
 async function writeDurableSnapshot() {
   if (process.env.WRITE_MODE === 'read-only') return;
@@ -733,6 +881,7 @@ async function writeDurableSnapshot() {
 
 async function flushPersist() {
   if (!mongoConnected) return;
+  await flushMessageWrites();
   if (pendingDurableWrite) {
     await pendingDurableWrite;
   } else if (isDirty) {
@@ -754,11 +903,12 @@ async function hydrateFromDurableStore() {
 
   inFlightHydration = (async () => {
     try {
-      if (pendingDurableWrite) {
+      if (lastHydratedUpdatedAt && pendingDurableWrite) {
         await pendingDurableWrite;
-      } else if (isDirty) {
+      } else if (lastHydratedUpdatedAt && isDirty) {
         await writeDurableSnapshot();
       }
+      if (lastHydratedUpdatedAt) await flushMessageWrites();
 
       const col = await getDurableCollection();
       if (!col) return;
@@ -829,7 +979,9 @@ async function hydrateFromDurableStore() {
           sanitizeForDurableStorage(snapshot.data);
         }
         applySnapshot(snapshot.data);
+        await refreshDurableMessages();
         lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
+        isDirty = false;
         ensureAICharacter();
         console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
 
@@ -1348,22 +1500,9 @@ function findMessage(id) {
   return store.messages.find((m) => String(m._id) === String(id));
 }
 function createMessage(doc) {
-  const msg = {
-    _id: genId(),
-    timestamp: new Date().toISOString(),
-    isRecalled: false,
-    isPinned: false,
-    replyTo: null,
-    reactions: {}, // { emoji: [userId, ...] }
-    clientMessageId: null,
-    deliveredAt: null,
-    readAt: null,
-    deliveryReceipts: {}, // group recipients: { userId: { deliveredAt, readAt } }
-    media: null,   // { type: 'image'|'file', dataUrl, name, size }
-    ...doc
-  };
+  const msg = makeMessage(doc);
   store.messages.push(msg);
-  persist();
+  queueMessageWrite(msg);
   return msg;
 }
 
@@ -1387,7 +1526,7 @@ function markMessageDelivered(messageId, recipientId) {
   } else if (!message.deliveredAt) {
     message.deliveredAt = now;
   }
-  persist();
+  queueMessageWrite(message, { deliveredAt: message.deliveredAt, deliveryReceipts: message.deliveryReceipts });
   return message;
 }
 
@@ -1405,7 +1544,7 @@ function markMessageRead(messageId, readerId) {
     if (!message.deliveredAt) message.deliveredAt = now;
     if (!message.readAt) message.readAt = now;
   }
-  persist();
+  queueMessageWrite(message, { deliveredAt: message.deliveredAt, readAt: message.readAt, deliveryReceipts: message.deliveryReceipts });
   return message;
 }
 
@@ -1422,12 +1561,12 @@ function toggleReaction(messageId, userId, emoji) {
     msg.reactions[emoji] = users.filter(id => id !== userId);
     if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
   }
-  persist();
+  queueMessageWrite(msg, { reactions: msg.reactions });
   return msg;
 }
 function updateMessage(id, updates) {
   const m = findMessage(id);
-  if (m) { Object.assign(m, updates); persist(); }
+  if (m) { Object.assign(m, updates); queueMessageWrite(m, updates); }
   return m;
 }
 function populateMessage(msg, viewerId = null) {
@@ -1514,9 +1653,10 @@ function clearConversation(userA, userB) {
   store.messages = store.messages.filter((m) => {
     const sId = String(m.senderId?._id || m.senderId || '');
     const rId = String(m.receiverId?._id || m.receiverId || '');
-    return !((sId === uidA && rId === uidB) || (sId === uidB && rId === uidA));
+    const shouldClear = (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
+    if (shouldClear) queueMessageWrite(m, null, true);
+    return !shouldClear;
   });
-  persist();
   return before - store.messages.length;
 }
 
@@ -1951,7 +2091,8 @@ ready.then(() => {
 }).catch(() => {});
 
 module.exports = {
-  store, persist, flushPersist, hydrateFromDurableStore, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
+  store, persist, flushPersist, flushMessageWrites, refreshDurableMessages, getDurableMessageById, allocateAITurnSequence, registerAITurn, isCurrentAITurn, getCurrentAITurnMessageId, commitAIBubble,
+  hydrateFromDurableStore, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite || pendingMessageWrites.size || inFlightMessageFlush), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,

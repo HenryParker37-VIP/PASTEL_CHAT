@@ -87,15 +87,18 @@ async function executeLatestUserMessage({
 
   const characterId = aiUser.aiCharacterId || 'char_lyra';
   const key = getConversationKey(user._id, characterId);
+  const isCurrentTurn = async () =>
+    latestMessageByConversation.get(key) === String(userMessage._id) &&
+    (!storeDb.isCurrentAITurn || await storeDb.isCurrentAITurn(user._id, characterId, userMessage._id));
 
   // A newer user message arrived while this turn was queued.
-  if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
+  if (!await isCurrentTurn()) {
     console.log('[AI Director] Aborting obsolete turn in favor of newer turn');
     return [];
   }
 
   await storeDb.hydrateAIPersonalLayer?.(user._id, characterId);
-  if (latestMessageByConversation.get(key) !== String(userMessage._id)) return [];
+  if (!await isCurrentTurn()) return [];
   if (storeDb.getAIRelationship(user._id, characterId, false)?.shared_history?.some(entry => entry.userMessageId === String(userMessage._id))) return [];
 
   const rawCharacter = storeDb.getAICharacter(characterId) || {
@@ -106,15 +109,9 @@ async function executeLatestUserMessage({
   };
   const characterConfig = new CharacterConfig(rawCharacter);
   const characterState = syncCharacterRhythm(storeDb, characterId);
-  // Only statements authored by this authenticated user may enter their layer.
-  const authored = [...recentHistory, userMessage].filter(message => {
-    const sender = message.senderId?._id || message.senderId;
-    return message === userMessage || String(sender) === String(user._id);
-  });
-  for (const message of authored) {
-    const candidates = extractExplicitMemoryCandidates(message.content);
-    processMemoryUpdates(storeDb, user._id, characterId, candidates, message._id, message.timestamp);
-  }
+  // Only the current authenticated user turn may produce new durable facts.
+  const candidates = extractExplicitMemoryCandidates(userMessage.content);
+  processMemoryUpdates(storeDb, user._id, characterId, candidates, userMessage._id, userMessage.timestamp);
   const communication = storeDb.getAIMemories(user._id, characterId).find(memory => memory.key === 'communication_preference');
   if (communication) storeDb.updateAIRelationship(user._id, { communication_style: communication.value }, characterId);
   const relationship = updateRelationshipOnInteraction(storeDb, user._id, {
@@ -166,7 +163,7 @@ async function executeLatestUserMessage({
   }
 
   // Check again if a newer message arrived while the LLM was thinking
-  if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
+  if (!await isCurrentTurn()) {
     emitTyping(false);
     return [];
   }
@@ -179,13 +176,13 @@ async function executeLatestUserMessage({
     await delay(readingDelay);
   }
 
-  if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
+  if (!await isCurrentTurn()) {
     emitTyping(false);
     return [];
   }
 
   // Apply Reaction to User Message if planned
-  if (plan.reaction && userMessage._id) {
+  if (plan.reaction && userMessage._id && await isCurrentTurn()) {
     try {
       const updated = storeDb.toggleReaction(userMessage._id, aiUser._id, plan.reaction);
       const populated = storeDb.populateMessage(updated, user._id);
@@ -204,21 +201,25 @@ async function executeLatestUserMessage({
 
     if (typeof bubbleText !== 'string' || !bubbleText.trim() || /data:[^\s]+;base64,|<svg|<img/i.test(bubbleText)) continue;
 
-    if (latestMessageByConversation.get(key) !== String(userMessage._id)) break;
+    if (!await isCurrentTurn()) break;
 
     if (!fastMode) {
       const typingTime = calculateTypingDuration(bubbleText);
       await delay(typingTime);
     }
-    if (latestMessageByConversation.get(key) !== String(userMessage._id)) break;
+    if (!await isCurrentTurn()) break;
 
-    const msg = storeDb.createMessage({
+    const bubble = {
       senderId: aiUser._id,
       receiverId: user._id,
       content: bubbleText,
       aiDeliveryMode: fastMode ? 'client-paced' : 'server-paced',
       replyTo: null
-    });
+    };
+    const msg = storeDb.commitAIBubble
+      ? await storeDb.commitAIBubble(user._id, characterId, userMessage._id, bubble)
+      : storeDb.createMessage(bubble);
+    if (!msg) break;
 
     const populated = storeDb.populateMessage(msg, user._id);
     createdMessages.push(populated);

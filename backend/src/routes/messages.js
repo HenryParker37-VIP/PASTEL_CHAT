@@ -18,8 +18,12 @@ const {
   populateMessage,
   toggleReaction,
   findUserById,
-  findFriendship
+  findFriendship,
+  flushMessageWrites,
+  allocateAITurnSequence,
+  registerAITurn
 } = require('../db/store');
+const { resolveAITurn } = require('../ai/resolveAITurn');
 
 function canAccessConversation(userId, friendId) {
   const target = findUserById(friendId);
@@ -130,15 +134,19 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
 
+    const aiTurnSequence = receiver.isAI ? await allocateAITurnSequence(req.user._id, receiver.aiCharacterId || 'char_lyra') : null;
     const msg = createMessage({
       senderId: req.user._id,
       receiverId,
       clientMessageId: clientMessageId ? String(clientMessageId).slice(0, 120) : null,
       content: (content || '').trim().slice(0, 2000),
       replyTo: replyTo || null,
-      media: validMedia
+      media: validMedia,
+      ...(aiTurnSequence ? { aiTurnSequence } : {})
     });
+    await flushMessageWrites();
     if (receiver.isAI) {
+      await registerAITurn(req.user._id, receiver.aiCharacterId || 'char_lyra', msg);
       require('../ai/conversationDirector').invalidateConversation(req.user._id, receiver.aiCharacterId || 'char_lyra', msg._id);
     }
     const populated = populateMessage(msg, req.user._id);
@@ -203,7 +211,7 @@ router.post('/', authMiddleware, async (req, res) => {
 // POST /messages/ai-reply - Trigger AI reply generation for latest conversation state
 router.post('/ai-reply', authMiddleware, async (req, res) => {
   try {
-    const { receiverId } = req.body;
+    const { receiverId, messageId } = req.body || {};
     const receiver = findUserById(receiverId || 'user_ai_lyra');
     if (!receiver || !receiver.isAI) {
       return res.status(400).json({ message: 'Target is not an AI contact' });
@@ -211,17 +219,10 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
 
     const { handleUserMessageToAI } = require('../ai/conversationDirector');
     const storeDb = require('../db/store');
-    const recentHistory = getConversation(req.user._id, receiver._id, { limit: 10 });
-    const lastUserMsg = [...recentHistory].reverse().find(
-      (m) => String(m.senderId?._id || m.senderId) === String(req.user._id)
-    );
-
-    if (!lastUserMsg) {
-      return res.json({ aiReplies: [] });
-    }
+    const { exactMessage, recentHistory } = await resolveAITurn(storeDb, { userId: req.user._id, characterUser: receiver, messageId });
 
     const io = req.app.get('io');
-    const populated = populateMessage(lastUserMsg, req.user._id);
+    const populated = populateMessage(exactMessage, req.user._id);
     const aiReplies = await handleUserMessageToAI({
       storeDb,
       io,
@@ -236,6 +237,7 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
     res.json({ aiReplies: aiReplies || [], deliveryMode: process.env.PERSISTENT_SERVICE === 'true' ? 'server-paced' : 'client-paced' });
   } catch (err) {
     console.error('[AI Reply Endpoint] Error:', err.message);
+    if (err.status) return res.status(err.status).json({ message: err.message });
     res.status(500).json({ message: 'Failed to generate AI reply', error: err.message });
   }
 });
@@ -332,14 +334,18 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
     // Reply goes to the OTHER participant in the original conversation
     const otherId = original.senderId === req.user._id ? original.receiverId : original.senderId;
     if (!otherId || !canAccessConversation(req.user._id, otherId)) return res.status(403).json({ message: 'Conversation access denied' });
+    const otherUser = findUserById(otherId);
+    const aiTurnSequence = otherUser?.isAI ? await allocateAITurnSequence(req.user._id, otherUser.aiCharacterId || 'char_lyra') : null;
     const msg = createMessage({
       senderId: req.user._id,
       receiverId: otherId,
       content: content.trim().slice(0, 2000),
-      replyTo: original._id
+      replyTo: original._id,
+      ...(aiTurnSequence ? { aiTurnSequence } : {})
     });
-    const otherUser = findUserById(otherId);
+    await flushMessageWrites();
     if (otherUser?.isAI) {
+      await registerAITurn(req.user._id, otherUser.aiCharacterId || 'char_lyra', msg);
       require('../ai/conversationDirector').invalidateConversation(req.user._id, otherUser.aiCharacterId || 'char_lyra', msg._id);
     }
     const populated = populateMessage(msg);

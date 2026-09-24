@@ -4,7 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const {
   createGroup, findGroup, getGroupsForUser, groupPublic,
   addGroupMember, removeGroupMember, updateGroup, getGroupConversation,
-  createMessage, findMessageByClientMessageId, populateMessage, findUserById, findMessage, updateMessage, toggleReaction
+  createMessage, flushMessageWrites, findMessageByClientMessageId, populateMessage, findUserById, findMessage, updateMessage, toggleReaction
 } = require('../db/store');
 const { notifyInApp } = require('../services/inAppNotifications');
 
@@ -101,7 +101,7 @@ router.get('/:id/messages', authMiddleware, (req, res) => {
 });
 
 // POST /groups/:id/messages — send message { content, media }
-router.post('/:id/messages', authMiddleware, (req, res) => {
+router.post('/:id/messages', authMiddleware, async (req, res) => {
   const group = findGroup(req.params.id);
   if (!group) return res.status(404).json({ message: 'Not found' });
   if (!group.members.includes(req.user._id)) return res.status(403).json({ message: 'Not a member' });
@@ -143,6 +143,11 @@ router.post('/:id/messages', authMiddleware, (req, res) => {
     content: (content || '').trim().slice(0, 2000),
     media: validMedia
   });
+  try { await flushMessageWrites(); }
+  catch (error) {
+    console.error('[Groups] Message storage failed:', error.message);
+    return res.status(503).json({ message: 'Message storage is temporarily unavailable' });
+  }
   const populated = populateMessage(msg, req.user._id);
 
   const io = req.app.get('io');

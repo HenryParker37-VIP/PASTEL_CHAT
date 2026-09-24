@@ -337,6 +337,7 @@ const Chat = () => {
     if (targetGenId && turn.generationId !== targetGenId) return;
     if (targetRevision && turn.revision !== targetRevision) return;
     if (turn.deliveryState === 'cancelled') return;
+    if (!turn.messageId) return;
 
     turn.deliveryState = TURN_STATE.GENERATING;
 
@@ -381,6 +382,7 @@ const Chat = () => {
     try {
       const { data } = await api.post('/messages/ai-reply', {
         receiverId: friendId,
+        messageId: turn.messageId,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
@@ -647,6 +649,7 @@ const Chat = () => {
         generationId,
         revision: turnRevision,
         clientMessageId: pending.clientMessageId,
+        messageId: null,
         deliveryState: TURN_STATE.LISTENING,
         startTime: Date.now(),
         pendingBubbles: [],
@@ -656,13 +659,6 @@ const Chat = () => {
       };
       activeAiTurnRef.current = newTurn;
 
-      // Adaptive micro-turn window: wait briefly before committing AI generation
-      if (microTurnTimerRef.current) clearTimeout(microTurnTimerRef.current);
-      microTurnTimerRef.current = setTimeout(() => {
-        if (!isUserTypingRef.current) {
-          commitTurnGenerationRef.current?.(generationId, turnRevision);
-        }
-      }, TURN_CONFIG.MICRO_TURN_WINDOW_MS);
     }
 
     try {
@@ -675,6 +671,13 @@ const Chat = () => {
         clientMessageId: pending.clientMessageId,
         generateAiReply: false
       });
+      if (isAiFriend && activeAiTurnRef.current?.generationId === generationId) {
+        activeAiTurnRef.current.messageId = data._id;
+        if (microTurnTimerRef.current) clearTimeout(microTurnTimerRef.current);
+        microTurnTimerRef.current = setTimeout(() => {
+          if (!isUserTypingRef.current) commitTurnGenerationRef.current?.(generationId, turnRevision);
+        }, Math.max(0, TURN_CONFIG.MICRO_TURN_WINDOW_MS - (Date.now() - activeAiTurnRef.current.startTime)));
+      }
       setMessages((current) => current.map((message) => (
         message.clientMessageId === pending.clientMessageId
           ? { ...data, deliveryStatus: data.deliveryStatus || 'sent' }
