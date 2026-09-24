@@ -197,7 +197,15 @@ test('graceful shutdown closes sockets and flushes durable state before completi
   await shutdown('SIGTERM');
   assert.deepEqual(order, ['sockets', 'flush-and-close-mongo']);
   assert.equal(processRef.exitCode, 0);
-  assert.deepEqual(processRef.exitCalls || [], []);
+  assert.deepEqual(processRef.exitCalls, [0]);
+});
+
+test('durable snapshot writer returns before any MongoDB operation in read-only mode', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../src/db/store.js'), 'utf8');
+  const writer = source.slice(source.indexOf('async function writeDurableSnapshot() {'), source.indexOf('\nasync function flushPersist()'));
+  assert.match(writer, /^async function writeDurableSnapshot\(\) \{\n  if \(isReadOnlyMode\(\)\) return;/);
+  assert.ok(writer.indexOf('if (isReadOnlyMode()) return;') < writer.indexOf('getDurableCollection()'));
+  assert.ok(writer.indexOf('if (isReadOnlyMode()) return;') < writer.indexOf('col.updateOne('));
 });
 
 test('graceful shutdown exits with failure when the bounded deadline expires', async () => {

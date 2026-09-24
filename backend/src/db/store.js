@@ -508,6 +508,7 @@ function sanitizeForDurableStorage(data) {
 
 let pendingDurableWrite = null;
 async function writeDurableSnapshot() {
+  if (isReadOnlyMode()) return;
   if (!mongoConnected) return;
   try {
     const col = await getDurableCollection();

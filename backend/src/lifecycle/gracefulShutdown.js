@@ -42,6 +42,7 @@ function installGracefulShutdown({ server, io, storeDb, processRef = process, ti
         clearTimeout(timeoutHandle);
         processRef.exitCode = 0;
         logger.info('[PastelChat] Durable state flushed; shutdown complete');
+        processRef.exit(0);
       })
       .catch(async (error) => {
         logger.error('[PastelChat] Graceful shutdown failed:', error.message);
