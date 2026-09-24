@@ -11,7 +11,7 @@ const { io: client } = require('../../frontend/node_modules/socket.io-client');
 const { app, server } = require('../src/app');
 const db = require('../src/db/store');
 const { createUserToken } = require('../src/services/sessionAuth');
-const { deliverMessageChange, deliverSnapshotChange } = require('../src/services/realtimeRelay');
+const { deliverMessageChange, deliverSnapshotChange, assertReadOnlyPrivileges } = require('../src/services/realtimeRelay');
 
 const pause = () => new Promise(resolve => setTimeout(resolve, 50));
 async function connect(url, token) {
@@ -24,6 +24,9 @@ async function connect(url, token) {
 const count = (device, event) => device.events.filter(row => row.event === event).length;
 
 async function run() {
+  assert.doesNotThrow(() => assertReadOnlyPrivileges({ authenticatedUsers: [{ user: 'fixture' }], authenticatedUserPrivileges: [{ actions: ['find', 'changeStream'] }] }));
+  assert.throws(() => assertReadOnlyPrivileges({ authenticatedUsers: [{ user: 'fixture' }], authenticatedUserPrivileges: [{ actions: ['find', 'update'] }] }), /write privileges/);
+  assert.throws(() => assertReadOnlyPrivileges({ authenticatedUsers: [], authenticatedUserPrivileges: [] }), /not authenticated/);
   await db.ready;
   const [a, b, c] = ['A', 'B', 'C'].map(name => db.createUser({ name: `relay-${name}-${Date.now()}`, loginCode: `${name}AAA-BBBB` }));
   db.addFriend(a._id, b._id);

@@ -3,6 +3,21 @@
 const store = require('../db/store');
 const { emitToUser, emitToUsers, emitToAuthenticatedUsers } = require('./userSocket');
 
+const ATLAS_WRITE_ACTIONS = new Set([
+  'anyAction', 'insert', 'update', 'remove', 'createCollection', 'dropCollection',
+  'dropDatabase', 'createIndex', 'dropIndex', 'collMod', 'convertToCapped',
+  'renameCollectionSameDB', 'applyOps', 'bypassDocumentValidation'
+]);
+
+function assertReadOnlyPrivileges(authInfo, allowUnauthenticatedTest = false) {
+  const users = authInfo?.authenticatedUsers || [];
+  const privileges = authInfo?.authenticatedUserPrivileges || [];
+  if (!users.length && !allowUnauthenticatedTest) throw new Error('Relay Atlas credential is not authenticated');
+  if (privileges.some(privilege => (privilege.actions || []).some(action => ATLAS_WRITE_ACTIONS.has(action)))) {
+    throw new Error('Relay Atlas credential has write privileges');
+  }
+}
+
 function deliverMessageChange(io, change) {
   const message = change?.fullDocument?.data;
   if (!message?._id || change.fullDocument?.deletedAt) return;
@@ -81,6 +96,9 @@ async function startRealtimeRelay(io) {
   await store.ready;
   console.log('[Relay] Store ready; opening Atlas change streams');
   const db = await store.getDurableDatabase();
+  const credentialStatus = await db.command({ connectionStatus: 1, showPrivileges: true });
+  assertReadOnlyPrivileges(credentialStatus.authInfo, process.env.NODE_ENV === 'test');
+  console.log('[Relay] Atlas credential has no application write actions');
   let stopped = false;
   const streams = [];
   const timers = new Set();
@@ -133,4 +151,4 @@ async function startRealtimeRelay(io) {
   };
 }
 
-module.exports = { startRealtimeRelay, deliverMessageChange, deliverSnapshotChange };
+module.exports = { startRealtimeRelay, deliverMessageChange, deliverSnapshotChange, assertReadOnlyPrivileges };
