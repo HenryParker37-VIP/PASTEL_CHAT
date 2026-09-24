@@ -5,6 +5,9 @@ const {
   getFriends,
   findGroup,
   createMessage,
+  flushMessageWrites,
+  allocateAITurnSequence,
+  registerAITurn,
   findMessage,
   markMessageDelivered,
   markMessageRead,
@@ -125,7 +128,7 @@ const setupSocket = (io) => {
     });
 
     // Send private message via socket
-    socket.on('send_private_message', ({ to, content, replyTo, media }) => {
+    socket.on('send_private_message', async ({ to, content, replyTo, media }) => {
       if (!to || !canContact(user._id, to) || ((!content || !content.trim()) && !media)) return;
       if (replyTo) {
         const original = require('../db/store').findMessage(replyTo);
@@ -140,15 +143,32 @@ const setupSocket = (io) => {
           validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sizeBytes };
         }
       }
+      const target = findUserById(to);
+      const targetAI = target?.isAI ? target : null;
+      let aiTurnSequence = null;
+      if (targetAI) {
+        try { aiTurnSequence = await allocateAITurnSequence(user._id, targetAI.aiCharacterId || 'char_lyra'); }
+        catch (error) {
+          socket.emit('message_error', { message: 'Message storage is temporarily unavailable' });
+          return;
+        }
+      }
       const msg = createMessage({
         senderId: user._id,
         receiverId: to,
         content: (content || '').trim().slice(0, 2000),
         replyTo: replyTo || null,
-        media: validMedia
+        media: validMedia,
+        ...(aiTurnSequence ? { aiTurnSequence } : {})
       });
-      const target = findUserById(to);
-      const targetAI = target?.isAI ? target : null;
+      try {
+        await flushMessageWrites();
+        if (targetAI) await registerAITurn(user._id, targetAI.aiCharacterId || 'char_lyra', msg);
+      } catch (error) {
+        console.error('[Socket] Message storage failed:', error.message);
+        socket.emit('message_error', { message: 'Message storage is temporarily unavailable' });
+        return;
+      }
       if (targetAI) invalidateConversation(user._id, targetAI.aiCharacterId || 'char_lyra', msg._id);
       const populated = populateMessage(msg);
       if (targetAI) {
@@ -228,7 +248,7 @@ const setupSocket = (io) => {
     });
 
     // Group message via socket
-    socket.on('send_group_message', ({ groupId, content, media }) => {
+    socket.on('send_group_message', async ({ groupId, content, media }) => {
       const group = findGroup(groupId);
       if (!group || !group.members.includes(user._id)) return;
       if ((!content || !content.trim()) && !media) return;
@@ -246,6 +266,12 @@ const setupSocket = (io) => {
         content: (content || '').trim().slice(0, 2000),
         media: validMedia
       });
+      try { await flushMessageWrites(); }
+      catch (error) {
+        console.error('[Socket] Group message storage failed:', error.message);
+        socket.emit('message_error', { message: 'Message storage is temporarily unavailable' });
+        return;
+      }
       const populated = populateMessage(msg);
       group.members.forEach(memberId => {
         io.emit(`msg:group:${groupId}:${memberId}`, populated);

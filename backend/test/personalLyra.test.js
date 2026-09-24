@@ -112,6 +112,14 @@ async function run() {
   assert.strictEqual(store.getAIMemories('alice').find(item => item.key === 'city').value, 'Da Nang');
   assert.strictEqual(store.getAIMemories('bob').find(item => item.key === 'city').value, 'Paris');
   assert.strictEqual(extractExplicitMemoryCandidates('Maybe I live in Berlin.').length, 0);
+  for (const sentence of [
+    'Why do you think I live in Tokyo?', 'Do I live in Tokyo?',
+    'I never said my name is Bob.', "I don't live in Tokyo.",
+    "I didn't say I was a doctor."
+  ]) assert.deepStrictEqual(extractExplicitMemoryCandidates(sentence), [], sentence);
+  assert(extractExplicitMemoryCandidates('I live in Tokyo.').some(item => item.key === 'city' && item.value === 'Tokyo'));
+  assert(extractExplicitMemoryCandidates('My name is Bob.').some(item => item.key === 'name' && item.value === 'Bob'));
+  assert(extractExplicitMemoryCandidates('I work as a doctor.').some(item => item.key === 'work' && item.value === 'a doctor'));
   assert(extractExplicitMemoryCandidates('Mình tên là An.').some(item => item.key === 'name' && item.value === 'An'));
   assert(extractExplicitMemoryCandidates('My hobby is photography.').some(item => item.key === 'interest_photography'));
   assert.strictEqual(filterRelevantMemories(store.getAIMemories('alice'), 'What about my city?', []).length, 1);
@@ -121,6 +129,17 @@ async function run() {
   const aliceRepliesBeforeRetry = store.store.messages.filter(message => message.receiverId === 'alice').length;
   await handleUserMessageToAI({ storeDb: store, io, user: authenticated[0], userMessage: { _id: 'correction', senderId: 'alice', content: 'Actually, I live in Da Nang.' }, router: model, fastMode: true });
   assert.strictEqual(store.store.messages.filter(message => message.receiverId === 'alice').length, aliceRepliesBeforeRetry);
+
+  // A deleted fact must not be rebuilt from a prior message in recent history.
+  store.memories = store.memories.filter(memory => !(memory.userId === 'alice' && memory.key === 'city'));
+  await handleUserMessageToAI({
+    storeDb: store, io, user: authenticated[0],
+    userMessage: { _id: 'after-deletion', senderId: 'alice', content: 'How was your day?' },
+    recentHistory: [{ _id: 'old-city', senderId: 'alice', content: 'I live in Da Nang.' }],
+    router: model, fastMode: true
+  });
+  assert.strictEqual(store.getAIMemories('alice').some(memory => memory.key === 'city'), false);
+  store.addAIMemory({ userId: 'alice', characterId: 'char_lyra', key: 'city', value: 'Da Nang', source: 'USER_STATED' });
 
   // One delivered bubble remains; a newer message discards obsolete pending bubbles.
   let releasePause;

@@ -43,16 +43,23 @@ const FACT_PATTERNS = [
 function extractExplicitMemoryCandidates(message = '') {
   const text = String(message || '').trim();
   if (!text || text.length > 2000 || /data:[^\s]+;base64,|<svg|<img|https?:\/\//i.test(text)) return [];
-  if (/^(?:what if|imagine|suppose|maybe|perhaps|i might|i could)\b/i.test(text)) return [];
   const candidates = [];
-  for (const pattern of FACT_PATTERNS) {
-    const match = text.match(pattern.regex);
-    if (!match) continue;
-    const key = pattern.dynamicKey ? `favorite_${match[1].toLowerCase()}` : pattern.interest ? `interest_${String(match[1]).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 35)}` : pattern.key;
-    const rawValue = pattern.type === 'event' && match[2] ? `${match[1]} ${match[2]}` : match[pattern.dynamicKey ? 2 : 1];
-    const value = String(rawValue).replace(/\s+(?:and|but)\s+.*$/i, '').trim();
-    if (!value || value.endsWith('?') || /\b(?:maybe|might|probably|perhaps)\b/i.test(value)) continue;
-    candidates.push({ key, value, type: pattern.type, subject: pattern.subject, source: 'USER_STATED' });
+  for (const originalClause of text.match(/[^.!?\n]+[.!?]?/g) || []) {
+    const clause = originalClause.trim().replace(/^(?:actually|to clarify|thật ra)[,\s]+/i, '').trim();
+    if (!clause || clause.endsWith('?')) continue;
+    if (/^(?:why|how|do|does|did|could|would|should|what if|imagine|suppose|maybe|perhaps)\b/i.test(clause)) continue;
+    if (/\b(?:never|not|don't|doesn't|didn't|can't|cannot|won't|might|maybe|perhaps|probably)\b/i.test(clause)) continue;
+    for (const pattern of FACT_PATTERNS) {
+      const match = clause.match(pattern.regex);
+      // A fact embedded in a quote, denial, or report about someone else is
+      // not an explicit first-person statement by this user.
+      if (!match || match.index !== 0) continue;
+      const key = pattern.dynamicKey ? `favorite_${match[1].toLowerCase()}` : pattern.interest ? `interest_${String(match[1]).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 35)}` : pattern.key;
+      const rawValue = pattern.type === 'event' && match[2] ? `${match[1]} ${match[2]}` : match[pattern.dynamicKey ? 2 : 1];
+      const value = String(rawValue).replace(/\s+(?:and|but)\s+.*$/i, '').trim();
+      if (!value) continue;
+      candidates.push({ key, value, type: pattern.type, subject: pattern.subject, source: 'USER_STATED' });
+    }
   }
   return candidates;
 }
