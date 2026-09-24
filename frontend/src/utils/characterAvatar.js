@@ -12,6 +12,7 @@
  */
 
 import { getCachedAvatar } from './conversationCache.js';
+import { resolveAvatarAsset } from './lyraAvatarMedia.js';
 
 export const DEFAULT_LYRA_AVATAR =
   'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50';
@@ -34,19 +35,23 @@ export const DEFAULT_LYRA_AVATAR =
  * @param {string} [options.userId] - Current authenticated user ID
  * @returns {string|null} Resolved avatar URL or data URI, or null
  */
-export function resolveCharacterAvatar({ friend = null, sender = null, messages = [], friendId = null, userId = null } = {}) {
+export function resolveCharacterAvatar({ friend = null, sender = null, messages = [], friendId = null, userId = null, avatarOverride = null } = {}) {
+  const asAsset = (value) => resolveAvatarAsset(value);
+  const targetId = friendId || friend?._id || sender?._id;
+  if (targetId === 'user_ai_lyra' && typeof avatarOverride === 'string' && avatarOverride.trim()) {
+    return asAsset(avatarOverride.trim());
+  }
   // 1. Live friend object from active chat state (if custom/non-default)
   if (friend && typeof friend.avatar === 'string' && friend.avatar.trim() && friend.avatar.trim() !== DEFAULT_LYRA_AVATAR) {
-    return friend.avatar.trim();
+    return asAsset(friend.avatar.trim());
   }
 
   // 2. Sender object on a message (if custom/non-default)
   if (sender && typeof sender.avatar === 'string' && sender.avatar.trim() && sender.avatar.trim() !== DEFAULT_LYRA_AVATAR) {
-    return sender.avatar.trim();
+    return asAsset(sender.avatar.trim());
   }
 
   // 3. Scan conversation history for the latest known avatar from this contact
-  const targetId = friendId || friend?._id || sender?._id;
   if (Array.isArray(messages) && messages.length > 0 && targetId) {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
@@ -55,7 +60,7 @@ export function resolveCharacterAvatar({ friend = null, sender = null, messages 
       const msgSenderId = msgSender?._id || msg.senderId;
       if (String(msgSenderId) === String(targetId) && msgSender?.avatar && typeof msgSender.avatar === 'string') {
         const trimmed = msgSender.avatar.trim();
-        if (trimmed && trimmed !== DEFAULT_LYRA_AVATAR) return trimmed;
+        if (trimmed && trimmed !== DEFAULT_LYRA_AVATAR) return asAsset(trimmed);
       }
     }
   }
@@ -64,16 +69,16 @@ export function resolveCharacterAvatar({ friend = null, sender = null, messages 
   if (targetId) {
     const cached = getCachedAvatar(userId, targetId);
     if (cached && typeof cached === 'string' && cached.trim() && cached.trim() !== DEFAULT_LYRA_AVATAR) {
-      return cached.trim();
+      return asAsset(cached.trim());
     }
   }
 
   // If friend or sender has an avatar that happens to match default, return it
   if (friend && typeof friend.avatar === 'string' && friend.avatar.trim()) {
-    return friend.avatar.trim();
+    return asAsset(friend.avatar.trim());
   }
   if (sender && typeof sender.avatar === 'string' && sender.avatar.trim()) {
-    return sender.avatar.trim();
+    return asAsset(sender.avatar.trim());
   }
 
   // 5. Default fallback for Lyra / AI contact when no customized avatar exists

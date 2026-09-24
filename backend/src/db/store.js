@@ -310,6 +310,9 @@ function isAIUser(userId) {
 function updateAIAvatar(newAvatarUrl) {
   if (!newAvatarUrl || typeof newAvatarUrl !== 'string') return null;
   const avatar = newAvatarUrl.trim();
+  // Snapshot state must contain only a compact URL. Binary avatar content belongs
+  // in pastelchat_media, never in pastelchat_state or conversation caches.
+  if (!avatar || avatar.length > 4096 || /^data:image\//i.test(avatar)) return null;
 
   // Update user in store.users
   const user = (store.users || []).find(u => u && (String(u._id) === AI_USER_ID || u.aiCharacterId === AI_CHARACTER_ID));
@@ -418,7 +421,7 @@ const { MongoClient } = mongoose.mongo;
 let cachedClient = global.__pastelMongoClient;
 let cachedDb = global.__pastelMongoDb;
 
-async function getDurableCollection() {
+async function getDurableDatabase() {
   if (!MONGODB_URI) return null;
   if (!cachedClient) {
     let lastErr = null;
@@ -451,7 +454,36 @@ async function getDurableCollection() {
       throw lastErr;
     }
   }
-  return cachedDb.collection('pastelchat_state');
+  return cachedDb;
+}
+
+async function getDurableCollection() {
+  const db = await getDurableDatabase();
+  return db ? db.collection('pastelchat_state') : null;
+}
+
+async function storeAIAvatarMedia({ version, buffer, contentType }) {
+  if (isReadOnlyMode()) throw new Error('Avatar media writes are disabled in read-only mode');
+  if (!/^[a-f0-9]{64}$/i.test(String(version || '')) || !Buffer.isBuffer(buffer) || !['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+    throw new Error('Avatar media payload is invalid');
+  }
+  const db = await getDurableDatabase();
+  if (!db) throw new Error('Durable avatar storage is unavailable');
+  await db.collection('pastelchat_media').updateOne(
+    { _id: `lyra-avatar:${version}` },
+    { $set: { kind: 'lyra-avatar', contentType, data: buffer, updatedAt: new Date() } },
+    { upsert: true }
+  );
+  return true;
+}
+
+async function getAIAvatarMedia(version) {
+  if (!/^[a-f0-9]{64}$/i.test(String(version || ''))) return null;
+  const db = await getDurableDatabase();
+  if (!db) return null;
+  const media = await db.collection('pastelchat_media').findOne({ _id: `lyra-avatar:${version}` });
+  if (!media || !Buffer.isBuffer(media.data) || !['image/jpeg', 'image/png', 'image/webp'].includes(media.contentType)) return null;
+  return { buffer: media.data, contentType: media.contentType };
 }
 
 function sanitizeForDurableStorage(data) {
@@ -1770,5 +1802,6 @@ module.exports = {
   AI_USER_ID, AI_CHARACTER_ID, ensureAICharacter, ensureAIFriendship,
   getAICharacter, getAICharacterState, updateAICharacterState,
   getAIRelationship, updateAIRelationship,
-  getAIMemories, addAIMemory, deleteAIMemory, getAILifeEvents, isAIUser, updateAIAvatar
+  getAIMemories, addAIMemory, deleteAIMemory, getAILifeEvents, isAIUser, updateAIAvatar,
+  storeAIAvatarMedia, getAIAvatarMedia
 };

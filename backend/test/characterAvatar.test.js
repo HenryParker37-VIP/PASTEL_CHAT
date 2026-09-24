@@ -17,6 +17,12 @@ async function runTests() {
   assert.strictEqual(avatarFromFriend, CUSTOM_AVATAR_1, 'Must return friend.avatar when set');
   console.log('  ✅ Live custom avatar from friend object verified');
 
+  const compactMediaAvatar = resolveCharacterAvatar({
+    friend: { _id: 'user_ai_lyra', name: 'Lyra', avatar: '/ai/avatar/media/abc123', isAI: true },
+    friendId: 'user_ai_lyra'
+  });
+  assert.strictEqual(compactMediaAvatar, '/ai/avatar/media/abc123', 'Node-side resolution retains the compact same-origin path');
+
   // Test 2: Resolves from message sender object (MessageItem)
   console.log('\nTest 2: Resolves from message sender object');
   const avatarFromSender = resolveCharacterAvatar({

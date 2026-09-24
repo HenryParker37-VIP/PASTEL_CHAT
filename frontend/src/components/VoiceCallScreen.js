@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
 import PastelIcon from './PastelIcon';
+import { useSocket } from '../contexts/SocketContext';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const formatDuration = (ms) => {
   if (!ms) return '0:00';
@@ -41,6 +43,7 @@ const CallBtn = ({ icon, label, active, danger, onClick, disabled }) => (
 
 const VoiceCallScreen = () => {
   const { activeCall, remoteAudioRef, endCall, toggleMute, toggleSpeaker } = useCall();
+  const { lyraAvatar } = useSocket();
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -51,6 +54,7 @@ const VoiceCallScreen = () => {
 
   if (!activeCall || activeCall.callType !== 'voice') return null;
   const { peer, status, isMuted, isSpeaker } = activeCall;
+  const peerAvatar = resolveCharacterAvatar({ friend: peer, friendId: peer?._id, avatarOverride: lyraAvatar }) || peer?.avatar;
 
   const statusText = {
     calling:    'Calling…',
@@ -91,7 +95,7 @@ const VoiceCallScreen = () => {
             </>
           )}
           <img
-            src={peer?.avatar}
+            src={peerAvatar}
             alt={peer?.name}
             style={{ width: 110, height: 110, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.15)', display: 'block' }}
           />

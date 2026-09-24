@@ -1,8 +1,10 @@
 import React from 'react';
 import { getPastelIdentity } from '../utils/pastelIdentity';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
+import { useSocket } from '../contexts/SocketContext';
 
 const TypingIndicator = ({ typingUsers = [], aiTyping = null, friend = null, messages = [], conversationIdentity = null }) => {
+  const { lyraAvatar } = useSocket();
   const isAiTyping = Boolean(aiTyping && aiTyping.isTyping);
   const hasHumanTyping = Array.isArray(typingUsers) && typingUsers.length > 0;
 
@@ -16,7 +18,8 @@ const TypingIndicator = ({ typingUsers = [], aiTyping = null, friend = null, mes
     const senderAvatar = resolveCharacterAvatar({
       friend: targetUser || friend,
       messages,
-      friendId: targetUser._id || friend?._id || 'user_ai_lyra'
+      friendId: targetUser._id || friend?._id || 'user_ai_lyra',
+      avatarOverride: lyraAvatar
     });
     const accentColor = identity?.accent || '#E8A0D0';
     const softColor = identity?.soft || '#FBF0F8';

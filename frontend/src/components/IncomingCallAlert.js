@@ -1,9 +1,12 @@
 import React, { useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
 import PastelIcon from './PastelIcon';
+import { useSocket } from '../contexts/SocketContext';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const IncomingCallAlert = () => {
   const { incomingCall, answerCall, rejectCall } = useCall();
+  const { lyraAvatar } = useSocket();
   useEffect(() => {
     if (!incomingCall) return;
     // Play a simple ring tone using Web Audio API
@@ -66,7 +69,7 @@ const IncomingCallAlert = () => {
             animation: 'ringPulse 1.5s ease-out 0.3s infinite'
           }} />
           <img
-            src={from.avatar}
+            src={resolveCharacterAvatar({ friend: from, friendId: from._id, avatarOverride: lyraAvatar }) || from.avatar}
             alt={from.name}
             style={{ width: 80, height: 80, borderRadius: '50%', display: 'block', border: '3px solid rgba(255,255,255,0.2)' }}
           />

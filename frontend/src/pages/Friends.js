@@ -20,7 +20,7 @@ import {
 
 const Friends = () => {
   const { user } = useAuth();
-  const { onlineUsers, socket } = useSocket();
+  const { onlineUsers, socket, lyraAvatar } = useSocket();
   const navigate = useNavigate();
   const { t } = useLang();
   const { push } = useToast();
@@ -323,7 +323,7 @@ const Friends = () => {
           <div key={f.friendId} className="friend-tile pop-in" style={{ boxShadow: `inset 3px 0 0 ${getPastelIdentity(f.friendId).accent}` }}>
             <img
               className="avatar"
-              src={resolveCharacterAvatar({ friend: f, friendId: f.friendId, userId: user?._id }) || f.avatar}
+              src={resolveCharacterAvatar({ friend: f, friendId: f.friendId, userId: user?._id, avatarOverride: lyraAvatar }) || f.avatar}
               alt=""
               style={{ border: `2px solid ${getPastelIdentity(f.friendId).accent}`, objectFit: 'cover' }}
               onClick={() => navigate(`/chat/${f.friendId}`)}

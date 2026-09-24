@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useCall } from '../contexts/CallContext';
 import PastelIcon from './PastelIcon';
+import { useSocket } from '../contexts/SocketContext';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const formatDuration = (ms) => {
   if (!ms) return '0:00';
@@ -33,6 +35,7 @@ const CtrlBtn = ({ icon, label, active, danger, onClick, disabled }) => (
 );
 
 const VideoCallScreen = () => {
+  const { lyraAvatar } = useSocket();
   const {
     activeCall, isPiP,
     localVideoRef, remoteVideoRef,
@@ -59,6 +62,7 @@ const VideoCallScreen = () => {
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setShowControls(false), 4000);
   };
+  const peerAvatar = resolveCharacterAvatar({ friend: activeCall?.peer, friendId: activeCall?.peer?._id, avatarOverride: lyraAvatar }) || activeCall?.peer?.avatar;
 
   useEffect(() => {
     if (activeCall?.status === 'connected') {
@@ -97,7 +101,7 @@ const VideoCallScreen = () => {
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           background: 'linear-gradient(160deg, #1a1a2e, #2d1b3d)', zIndex: 1
         }}>
-          <img src={peer?.avatar} alt="" style={{ width: 90, height: 90, borderRadius: '50%', marginBottom: 16, border: '3px solid rgba(255,255,255,0.2)' }} />
+          <img src={peerAvatar} alt="" style={{ width: 90, height: 90, borderRadius: '50%', marginBottom: 16, border: '3px solid rgba(255,255,255,0.2)' }} />
           <div style={{ color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{peer?.name}</div>
           <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
             {status === 'calling' ? 'Calling…' : 'Connecting video…'}
@@ -134,7 +138,7 @@ const VideoCallScreen = () => {
         display: 'flex', alignItems: 'center', gap: 12,
         opacity: showControls ? 1 : 0, transition: 'opacity 0.3s'
       }}>
-        <img src={peer?.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%' }} />
+        <img src={peerAvatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%' }} />
         <div style={{ flex: 1 }}>
           <div style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>{peer?.name}</div>
           <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
