@@ -13,10 +13,14 @@ const response = {
 };
 
 handler({}, response)
-  .then(() => {
+  .then(async () => {
     assert.strictEqual(response.statusCode, 503, 'Serverless traffic must fail closed without durable storage');
     assert.strictEqual(response.body?.storage, 'durable-storage-required');
-    console.log('serverlessStorage.test.js: ephemeral Vercel storage is rejected');
+    const healthResponse = { ...response, statusCode: null, body: null };
+    await handler({ url: '/health' }, healthResponse);
+    assert.strictEqual(healthResponse.statusCode, 503, 'Health must not report HTTP 200 before durable storage is ready');
+    assert.strictEqual(healthResponse.body?.storage, 'durable-storage-required');
+    console.log('serverlessStorage.test.js: ephemeral Vercel storage and premature health success are rejected');
   })
   .catch((error) => {
     console.error(error);

@@ -29,4 +29,13 @@ function avatarMediaPath(version) {
   return `/ai/avatar/media/${String(version).toLowerCase()}`;
 }
 
-module.exports = { MAX_AVATAR_BYTES, parseAvatarDataUrl, avatarMediaPath };
+function avatarBytes(value) {
+  if (Buffer.isBuffer(value)) return value;
+  if (value?._bsontype === 'Binary' && typeof value.value === 'function') {
+    const bytes = value.value(true);
+    return Buffer.isBuffer(bytes) ? bytes : null;
+  }
+  return null;
+}
+
+module.exports = { MAX_AVATAR_BYTES, parseAvatarDataUrl, avatarMediaPath, avatarBytes };

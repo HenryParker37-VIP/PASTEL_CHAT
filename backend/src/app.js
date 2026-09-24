@@ -107,11 +107,15 @@ app.use('/api/webrtc', webrtcRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/ai', aiRoutes);
 
-app.get('/health', (_, res) => res.json({
-  status: 'ok',
-  storage: storeDb.isDurableStorageEnabled() ? 'mongodb' : 'local-ephemeral',
-  timestamp: new Date()
-}));
+app.get('/health', (_, res) => {
+  const durable = storeDb.isDurableStorageEnabled();
+  const unavailable = storeDb.isDurableStorageRequired() && !durable;
+  res.status(unavailable ? 503 : 200).json({
+    status: unavailable ? 'unavailable' : 'ok',
+    storage: durable ? 'mongodb' : (unavailable ? 'durable-storage-required' : 'local-ephemeral'),
+    timestamp: new Date()
+  });
+});
 
 app.get('/api/version', (_, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

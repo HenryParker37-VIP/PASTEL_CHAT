@@ -181,7 +181,13 @@ router.post('/avatar', authMiddleware, async (req, res) => {
     if (!updated) {
       return res.status(500).json({ message: 'Failed to update avatar' });
     }
-    await storeDb.flushPersist();
+    try {
+      await storeDb.flushPersist();
+      if (storeDb.isDirty?.()) throw new Error('Avatar state remains unflushed');
+    } catch (error) {
+      console.error('[AI Routes] Avatar state storage failed:', error.message);
+      return res.status(503).json({ message: 'Avatar state storage is temporarily unavailable' });
+    }
 
     // Notify connected clients via socket
     const io = req.app.get('io');
