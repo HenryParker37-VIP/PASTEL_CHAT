@@ -28,6 +28,7 @@ const rateLimit = require('./middleware/rateLimit');
 const { assertAuthConfigured } = require('./config/auth');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
 const { appVersion, buildId, deployedAt } = require('./version');
+const { emitToUser } = require('./services/userSocket');
 
 const app = express();
 const server = http.createServer(app);
@@ -210,7 +211,7 @@ const startTelegramPolling = () => {
       '🎉 Connected to Pastel Chat!\n\nYou\'ll now receive notifications for incoming calls, messages, and friend requests.',
       { parse_mode: 'Markdown' }
     );
-    io.emit('telegram:verified', { userId: String(user._id), chatId });
+    emitToUser(io, user._id, 'telegram:verified', { userId: String(user._id), chatId });
   };
 
   const poll = async () => {

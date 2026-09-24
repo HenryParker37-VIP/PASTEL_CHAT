@@ -13,6 +13,7 @@ const {
 } = require('../db/store');
 const { sendPushToUser, getPushLanguage } = require('../services/pushService');
 const { appVersion, buildId } = require('../version');
+const { emitToUser } = require('../services/userSocket');
 
 const adminWriteLimit = rateLimit({ name: 'admin-write', windowMs: 5 * 60_000, max: 60 });
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -107,7 +108,7 @@ function health() {
   };
 }
 function emitNotification(io, notification) {
-  if (io && notification) io.emit(`notify:${notification.userId}`, { type: notification.type, notificationId: notification._id, data: notification.data });
+  if (notification) emitToUser(io, notification.userId, `notify:${notification.userId}`, { type: notification.type, notificationId: notification._id, data: notification.data });
 }
 function recipientsFor(scope, selectedIds) {
   if (scope === 'test') return store.users.filter((user) => user.isTestAccount === true);

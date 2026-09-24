@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const authMiddleware = require('../middleware/auth');
 const { findUserById, updateUser, findUserByVerificationCode } = require('../db/store');
+const { emitToUser } = require('../services/userSocket');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || 'secret';
@@ -236,7 +237,7 @@ router.post(['/webhook', '/api/telegram/webhook'], async (req, res) => {
       if (code) {
         const verifiedUser = await handleTelegramVerification(code, chatId);
         const io = req.app.get('io');
-        if (io && verifiedUser) io.emit('telegram:verified', { userId: String(verifiedUser._id), chatId });
+        if (verifiedUser) emitToUser(io, verifiedUser._id, 'telegram:verified', { userId: String(verifiedUser._id), chatId });
         return res.json({ ok: true });
       }
     }
@@ -263,7 +264,7 @@ router.post(['/webhook', '/api/telegram/webhook'], async (req, res) => {
       const code = text.slice(8).trim().toUpperCase();
       const verifiedUser = await handleTelegramVerification(code, chatId);
       const io = req.app.get('io');
-      if (io && verifiedUser) io.emit('telegram:verified', { userId: String(verifiedUser._id), chatId });
+      if (verifiedUser) emitToUser(io, verifiedUser._id, 'telegram:verified', { userId: String(verifiedUser._id), chatId });
       return res.json({ ok: true });
     }
 
