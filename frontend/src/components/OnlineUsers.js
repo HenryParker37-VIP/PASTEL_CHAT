@@ -1,12 +1,13 @@
 import React from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { useAuth } from '../contexts/AuthContext';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const initials = (name) =>
   name ? name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
 const OnlineUsers = () => {
-  const { onlineUsers } = useSocket();
+  const { onlineUsers, lyraAvatar } = useSocket();
   const { user } = useAuth();
 
   return (
@@ -64,7 +65,7 @@ const OnlineUsers = () => {
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 {u.avatar ? (
                   <img
-                    src={u.avatar}
+                    src={resolveCharacterAvatar({ friend: u, friendId: u._id, avatarOverride: lyraAvatar }) || u.avatar}
                     alt={u.name}
                     style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover' }}
                   />

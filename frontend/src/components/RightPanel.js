@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import PastelIcon from './PastelIcon';
 import { useConfirm, useToast } from './Toast';
 import { useLang } from '../i18n';
+import { useSocket } from '../contexts/SocketContext';
+import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const BACKGROUNDS = [
   { id: 'cream',    label: 'Cream',    value: '#FFF8F3' },
@@ -16,6 +18,7 @@ const BACKGROUNDS = [
 
 const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick, onSearch, onBackgroundChange }) => {
   const { user, updateProfile } = useAuth();
+  const { lyraAvatar } = useSocket();
   const { t } = useLang();
   const { confirm } = useConfirm();
   const { push } = useToast();
@@ -68,7 +71,7 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
           <>
             <h3>Chatting with</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <img className="avatar" src={peer.avatar} alt="" style={{ width: 40, height: 40 }} />
+          <img className="avatar" src={resolveCharacterAvatar({ friend: peer, friendId: friendId || peer._id, userId: user?._id, avatarOverride: lyraAvatar }) || peer.avatar} alt="" style={{ width: 40, height: 40 }} />
               <div>
                 <p style={{ margin: 0, fontWeight: 700 }}>{peer.customNickname || peer.name}</p>
                 <p style={{ margin: 0, fontSize: 11, color: '#888', display: 'flex', alignItems: 'center', gap: 4 }}><PastelIcon name={peer.isOnline ? 'online' : 'offline'} size={10} />{peer.isOnline ? 'Online' : 'Offline'}</p>

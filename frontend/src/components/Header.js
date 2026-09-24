@@ -10,7 +10,7 @@ import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = [], onMobileAvatarChange, avatarUploading = false }) => {
   const { user, logout } = useAuth();
-  const { onlineUsers, connected } = useSocket();
+  const { onlineUsers, connected, lyraAvatar } = useSocket();
   const navigate = useNavigate();
   const { t } = useLang();
   const { confirm } = useConfirm();
@@ -126,7 +126,8 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
                       friend,
                       messages,
                       friendId: friend?._id || friendId,
-                      userId: user?._id
+                      userId: user?._id,
+                      avatarOverride: lyraAvatar
                     })}
                     alt=""
                     style={{
@@ -195,7 +196,8 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
                       friend,
                       messages,
                       friendId: friend?._id || friendId,
-                      userId: user?._id
+                      userId: user?._id,
+                      avatarOverride: lyraAvatar
                     })}
                     alt=""
                     style={{ borderColor: friendIdentity?.accent || 'rgba(255,255,255,0.7)', display: 'block' }}

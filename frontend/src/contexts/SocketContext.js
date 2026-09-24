@@ -13,11 +13,13 @@ export const useSocket = () => {
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [lyraAvatar, setLyraAvatar] = useState(null);
   const [connected, setConnected] = useState(false);
   const { getToken, user } = useAuth();
   const socketRef = useRef(null);
 
   useEffect(() => {
+    setLyraAvatar(null);
     const token = getToken();
     if (!token || !user) return;
 
@@ -47,6 +49,11 @@ export const SocketProvider = ({ children }) => {
       setConnected(false);
     });
     newSocket.on('online_users', (users) => setOnlineUsers(users));
+    newSocket.on('user_updated', (data) => {
+      if (data?.userId === 'user_ai_lyra' && typeof data.avatar === 'string') {
+        setLyraAvatar(data.avatar);
+      }
+    });
     newSocket.on('connect_error', (err) => {
       console.warn('[Socket] Realtime socket unavailable (using serverless sync):', err?.message || err);
     });
@@ -81,7 +88,7 @@ export const SocketProvider = ({ children }) => {
   }, [user?._id]);
 
   return (
-    <SocketContext.Provider value={{ socket, onlineUsers, connected }}>
+    <SocketContext.Provider value={{ socket, onlineUsers, connected, lyraAvatar, setLyraAvatar }}>
       {children}
     </SocketContext.Provider>
   );

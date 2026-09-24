@@ -8,6 +8,7 @@ import { useConfirm, useToast } from './Toast';
 import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity } from '../utils/pastelIdentity';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
+import { useSocket } from '../contexts/SocketContext';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -30,6 +31,7 @@ function formatBytes(bytes) {
 
 const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRetry, highlight, conversationIdentity }) => {
   const { user } = useAuth();
+  const { lyraAvatar } = useSocket();
   const { t } = useLang();
   const { push } = useToast();
   const { confirm } = useConfirm();
@@ -47,7 +49,8 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
     : resolveCharacterAvatar({
         friend: isPeerMessage ? peer : null,
         sender,
-        friendId: senderId
+        friendId: senderId,
+        avatarOverride: lyraAvatar
       });
   const senderIdentity = getPastelIdentity(sender?._id || message.senderId);
   const bubbleIdentity = isOwn

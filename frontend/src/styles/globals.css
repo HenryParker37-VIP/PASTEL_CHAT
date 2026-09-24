@@ -1659,8 +1659,8 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     -webkit-backdrop-filter: blur(12px) saturate(1.08) !important;
     backdrop-filter: blur(12px) saturate(1.08) !important;
     box-shadow: 0 1px 5px rgba(74, 50, 74, 0.06) !important;
-    /* The toolbar's action controls paint above this shared mobile band. */
-    z-index: 10 !important;
+    /* Keep the avatar picker above the isolated chat toolbar hit-test layer. */
+    z-index: 21 !important;
     pointer-events: none;
   }
   .app-brand, .app-user-menu { pointer-events: auto; }
@@ -1722,9 +1722,10 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
     padding: env(safe-area-inset-top) 8px 0 0 !important;
     gap: 0 !important;
     position: relative;
-    /* Paint the toolbar and its actions above the translucent app header. */
-    z-index: 20;
-    isolation: isolate;
+    /* Leave stacking to the action buttons so the app-header picker remains a
+       reachable sibling layer on touch devices. */
+    z-index: auto;
+    isolation: auto;
     background: transparent !important;
     border-bottom: 1px solid rgba(255,255,255,0.28) !important;
     /* This layer spans the full header band only for layout. Let the Lyra
@@ -1735,8 +1736,8 @@ body.dark .home-mobile-tile { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .chat-contact { flex: 0 0 auto !important; gap: 0 !important; }
   .chat-contact > button,
   .chat-contact > div:not(.chat-actions) { display: none !important; }
-  /* Keep the four existing actions in the same visual band as the brand.
-     Absolute placement prevents the legacy flex row from pushing them away. */
+  /* Keep actions above the app-header picker while the parent toolbar passes
+     through taps outside the buttons. */
   .chat-actions {
     position: absolute !important;
     top: calc(env(safe-area-inset-top) + 11px);

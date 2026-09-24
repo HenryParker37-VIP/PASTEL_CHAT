@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import PastelIcon from './PastelIcon';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
+import { useSocket } from '../contexts/SocketContext';
+import { prepareLyraAvatarUpload } from '../utils/lyraAvatarMedia';
 
 const AIDebugModal = ({ onClose, onRefreshChat }) => {
+  const { lyraAvatar, setLyraAvatar } = useSocket();
   const [loading, setLoading] = useState(true);
   const [aiStatus, setAiStatus] = useState(null);
   const [memories, setMemories] = useState([]);
@@ -77,28 +80,30 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
 
   const handleUploadAvatar = async (e) => {
     const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setActionMessage('Image must be under 5MB');
-      return;
+    const previousAvatar = aiStatus?.user?.avatar || null;
+    let prepared = null;
+    setBusy(true);
+    try {
+      prepared = await prepareLyraAvatarUpload(file);
+      setLyraAvatar(prepared.previewUrl);
+      setAiStatus((prev) => ({ ...prev, user: { ...(prev?.user || {}), avatar: prepared.previewUrl } }));
+      const { data } = await api.post('/ai/avatar', { avatar: prepared.dataUrl });
+      if (!data.success) throw new Error('Failed to update avatar');
+      setLyraAvatar(data.avatar);
+      setAiStatus((prev) => ({ ...prev, user: { ...(prev?.user || {}), avatar: data.avatar } }));
+      setActionMessage('Avatar updated successfully!');
+      loadData();
+      if (onRefreshChat) onRefreshChat();
+    } catch (err) {
+      setLyraAvatar(previousAvatar);
+      setAiStatus((prev) => ({ ...prev, user: { ...(prev?.user || {}), avatar: previousAvatar } }));
+      setActionMessage(err.response?.data?.message || err.message || 'Failed to update avatar');
+    } finally {
+      prepared?.dispose();
+      setBusy(false);
     }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        setBusy(true);
-        const { data } = await api.post('/ai/avatar', { avatar: reader.result });
-        if (data.success) {
-          setActionMessage('Avatar updated successfully!');
-          loadData();
-          if (onRefreshChat) onRefreshChat();
-        }
-      } catch (err) {
-        setActionMessage(err.response?.data?.error || 'Failed to update avatar');
-      } finally {
-        setBusy(false);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   return (
@@ -138,7 +143,7 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ position: 'relative' }}>
               <img
-                src={resolveCharacterAvatar({ friend: aiStatus?.user, friendId: 'user_ai_lyra' })}
+                src={resolveCharacterAvatar({ friend: aiStatus?.user, friendId: 'user_ai_lyra', avatarOverride: lyraAvatar })}
                 alt="Lyra"
                 style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid #b5ead7', objectFit: 'cover', display: 'block' }}
               />
@@ -155,8 +160,9 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
                 <PastelIcon name="camera" size={11} style={{ color: '#555' }} />
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  style={{ display: 'none' }}
+                  accept="image/*"
+                  aria-label="Choose Lyra avatar image"
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', margin: 0, padding: 0, border: 0 }}
                   onChange={handleUploadAvatar}
                 />
               </label>

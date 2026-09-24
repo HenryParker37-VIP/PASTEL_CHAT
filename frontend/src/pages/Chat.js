@@ -24,6 +24,7 @@ import {
   TURN_CONFIG
 } from '../utils/aiTurnTaking';
 import { resolveCharacterAvatar, DEFAULT_LYRA_AVATAR } from '../utils/characterAvatar';
+import { prepareLyraAvatarUpload } from '../utils/lyraAvatarMedia';
 import {
   getCachedConversation,
   setCachedConversation,
@@ -37,7 +38,7 @@ const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 }
 const Chat = () => {
   const { friendId } = useParams();
   const { user, updateProfile } = useAuth();
-  const { socket, connected } = useSocket();
+  const { socket, connected, setLyraAvatar } = useSocket();
   const { startCall, activeCall } = useCall();
   const { push } = useToast();
   const navigate = useNavigate();
@@ -1012,52 +1013,48 @@ const Chat = () => {
     if (!file) return;
     if (avatarUploading) return; // Prevent duplicate uploads
 
-    if (!file.type.startsWith('image/')) {
-      push({ title: 'Please select an image file (PNG, JPG, WEBP)', tone: 'danger', icon: 'alert' });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      push({ title: 'Image must be under 5MB', tone: 'danger', icon: 'alert' });
-      return;
-    }
-
     setAvatarUploading(true);
+    const previousAvatar = friend?.avatar || DEFAULT_LYRA_AVATAR;
+    let prepared = null;
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Data = reader.result;
-        try {
-          const res = await api.post('/ai/avatar', { avatar: base64Data });
-          if (res.data?.success) {
-            const newAvatar = res.data.avatar;
-            setFriend((prev) => {
-              const updated = prev ? { ...prev, avatar: newAvatar } : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: newAvatar, isAI: true };
-              friendRef.current = updated;
-              return updated;
-            });
-            setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: newAvatar } } : null));
-            if (user?._id) {
-              setCachedConversation(user._id, friendId || 'user_ai_lyra', {
-                friend: { ...(friendRef.current || {}), avatar: newAvatar },
-                resolvedAvatar: newAvatar
-              });
-            }
-            push({ title: 'Avatar updated!', tone: 'ok', icon: 'check' });
-          }
-        } catch (err) {
-          push({ title: err.response?.data?.error || 'Failed to update avatar', tone: 'danger', icon: 'alert' });
-        } finally {
-          setAvatarUploading(false);
-        }
-      };
-      reader.onerror = () => {
-        push({ title: 'Could not read image file', tone: 'danger', icon: 'alert' });
-        setAvatarUploading(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (e) {
-      push({ title: 'Could not read image file', tone: 'danger', icon: 'alert' });
+      prepared = await prepareLyraAvatarUpload(file);
+      const preview = prepared.previewUrl;
+      setLyraAvatar(preview);
+      setFriend((prev) => {
+        const updated = prev ? { ...prev, avatar: preview } : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: preview, isAI: true };
+        friendRef.current = updated;
+        return updated;
+      });
+      setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: preview } } : null));
+
+      const res = await api.post('/ai/avatar', { avatar: prepared.dataUrl });
+      if (!res.data?.success) throw new Error('Failed to update avatar');
+      const newAvatar = res.data.avatar;
+      setLyraAvatar(newAvatar);
+      setFriend((prev) => {
+        const updated = prev ? { ...prev, avatar: newAvatar } : { _id: friendId || 'user_ai_lyra', name: 'Lyra', avatar: newAvatar, isAI: true };
+        friendRef.current = updated;
+        return updated;
+      });
+      setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: newAvatar } } : null));
+      if (user?._id) {
+        setCachedConversation(user._id, friendId || 'user_ai_lyra', {
+          friend: { ...(friendRef.current || {}), avatar: newAvatar },
+          resolvedAvatar: newAvatar
+        });
+      }
+      push({ title: 'Avatar updated!', tone: 'ok', icon: 'check' });
+    } catch (err) {
+      setLyraAvatar(previousAvatar);
+      setFriend((prev) => {
+        const updated = prev ? { ...prev, avatar: previousAvatar } : prev;
+        friendRef.current = updated;
+        return updated;
+      });
+      setAiTyping((prev) => (prev ? { ...prev, user: { ...(prev.user || {}), avatar: previousAvatar } } : null));
+      push({ title: err.response?.data?.message || err.message || 'Failed to update avatar', tone: 'danger', icon: 'alert' });
+    } finally {
+      prepared?.dispose();
       setAvatarUploading(false);
     }
   };
@@ -1364,8 +1361,12 @@ const Chat = () => {
                     <PastelIcon name="camera" size={13} style={{ color: friendIdentity.accent }} />
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/webp"
-                      style={{ display: 'none' }}
+                      accept="image/*"
+                      aria-label="Choose Lyra avatar image"
+                      style={{
+                        position: 'absolute', inset: 0, width: '100%', height: '100%',
+                        opacity: 0, cursor: 'pointer', margin: 0, padding: 0, border: 0
+                      }}
                       onChange={handleAIAvatarChange}
                     />
                   </label>

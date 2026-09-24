@@ -4,6 +4,15 @@ const authMiddleware = require('../middleware/auth');
 const storeDb = require('../db/store');
 const { syncCharacterRhythm, getConversationDebug } = require('../ai/conversationDirector');
 const { triggerProactiveTick } = require('../ai/proactiveEngine');
+const { parseAvatarDataUrl, avatarMediaPath } = require('../services/aiAvatarMedia');
+
+function emitToAuthenticatedUsers(io, event, payload) {
+  const sockets = io?.sockets?.sockets;
+  if (!sockets) return;
+  sockets.forEach((socket) => {
+    if (socket.user?._id) socket.emit(event, payload);
+  });
+}
 
 // GET /ai/status - Public or authenticated info about Lyra's current state
 router.get('/status', (req, res) => {
@@ -133,8 +142,8 @@ router.post('/debug/reset-relationship', authMiddleware, (req, res) => {
   }
 });
 
-// POST /ai/avatar - Update Lyra's avatar image (accepts data URL or image URL)
-router.post('/avatar', authMiddleware, (req, res) => {
+// POST /ai/avatar - Store image bytes separately and keep only a versioned URL in state.
+router.post('/avatar', authMiddleware, async (req, res) => {
   try {
     const { avatar } = req.body;
     if (!avatar || typeof avatar !== 'string') {
@@ -142,8 +151,7 @@ router.post('/avatar', authMiddleware, (req, res) => {
     }
 
     const trimmed = avatar.trim();
-    // Validate image format: data:image/(jpeg|jpg|png|webp);base64,... or valid http(s) URL
-    const isDataImage = /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(trimmed);
+    const isDataImage = /^data:image\//i.test(trimmed);
     const isHttpUrl = /^https?:\/\/.+\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(trimmed) || /^https?:\/\/api\.dicebear\.com\/.+/i.test(trimmed);
 
     if (!isDataImage && !isHttpUrl) {
@@ -152,29 +160,57 @@ router.post('/avatar', authMiddleware, (req, res) => {
       });
     }
 
-    // Size limit check (approx 50KB max for base64 payload to prevent snapshot bloat)
-    if (trimmed.length > 50 * 1024) {
-      return res.status(400).json({ message: 'Image too large. Maximum size is 50KB, or provide an image URL.' });
+    let storedAvatar = trimmed;
+    if (isDataImage) {
+      let media;
+      try {
+        media = parseAvatarDataUrl(trimmed);
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+      try {
+        await storeDb.storeAIAvatarMedia(media);
+      } catch (error) {
+        console.error('[AI Routes] Avatar media storage failed:', error.message);
+        return res.status(503).json({ message: 'Avatar storage is temporarily unavailable' });
+      }
+      storedAvatar = avatarMediaPath(media.version);
     }
 
-    const updated = storeDb.updateAIAvatar(trimmed);
+    const updated = storeDb.updateAIAvatar(storedAvatar);
     if (!updated) {
       return res.status(500).json({ message: 'Failed to update avatar' });
     }
+    await storeDb.flushPersist();
 
     // Notify connected clients via socket
     const io = req.app.get('io');
-    if (io && typeof io.emit === 'function') {
-      io.emit('user_updated', {
-        userId: 'user_ai_lyra',
-        avatar: trimmed
-      });
-    }
+    emitToAuthenticatedUsers(io, 'user_updated', { userId: 'user_ai_lyra', avatar: storedAvatar });
 
-    res.json({ success: true, avatar: trimmed });
+    res.json({ success: true, avatar: storedAvatar });
   } catch (err) {
     console.error('[AI Routes] Avatar update error:', err.message);
     res.status(500).json({ message: 'Failed to update avatar' });
+  }
+});
+
+// Public, immutable image bytes. The version is a content hash; profile state
+// retains only the compact path above.
+router.get('/avatar/media/:version', async (req, res) => {
+  try {
+    const media = await storeDb.getAIAvatarMedia(req.params.version);
+    if (!media) return res.status(404).json({ message: 'Avatar image not found' });
+    res.set({
+      'Content-Type': media.contentType,
+      'Content-Length': String(media.buffer.length),
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      ETag: `"${req.params.version}"`,
+      'X-Content-Type-Options': 'nosniff'
+    });
+    return res.status(200).send(media.buffer);
+  } catch (err) {
+    console.error('[AI Routes] Avatar media read failed:', err.message);
+    return res.status(503).json({ message: 'Avatar image is temporarily unavailable' });
   }
 });
 
