@@ -24,11 +24,8 @@ const {
 const { notifyInApp } = require('../services/inAppNotifications');
 
 const setupSocket = (io) => {
-  const emitToUser = (userId, event, payload) => {
-    io.sockets.sockets.forEach((client) => {
-      if (client.user && String(client.user._id) === String(userId)) client.emit(event, payload);
-    });
-  };
+  const userRoom = (userId) => `user:${String(userId)}`;
+  const emitToUser = (userId, event, payload) => io.to(userRoom(userId)).emit(event, payload);
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -58,6 +55,7 @@ const setupSocket = (io) => {
 
   io.on('connection', (socket) => {
     const { user } = socket;
+    socket.join(userRoom(user._id));
     console.log(`[Socket] Connected: ${user.name}`);
 
     updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
@@ -82,10 +80,10 @@ const setupSocket = (io) => {
         to,
         isTyping
       };
-      io.emit(`typing:${to}`, payload);
+      emitToUser(to, `typing:${to}`, payload);
       if (isTyping) {
         typingTimeouts[to] = setTimeout(() => {
-          io.emit(`typing:${to}`, { ...payload, isTyping: false });
+          emitToUser(to, `typing:${to}`, { ...payload, isTyping: false });
         }, 3000);
       }
     });
@@ -142,8 +140,8 @@ const setupSocket = (io) => {
         media: validMedia
       });
       const populated = populateMessage(msg);
-      io.emit(`msg:${user._id}:${to}`, populated);
-      io.emit(`msg:${to}:${user._id}`, populated);
+      emitToUser(user._id, `msg:${user._id}:${to}`, populated);
+      emitToUser(to, `msg:${to}:${user._id}`, populated);
       notifyInApp(io, to, {
         type: 'new_message',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
@@ -234,7 +232,7 @@ const setupSocket = (io) => {
       });
       const populated = populateMessage(msg);
       group.members.forEach(memberId => {
-        io.emit(`msg:group:${groupId}:${memberId}`, populated);
+        emitToUser(memberId, `msg:group:${groupId}:${memberId}`, populated);
         if (memberId !== user._id) {
           notifyInApp(io, memberId, {
             type: 'group_message',
@@ -278,7 +276,7 @@ const setupSocket = (io) => {
       addSharedPhoto(payload);
       // Deliver to every friend (online or offline — they'll see it on load)
       friends.forEach(f => {
-        io.emit(`new_photo_shared:${f.friendId}`, payload);
+        emitToUser(f.friendId, `new_photo_shared:${f.friendId}`, payload);
       });
       // Echo back to sender so it appears in their own feed immediately
       socket.emit(`new_photo_shared:${user._id}`, payload);
@@ -288,7 +286,7 @@ const setupSocket = (io) => {
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay
     socket.on('wish_birthday', ({ targetUserId, age }) => {
       if (!targetUserId || !canContact(user._id, targetUserId)) return;
-      io.emit(`notify:${targetUserId}`, {
+      emitToUser(targetUserId, `notify:${targetUserId}`, {
         type: 'happy_birthday',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         age: age || null

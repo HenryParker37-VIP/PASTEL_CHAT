@@ -6,6 +6,10 @@ const cors = require('cors');
 
 const storeDb = require('./db/store');
 
+if (process.env.PERSISTENT_SERVICE === 'true' && !process.env.MONGODB_URI) {
+  throw new Error('PERSISTENT_SERVICE requires MONGODB_URI; refusing to start with local ephemeral storage');
+}
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const friendRoutes = require('./routes/friends');
@@ -43,13 +47,19 @@ const allowedOrigins = (process.env.CLIENT_URL || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+const configuredOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+for (const origin of configuredOrigins) {
+  if (!allowedOrigins.includes(origin)) allowedOrigins.push(origin);
+}
 for (const origin of productionOrigins) {
   if (origin && !allowedOrigins.includes(origin)) allowedOrigins.push(origin);
 }
 
 function corsOrigin(origin, callback) {
   // Allow requests with no origin (like mobile apps, curl, serverless same-origin) or matching allowlist
-  if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.endsWith('.vercel.app'))) return callback(null, true);
+  const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== 'false';
+  if (!origin || allowedOrigins.includes(origin) || (allowVercelPreviews && allowedOrigins.some(o => origin.endsWith('.vercel.app')))) return callback(null, true);
   callback(new Error('CORS origin not allowed'));
 }
 
@@ -107,11 +117,17 @@ app.use('/api/webrtc', webrtcRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/ai', aiRoutes);
 
-app.get('/health', (_, res) => res.json({
-  status: 'ok',
+app.get('/health', (_, res) => {
+  const durable = storeDb.isDurableStorageEnabled();
+  const strictDurability = process.env.PERSISTENT_SERVICE === 'true';
+  const ready = !strictDurability || durable;
+  return res.status(ready ? 200 : 503).json({
+  status: ready ? 'ok' : 'not_ready',
   storage: storeDb.isDurableStorageEnabled() ? 'mongodb' : 'local-ephemeral',
-  timestamp: new Date()
-}));
+  realtime: 'socket.io',
+  timestamp: new Date().toISOString()
+  });
+});
 
 app.get('/api/version', (_, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
