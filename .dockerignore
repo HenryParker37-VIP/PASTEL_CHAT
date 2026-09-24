@@ -1,0 +1,12 @@
+# This Dockerfile is built from the repository root on Render. Only backend
+# source and its npm manifests are needed by this service.
+**
+!backend/
+!backend/**
+
+# Never send local credentials or installed/generated artifacts to the builder.
+backend/.env*
+backend/**/.env*
+backend/node_modules/
+backend/**/node_modules/
+backend/**/coverage/
