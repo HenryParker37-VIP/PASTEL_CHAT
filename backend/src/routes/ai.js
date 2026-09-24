@@ -4,6 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const storeDb = require('../db/store');
 const { syncCharacterRhythm, getConversationDebug } = require('../ai/conversationDirector');
 const { triggerProactiveTick } = require('../ai/proactiveEngine');
+const { emitToUser } = require('../socket/emitToUser');
 
 // GET /ai/status - Public or authenticated info about Lyra's current state
 router.get('/status', (req, res) => {
@@ -164,12 +165,9 @@ router.post('/avatar', authMiddleware, (req, res) => {
 
     // Notify connected clients via socket
     const io = req.app.get('io');
-    if (io && typeof io.emit === 'function') {
-      io.emit('user_updated', {
-        userId: 'user_ai_lyra',
-        avatar: trimmed
-      });
-    }
+    (storeDb.store.users || []).filter((user) => !user.isAI).forEach((user) => {
+      emitToUser(io, user._id, 'user_updated', { userId: 'user_ai_lyra', avatar: trimmed });
+    });
 
     res.json({ success: true, avatar: trimmed });
   } catch (err) {

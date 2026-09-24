@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const { isPersistentService, isReadOnlyMode } = require('../config/runtimeMode');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 let rawMongo = (process.env.MONGODB_URI || '').trim();
@@ -358,6 +359,10 @@ function applySnapshot(loaded) {
 
 function load() {
   try {
+    if (isPersistentService()) {
+      console.log(`[DB] Persistent service starting ${isReadOnlyMode() ? 'read-only' : 'writable'}; waiting for Atlas snapshot`);
+      return;
+    }
     let loaded = null;
     if (fs.existsSync(DB_PATH)) {
       try {
@@ -388,6 +393,7 @@ let isDirty = false;
 let lastHydratedUpdatedAt = 0;
 
 function persist() {
+  if (isReadOnlyMode()) return false;
   if (process.env.PASTELCHAT_DISABLE_PERSIST === '1') return;
   isDirty = true;
   if (!mongoConfigured) {
@@ -524,12 +530,48 @@ async function writeDurableSnapshot() {
 }
 
 async function flushPersist() {
-  if (!mongoConnected) return;
+  if (!mongoConnected) {
+    if (isPersistentService() && isDirty) throw new Error('MongoDB is disconnected; dirty durable state cannot be flushed');
+    return;
+  }
   if (pendingDurableWrite) {
     await pendingDurableWrite;
   } else if (isDirty) {
     await writeDurableSnapshot();
   }
+  if (isDirty || pendingDurableWrite) throw new Error('Durable snapshot flush did not complete');
+}
+
+async function reloadFromDurableStore() {
+  if (!isReadOnlyMode()) throw new Error('Atlas rehydration is only allowed while persistent service is read-only');
+  if (isDirty || pendingDurableWrite) throw new Error('Cannot rehydrate while local changes are pending');
+  clearTimeout(durableSaveTimer);
+  clearTimeout(saveTimer);
+  const col = await getDurableCollection();
+  if (!col) throw new Error('MongoDB durable storage is not configured');
+  const snapshot = await col.findOne({ key: 'primary' });
+  if (!snapshot?.data || !Array.isArray(snapshot.data.users) || snapshot.data.users.length === 0) {
+    throw new Error('Authoritative Atlas snapshot is missing or invalid');
+  }
+  applySnapshot(snapshot.data);
+  lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
+  isDirty = false;
+  return { users: store.users.length, messages: store.messages.length, updatedAt: snapshot.updatedAt || null };
+}
+
+async function closeDurableStore() {
+  clearTimeout(durableSaveTimer);
+  clearTimeout(saveTimer);
+  let flushError = null;
+  try { await flushPersist(); } catch (error) { flushError = error; }
+  if (cachedClient) {
+    const client = cachedClient;
+    cachedClient = global.__pastelMongoClient = null;
+    cachedDb = global.__pastelMongoDb = null;
+    mongoConnected = false;
+    await client.close();
+  }
+  if (flushError) throw flushError;
 }
 
 let inFlightHydration = null;
@@ -588,6 +630,9 @@ async function hydrateFromDurableStore() {
 
       const isBloated = sizeBytes > 300000;
       if (isBloated) {
+        if (isPersistentService() || isReadOnlyMode()) {
+          throw new Error('Atlas snapshot exceeds safe size threshold; automatic repair is disabled in persistent service mode');
+        }
         console.warn(`[DB] Primary snapshot is bloated (${Math.round(sizeBytes / 1024)} KB). Repairing directly in Atlas...`);
         // Dynamically clear any bloated fields in data (notes, auditLogs, pushSubscriptions, etc.)
         for (const f of meta?.dataFields || []) {
@@ -636,6 +681,9 @@ async function hydrateFromDurableStore() {
           console.log(`[DB] Successfully wrote slim snapshot (${store.users.length} users, ${store.messages.length} msgs) in ${Date.now() - tSlim}ms!`);
         }
       } else {
+        if (isPersistentService() || isReadOnlyMode()) {
+          throw new Error('Authoritative Atlas snapshot is missing or invalid; refusing to seed or initialize production data');
+        }
         if (seedData) applySnapshot(seedData);
         ensureAICharacter();
         await writeDurableSnapshot();
@@ -1735,15 +1783,15 @@ function createFeedback(userId, type, message) {
 load();
 const ready = hydrateFromDurableStore();
 ready.then(() => {
-  ensureConfiguredAdmin();
-  if (store.releases.length === 0) {
+  if (!isPersistentService() && !isReadOnlyMode()) ensureConfiguredAdmin();
+  if (!isPersistentService() && !isReadOnlyMode() && store.releases.length === 0) {
     const release = createRelease(INITIAL_RELEASE);
     if (release) notifyUsersOfRelease(release);
   }
 }).catch(() => {});
 
 module.exports = {
-  store, persist, flushPersist, hydrateFromDurableStore, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
+  store, persist, flushPersist, hydrateFromDurableStore, reloadFromDurableStore, closeDurableStore, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,

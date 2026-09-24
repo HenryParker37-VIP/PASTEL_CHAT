@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
+import { getMessagePollingDelay, bindReconnectResync } from '../services/messageSyncPolicy';
 import { useCall } from '../contexts/CallContext';
 import api from '../services/api';
 import Header from '../components/Header';
@@ -37,7 +38,7 @@ const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 }
 const Chat = () => {
   const { friendId } = useParams();
   const { user, updateProfile } = useAuth();
-  const { socket, connected } = useSocket();
+  const { socket, connected, misconfigured } = useSocket();
   const { startCall, activeCall } = useCall();
   const { push } = useToast();
   const navigate = useNavigate();
@@ -570,7 +571,7 @@ const Chat = () => {
 
   // Socket.IO delivers primary updates; fast polling is recovery while disconnected.
   useEffect(() => {
-    if (!friendId || !user?._id || connected) return;
+    if (!friendId || !user?._id || misconfigured) return;
 
     let syncTimer = null;
     let isDisposed = false;
@@ -580,19 +581,21 @@ const Chat = () => {
       try {
         await fetchMessages(true);
       } catch {}
-      if (!isDisposed) {
-        const interval = document.visibilityState === 'visible' ? 1500 : 15000;
-        syncTimer = setTimeout(performSync, interval);
-      }
+      scheduleSync();
     };
 
-    // Recurring sync interval: 1.5s when tab is visible, 15s in background
-    syncTimer = setTimeout(performSync, 1500);
+    const scheduleSync = () => {
+      const delay = getMessagePollingDelay(connected, document.visibilityState === 'visible');
+      if (!isDisposed && delay !== null) syncTimer = setTimeout(performSync, delay);
+    };
+
+    scheduleSync();
 
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === 'visible') {
         clearTimeout(syncTimer);
-        performSync();
+        if (connected) fetchMessages(true);
+        else performSync();
       }
     };
 
@@ -605,7 +608,7 @@ const Chat = () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [fetchMessages, friendId, user?._id, connected]);
+  }, [fetchMessages, friendId, user?._id, connected, misconfigured]);
 
   useEffect(() => {
     if (friendId === 'user_ai_lyra' || friend?.isAI) {
@@ -828,7 +831,7 @@ const Chat = () => {
     socket.on('message_status', onMessageStatus);
     socket.on('user_updated', onUserUpdated);
     // Re-fetch on socket reconnect to catch messages missed while disconnected
-    socket.on('connect', fetchMessages);
+    const unbindReconnectResync = bindReconnectResync(socket, fetchMessages);
 
     // Mark active chat on server so push notifications are suppressed while viewing this chat
     socket.emit('chat:active', { friendId });
@@ -854,7 +857,7 @@ const Chat = () => {
       socket.off(`typing:${user._id}`, onTyping);
       socket.off('message_status', onMessageStatus);
       socket.off('user_updated', onUserUpdated);
-      socket.off('connect', fetchMessages);
+      unbindReconnectResync();
     };
   }, [socket, friendId, user, fetchMessages, friend]);
 

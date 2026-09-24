@@ -8,6 +8,7 @@ const {
 } = require('../db/store');
 
 const router = express.Router();
+const { emitToUser } = require('../socket/emitToUser');
 
 const normalizeSharedWith = (sharedWith, ownerId) => {
   if (!Array.isArray(sharedWith)) return [];
@@ -140,7 +141,7 @@ router.delete('/shared-photos/:id', authMiddleware, (req, res) => {
 
   const recipientIds = new Set([deleted.uploadedBy._id, ...getFriends(deleted.uploadedBy._id).map((friend) => friend.friendId)]);
   const io = req.app?.get('io');
-  recipientIds.forEach((recipientId) => io?.emit(`shared_media_deleted:${recipientId}`, { _id: deleted._id }));
+  recipientIds.forEach((recipientId) => emitToUser(io, recipientId, `shared_media_deleted:${recipientId}`, { _id: deleted._id }));
   res.json({ ok: true, _id: deleted._id });
 });
 

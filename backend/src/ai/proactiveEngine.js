@@ -5,6 +5,7 @@
 
 const { notifyInApp } = require('../services/inAppNotifications');
 const { sendMessagePush } = require('../services/pushService');
+const { emitToUser } = require('../socket/emitToUser');
 
 function getProactiveCandidates(storeDb) {
   const allUsers = storeDb.store.users || [];
@@ -105,8 +106,8 @@ async function triggerProactiveTick(storeDb, io, targetUserId = null) {
 
     if (io && typeof io.emit === 'function') {
       try {
-        io.emit(`msg:${aiUser._id}:${selectedUser._id}`, populated);
-        io.emit(`msg:${selectedUser._id}:${aiUser._id}`, populated);
+        emitToUser(io, selectedUser._id, `msg:${aiUser._id}:${selectedUser._id}`, populated);
+        emitToUser(io, selectedUser._id, `msg:${selectedUser._id}:${aiUser._id}`, populated);
 
         notifyInApp(io, selectedUser._id, {
           type: 'new_message',

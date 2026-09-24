@@ -32,6 +32,12 @@ const rateLimit = require('./middleware/rateLimit');
 const { assertAuthConfigured } = require('./config/auth');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
 const { appVersion, buildId, deployedAt } = require('./version');
+const { emitToUser } = require('./socket/emitToUser');
+const { createCorsOrigin } = require('./config/cors');
+const { isReadOnlyMode, assertSingleWriterConfiguration } = require('./config/runtimeMode');
+const crypto = require('crypto');
+const { installGracefulShutdown } = require('./lifecycle/gracefulShutdown');
+const { shouldStartTelegramPolling } = require('./config/telegram');
 
 const app = express();
 const server = http.createServer(app);
@@ -49,19 +55,16 @@ const allowedOrigins = (process.env.CLIENT_URL || '')
   .filter(Boolean);
 const configuredOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
-for (const origin of configuredOrigins) {
-  if (!allowedOrigins.includes(origin)) allowedOrigins.push(origin);
-}
 for (const origin of productionOrigins) {
   if (origin && !allowedOrigins.includes(origin)) allowedOrigins.push(origin);
 }
-
-function corsOrigin(origin, callback) {
-  // Allow requests with no origin (like mobile apps, curl, serverless same-origin) or matching allowlist
-  const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== 'false';
-  if (!origin || allowedOrigins.includes(origin) || (allowVercelPreviews && allowedOrigins.some(o => origin.endsWith('.vercel.app')))) return callback(null, true);
-  callback(new Error('CORS origin not allowed'));
-}
+const persistentService = process.env.PERSISTENT_SERVICE === 'true';
+assertSingleWriterConfiguration();
+const corsOrigin = createCorsOrigin({
+  persistentService,
+  configuredOrigins,
+  legacyOrigins: allowedOrigins
+});
 
 const io = new Server(server, {
   cors: { origin: corsOrigin, methods: ['GET', 'POST'], credentials: true },
@@ -74,6 +77,35 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(securityHeaders);
 app.use(express.json({ limit: '10mb', parameterLimit: 1000 }));
 app.set('io', io);
+
+function controlTokenMatches(received, expected) {
+  if (!received || !expected) return false;
+  const left = Buffer.from(String(received));
+  const right = Buffer.from(String(expected));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+app.post('/internal/rehydrate', async (req, res) => {
+  if (!persistentService || !isReadOnlyMode()) return res.status(404).json({ message: 'Not found' });
+  const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!controlTokenMatches(bearer, process.env.CUTOVER_CONTROL_TOKEN)) return res.status(401).json({ message: 'Unauthorized' });
+  try {
+    const snapshot = await storeDb.reloadFromDurableStore();
+    return res.json({ status: 'rehydrated', ...snapshot });
+  } catch (error) {
+    console.error('[Cutover] Atlas rehydration failed:', error.message);
+    return res.status(503).json({ message: 'Atlas rehydration failed' });
+  }
+});
+
+const applicationWritesDisabled = process.env.APPLICATION_WRITES_DISABLED === 'true';
+app.use((req, res, next) => {
+  const methodCanWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  if ((isReadOnlyMode() || applicationWritesDisabled) && methodCanWrite) {
+    return res.status(503).json({ status: 'read_only', message: 'Application writes are temporarily disabled' });
+  }
+  return next();
+});
 
 // Serve frontend static files
 const path = require('path');
@@ -122,10 +154,15 @@ app.get('/health', (_, res) => {
   const strictDurability = process.env.PERSISTENT_SERVICE === 'true';
   const ready = !strictDurability || durable;
   return res.status(ready ? 200 : 503).json({
-  status: ready ? 'ok' : 'not_ready',
-  storage: storeDb.isDurableStorageEnabled() ? 'mongodb' : 'local-ephemeral',
-  realtime: 'socket.io',
-  timestamp: new Date().toISOString()
+    status: ready ? 'ok' : 'not_ready',
+    storage: durable ? 'mongodb' : 'local-ephemeral',
+    realtime: 'socket.io',
+    writeMode: isReadOnlyMode() || applicationWritesDisabled ? 'read-only' : 'enabled',
+    singleWriterConfigured: !persistentService || (
+      process.env.KOYEB_INSTANCE_COUNT === '1'
+      && (isReadOnlyMode() || process.env.KOYEB_DEPLOYMENT_STRATEGY === 'immediate')
+    ),
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -214,7 +251,7 @@ const startTelegramPolling = () => {
       '🎉 Connected to Pastel Chat!\n\nYou\'ll now receive notifications for incoming calls, messages, and friend requests.',
       { parse_mode: 'Markdown' }
     );
-    io.emit('telegram:verified', { userId: String(user._id), chatId });
+    emitToUser(io, user._id, 'telegram:verified', { userId: String(user._id), chatId });
   };
 
   const poll = async () => {
@@ -299,16 +336,18 @@ const startTelegramPolling = () => {
     if (running) setTimeout(poll, 2000);
   };
 
-  // Clean up on process exit so nodemon restarts don't leave zombies
-  // Start polling only if explicitly enabled or in standalone non-serverless node process
-  if (process.env.TELEGRAM_POLLING === 'true' || (!process.env.VERCEL && process.env.NODE_ENV !== 'test')) {
+  // Polling is opt-in because only one persistent deployment may own the bot poller.
+  if (shouldStartTelegramPolling()) {
     console.log('[Telegram] ✅ Bot polling started (@PastelChat_Notification_bot)');
     poll();
   }
 };
 
+startTelegramPolling();
+
 const PORT = process.env.PORT || 5001;
 if (!process.env.VERCEL) {
+  if (persistentService) installGracefulShutdown({ server, io, storeDb });
   storeDb.ready.then(() => {
     server.listen(PORT, () => {
       console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);

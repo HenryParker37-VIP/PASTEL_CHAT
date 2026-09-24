@@ -24,6 +24,15 @@ module.exports = async (req, res) => {
   }
   await readyPromise;
 
+  // Cutover freeze: continue serving safe reads without rehydrating/flushing a
+  // stale serverless snapshot. Writes are rejected by app middleware.
+  if (process.env.APPLICATION_WRITES_DISABLED === 'true') {
+    if (storeDb.isDurableStorageRequired() && !storeDb.isDurableStorageEnabled()) {
+      return res.status(503).json({ status: 'unavailable', storage: 'durable-storage-required' });
+    }
+    return app(req, res);
+  }
+
   // Vercel functions have no shared, durable filesystem. Refuse to handle
   // authenticated product traffic until the durable store is ready so that
   // account discovery, requests, and friendships cannot silently disappear.

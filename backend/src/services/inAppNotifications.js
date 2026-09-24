@@ -1,4 +1,5 @@
 const { createNotification } = require('../db/store');
+const { emitToUser } = require('../socket/emitToUser');
 
 const notifyInApp = (io, userId, payload, { title, body, data = {} } = {}) => {
   try {
@@ -12,7 +13,7 @@ const notifyInApp = (io, userId, payload, { title, body, data = {} } = {}) => {
     });
     if (io && typeof io.to === 'function') {
       try {
-        io.to(`user:${String(userId)}`).emit(`notify:${userId}`, { ...payload, notificationId: notification?._id });
+        emitToUser(io, userId, `notify:${userId}`, { ...payload, notificationId: notification?._id });
       } catch (ioErr) {
         console.warn('[InAppNotifications] io.emit warning:', ioErr.message);
       }
