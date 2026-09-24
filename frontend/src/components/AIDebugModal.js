@@ -42,7 +42,7 @@ const AIDebugModal = ({ onClose, onRefreshChat }) => {
     try {
       const { data } = await api.post('/ai/proactive/tick', {});
       if (data.triggered) {
-        setActionMessage(`Proactive check-in triggered! (${data.bubbles?.length || 1} bubbles sent)`);
+        setActionMessage(`${data.triggered} proactive check-in sent`);
         if (onRefreshChat) onRefreshChat();
       } else {
         setActionMessage(`Proactive skipped: ${data.reason || 'Attention budget capped'}`);

@@ -59,7 +59,7 @@ function parseAndRecoverResponse(rawText) {
             .map(b => (typeof b === 'string' ? b : b?.text || ''))
             .map(t => cleanBubbleText(t))
             .filter(Boolean)
-            .slice(0, 3);
+            .slice(0, 5);
 
           if (bubbles.length > 0) {
             return {
@@ -77,7 +77,7 @@ function parseAndRecoverResponse(rawText) {
   // 3. Formatting Recovery: If JSON was malformed or model spoke in plain text,
   // recover the actual model-generated text rather than dropping it or using canned text!
   const lines = cleanText
-    .split(/\n+/)
+    .split(/\n\s*\n+/)
     .map(line => cleanBubbleText(line))
     .filter(line => {
       if (!line || line.length < 2) return false;
@@ -90,7 +90,7 @@ function parseAndRecoverResponse(rawText) {
 
   if (lines.length > 0) {
     return {
-      bubbles: lines.slice(0, 2),
+      bubbles: lines.slice(0, 5),
       reaction: null
     };
   }
@@ -134,8 +134,8 @@ class AIModelRouter {
     );
   }
 
-  isProviderHealthy(providerName) {
-    const health = this.providerHealth.get(providerName);
+  isProviderHealthy(providerName, conversationKey = 'default') {
+    const health = this.providerHealth.get(`${conversationKey}:${providerName}`);
     if (!health) return true;
     if (health.consecutiveFailures >= 3) {
       // Cooldown of 45 seconds after 3 consecutive failures
@@ -145,17 +145,17 @@ class AIModelRouter {
     return true;
   }
 
-  recordProviderSuccess(providerName) {
-    this.providerHealth.set(providerName, {
+  recordProviderSuccess(providerName, conversationKey = 'default') {
+    this.providerHealth.set(`${conversationKey}:${providerName}`, {
       consecutiveFailures: 0,
       lastSuccess: Date.now(),
       lastFailure: null
     });
   }
 
-  recordProviderFailure(providerName, errorMsg) {
-    const existing = this.providerHealth.get(providerName) || { consecutiveFailures: 0 };
-    this.providerHealth.set(providerName, {
+  recordProviderFailure(providerName, errorMsg, conversationKey = 'default') {
+    const existing = this.providerHealth.get(`${conversationKey}:${providerName}`) || { consecutiveFailures: 0 };
+    this.providerHealth.set(`${conversationKey}:${providerName}`, {
       consecutiveFailures: existing.consecutiveFailures + 1,
       lastSuccess: existing.lastSuccess || null,
       lastFailure: Date.now(),
@@ -361,7 +361,7 @@ class AIModelRouter {
 
     for (const candidate of providerCandidates) {
       if (!candidate.key) continue;
-      if (!this.isProviderHealthy(candidate.provider)) {
+      if (!this.isProviderHealthy(candidate.provider, conversationKey)) {
         console.log(`[AI Router] Skipping ${candidate.provider} (cooling down)`);
         continue;
       }
@@ -387,8 +387,7 @@ class AIModelRouter {
           }
 
           if (result && result.bubbles && result.bubbles.length > 0) {
-            this.recordProviderSuccess(candidate.provider);
-            this.recordRecentOutputs(conversationKey, result.bubbles);
+            this.recordProviderSuccess(candidate.provider, conversationKey);
             selectedResult = result;
             usedProvider = candidate.provider;
             usedModel = model;
@@ -396,7 +395,7 @@ class AIModelRouter {
           }
         } catch (err) {
           lastError = `${candidate.provider}/${model}: ${err.message}`;
-          this.recordProviderFailure(candidate.provider, err.message);
+          this.recordProviderFailure(candidate.provider, err.message, conversationKey);
         }
       }
 

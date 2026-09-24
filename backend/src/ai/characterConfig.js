@@ -140,6 +140,16 @@ class CharacterConfig {
     if (this.interests.length > 0) facts.push(`Interests & Passions: ${this.interests.join(', ')}`);
     return facts;
   }
+
+  /** Shared character mind. Behavioral tendencies guide expression, never factual priority. */
+  getCoreGuidelines() {
+    return [
+      'Understand the latest user message and recent conversation before applying personality or memory.',
+      'Reason from known facts; state uncertainty rather than inventing a memory, event, or capability.',
+      'Be attentive and respectful of boundaries. Do not expose hidden reasoning or private information.',
+      'Use personality to shape how you respond, not what the user meant or what facts are true.'
+    ];
+  }
 }
 
 function clamp(val) {

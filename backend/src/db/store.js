@@ -43,10 +43,13 @@ const store = {
   auditLogs: [], // append-only administrative/security events
   aiCharacters: [],
   aiCharacterState: {},
+  aiCharacterStates: {},
   aiRelationshipState: [],
   aiMemories: [],
   aiLifeEvents: []
 };
+let legacyAiMemories = [];
+let legacyAiRelationships = [];
 
 let seedData = null;
 try {
@@ -201,37 +204,48 @@ function ensureAIFriendship(userId) {
   }
 }
 
-function getAICharacter() {
-  return (store.aiCharacters || [])[0] || null;
+function getAICharacter(characterId = AI_CHARACTER_ID) {
+  return (store.aiCharacters || []).find(character => String(character._id) === String(characterId)) || null;
 }
 
-function getAICharacterState() {
-  return store.aiCharacterState || null;
+function getAICharacterState(characterId = AI_CHARACTER_ID) {
+  return String(characterId) === AI_CHARACTER_ID ? store.aiCharacterState || null : store.aiCharacterStates?.[characterId] || null;
 }
 
-function updateAICharacterState(updates) {
-  if (!store.aiCharacterState || typeof store.aiCharacterState !== 'object') {
-    store.aiCharacterState = {};
+function updateAICharacterState(updates, characterId = AI_CHARACTER_ID) {
+  if (String(characterId) !== AI_CHARACTER_ID) {
+    store.aiCharacterStates = store.aiCharacterStates || {};
+    const state = store.aiCharacterStates[characterId] || {};
+    Object.assign(state, updates, { updatedAt: new Date().toISOString() });
+    store.aiCharacterStates[characterId] = state;
+    persist();
+    return state;
   }
+  if (!store.aiCharacterState || typeof store.aiCharacterState !== 'object') store.aiCharacterState = {};
   Object.assign(store.aiCharacterState, updates, { updatedAt: new Date().toISOString() });
   persist();
   return store.aiCharacterState;
 }
 
-function getAIRelationship(userId) {
+function getAIRelationship(userId, characterId = AI_CHARACTER_ID, createIfMissing = true) {
   if (!userId) return null;
   const uid = String(userId);
   if (!Array.isArray(store.aiRelationshipState)) store.aiRelationshipState = [];
-  let rel = store.aiRelationshipState.find(r => String(r.userId) === uid);
+  let rel = store.aiRelationshipState.find(r => String(r.userId) === uid && String(r.characterId || AI_CHARACTER_ID) === String(characterId));
+  if (!rel && !createIfMissing) return null;
   if (!rel) {
     rel = {
       userId: uid,
-      characterId: AI_CHARACTER_ID,
+      characterId: String(characterId),
       familiarity: 1,
       trust: 1,
       affection: 1,
       comfort: 1,
       shared_history: [],
+      interaction_count: 0,
+      communication_style: null,
+      time_zone: null,
+      proactive_history: [],
       sleep_intent_received: false,
       last_sleep_intent_at: null,
       proactive_count_today: 0,
@@ -243,65 +257,118 @@ function getAIRelationship(userId) {
   return rel;
 }
 
-function updateAIRelationship(userId, updates) {
-  const rel = getAIRelationship(userId);
+function updateAIRelationship(userId, updates, characterId = AI_CHARACTER_ID) {
+  const rel = getAIRelationship(userId, characterId);
   if (!rel) return null;
   Object.assign(rel, updates);
-  persist();
+  persistAIPersonal();
   return rel;
 }
 
-function getAIMemories(userId) {
+function getAIMemories(userId, characterId = AI_CHARACTER_ID) {
   if (!userId || !Array.isArray(store.aiMemories)) return [];
   const uid = String(userId);
-  return store.aiMemories.filter(m => String(m.userId) === uid);
+  return store.aiMemories.filter(m => String(m.userId) === uid && String(m.characterId || AI_CHARACTER_ID) === String(characterId));
 }
 
-function addAIMemory({ userId, characterId, type, subject, key, value, confidence = 0.9, importance = 0.8 }) {
+function addAIMemory({ userId, characterId = AI_CHARACTER_ID, type, subject, key, value, source = 'USER_STATED', sourceMessageId = null, sourceMessageAt = null, confidence = 0.9, importance = 0.8 }) {
   if (!userId || !key || !value) return null;
   const uid = String(userId);
   if (!Array.isArray(store.aiMemories)) store.aiMemories = [];
+  const safeKey = String(key).trim().toLowerCase().slice(0, 50);
+  const safeValue = String(value).trim().slice(0, 180);
+  if (!safeKey || !safeValue || /data:[^\s]+;base64,|<svg|<img|https?:\/\//i.test(safeValue)) return null;
 
-  const existing = store.aiMemories.find(m => String(m.userId) === uid && m.key.toLowerCase() === key.toLowerCase());
+  const existing = store.aiMemories.find(m => String(m.userId) === uid && String(m.characterId || AI_CHARACTER_ID) === String(characterId) && String(m.key).toLowerCase() === safeKey);
   if (existing) {
-    existing.value = value;
-    existing.confidence = Math.min(1.0, (existing.confidence || 0.8) + 0.1);
+    if (sourceMessageAt && existing.sourceMessageAt && new Date(sourceMessageAt) < new Date(existing.sourceMessageAt)) return existing;
+    existing.value = safeValue;
+    existing.source = source === 'INFERRED' ? 'INFERRED' : 'USER_STATED';
+    existing.sourceMessageId = sourceMessageId;
+    existing.sourceMessageAt = sourceMessageAt;
+    existing.confidence = confidence;
     existing.lastConfirmedAt = new Date().toISOString();
-    persist();
+    persistAIPersonal();
     return existing;
   }
 
   const mem = {
     _id: 'mem_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     userId: uid,
-    characterId: characterId || AI_CHARACTER_ID,
+    characterId: String(characterId),
     type: type || 'fact',
     subject: subject || 'general',
-    key: key.toLowerCase().trim(),
-    value: value.trim(),
+    key: safeKey,
+    value: safeValue,
+    source: source === 'INFERRED' ? 'INFERRED' : 'USER_STATED',
+    sourceMessageId,
+    sourceMessageAt,
     confidence,
     importance,
     createdAt: new Date().toISOString(),
     lastConfirmedAt: new Date().toISOString()
   };
   store.aiMemories.push(mem);
-  persist();
+  const scoped = getAIMemories(uid, characterId);
+  if (scoped.length > 24) {
+    const oldest = scoped.find(m => m._id !== mem._id);
+    if (oldest) store.aiMemories.splice(store.aiMemories.indexOf(oldest), 1);
+  }
+  persistAIPersonal();
   return mem;
 }
 
-function deleteAIMemory(memoryId, userId) {
+function deleteAIMemory(memoryId, userId, characterId = AI_CHARACTER_ID) {
   if (!memoryId || !Array.isArray(store.aiMemories)) return false;
-  const idx = store.aiMemories.findIndex(m => m._id === memoryId && (!userId || String(m.userId) === String(userId)));
+  const idx = store.aiMemories.findIndex(m => m._id === memoryId && (!userId || String(m.userId) === String(userId)) && String(m.characterId || AI_CHARACTER_ID) === String(characterId));
   if (idx !== -1) {
     store.aiMemories.splice(idx, 1);
-    persist();
+    persistAIPersonal();
     return true;
   }
   return false;
 }
 
+function persistAIPersonal() {
+  if (!MONGODB_URI) persist();
+}
+
 function getAILifeEvents() {
   return store.aiLifeEvents || [];
+}
+
+// An atomic, compact delivery claim prevents two workers from sending the
+// same user's check-in on the same local date. No personal text stored.
+let proactiveClaimsIndexReady = null;
+async function claimAIProactiveWindow(userId, characterId, windowKey) {
+  if (process.env.WRITE_MODE === 'read-only') return false;
+  const claimId = JSON.stringify([String(userId), String(characterId), String(windowKey).split(':')[0]]);
+  if (!mongoConnected) return false;
+  const db = await getDurableDatabase();
+  if (!db) return false;
+  const collection = db.collection('pastelchat_proactive_claims');
+  if (!proactiveClaimsIndexReady) {
+    proactiveClaimsIndexReady = collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }).catch(error => {
+      proactiveClaimsIndexReady = null;
+      throw error;
+    });
+  }
+  await proactiveClaimsIndexReady;
+  const now = new Date();
+  const scope = { userId: String(userId), characterId: String(characterId) };
+  if (await collection.findOne({ ...scope, claimedAt: { $gte: new Date(now.getTime() - 36 * 3600_000) } }, { projection: { _id: 1 } })) return false;
+  if (await collection.countDocuments({ ...scope, claimedAt: { $gte: new Date(now.getTime() - 7 * 24 * 3600_000) } }, { limit: 2 }) >= 2) return false;
+  try {
+    const result = await collection.updateOne(
+      { _id: claimId, expiresAt: { $lte: now } },
+      { $set: { ...scope, claimedAt: now, expiresAt: new Date(now.getTime() + 8 * 24 * 3600_000) } },
+      { upsert: true }
+    );
+    return Boolean(result.upsertedCount || result.modifiedCount);
+  } catch (error) {
+    if (error.code === 11000) return false;
+    throw error;
+  }
 }
 
 function isAIUser(userId) {
@@ -354,8 +421,13 @@ function applySnapshot(loaded) {
   store.auditLogs = Array.isArray(loaded.auditLogs) ? loaded.auditLogs : [];
   store.aiCharacters = Array.isArray(loaded.aiCharacters) ? loaded.aiCharacters : [];
   store.aiCharacterState = loaded.aiCharacterState && typeof loaded.aiCharacterState === 'object' ? loaded.aiCharacterState : {};
+  store.aiCharacterStates = loaded.aiCharacterStates && typeof loaded.aiCharacterStates === 'object' ? loaded.aiCharacterStates : {};
   store.aiRelationshipState = Array.isArray(loaded.aiRelationshipState) ? loaded.aiRelationshipState : [];
   store.aiMemories = Array.isArray(loaded.aiMemories) ? loaded.aiMemories : [];
+  if (MONGODB_URI) {
+    legacyAiRelationships = JSON.parse(JSON.stringify(store.aiRelationshipState));
+    legacyAiMemories = JSON.parse(JSON.stringify(store.aiMemories));
+  }
   store.aiLifeEvents = Array.isArray(loaded.aiLifeEvents) ? loaded.aiLifeEvents : [];
   ensureAICharacter();
 }
@@ -455,7 +527,92 @@ async function getDurableDatabase() {
       throw lastErr;
     }
   }
+  mongoConnected = Boolean(cachedDb);
   return cachedDb;
+}
+
+function personalLayerId(userId, characterId = AI_CHARACTER_ID) {
+  return JSON.stringify([String(userId), String(characterId)]);
+}
+
+async function hydrateAIPersonalLayer(userId, characterId = AI_CHARACTER_ID) {
+  if (!MONGODB_URI) return;
+  const db = await getDurableDatabase();
+  const doc = await db.collection('pastelchat_personal_layers').findOne({ _id: personalLayerId(userId, characterId) });
+  if (!doc) return; // Existing snapshot rows remain the compatibility source.
+  if (String(doc.userId) !== String(userId) || String(doc.characterId) !== String(characterId)) throw new Error('Personal layer ownership mismatch');
+  applyPersonalDocument(doc);
+}
+
+function applyPersonalDocument(doc) {
+  const { userId, characterId } = doc;
+  if (!userId || !characterId) return;
+  if (doc._id && doc._id !== personalLayerId(userId, characterId)) return;
+  const matches = row => String(row.userId) === String(userId) && String(row.characterId || AI_CHARACTER_ID) === String(characterId);
+  store.aiMemories = store.aiMemories.filter(row => !matches(row)).concat(Array.isArray(doc.memories) ? mergePersonalMemories([], doc.memories.filter(matches)) : []);
+  if (doc.relationship && matches(doc.relationship)) {
+    store.aiRelationshipState = store.aiRelationshipState.filter(row => !matches(row)).concat(doc.relationship);
+  }
+}
+
+async function hydrateAllAIPersonalLayers() {
+  if (!MONGODB_URI) return;
+  const db = await getDurableDatabase();
+  const docs = await db.collection('pastelchat_personal_layers').find({}, { projection: { userId: 1, characterId: 1, memories: 1, relationship: 1 } }).toArray();
+  docs.forEach(applyPersonalDocument);
+}
+
+function mergePersonalMemories(current = [], incoming = [], deletedIds = []) {
+  const deleted = new Set(deletedIds.map(String));
+  const byKey = new Map();
+  for (const memory of [...current, ...incoming]) {
+    if (!memory?.key || deleted.has(String(memory._id))) continue;
+    const old = byKey.get(memory.key);
+    const oldAt = new Date(old?.sourceMessageAt || old?.lastConfirmedAt || 0).getTime();
+    const nextAt = new Date(memory.sourceMessageAt || memory.lastConfirmedAt || 0).getTime();
+    if (!old || nextAt >= oldAt) byKey.set(memory.key, memory);
+  }
+  return [...byKey.values()]
+    .filter(memory => typeof memory.value === 'string' && memory.value.length <= 180 && !/data:[^\s]+;base64,|<svg|<img/i.test(memory.value))
+    .sort((a, b) => new Date(b.sourceMessageAt || b.lastConfirmedAt || 0) - new Date(a.sourceMessageAt || a.lastConfirmedAt || 0))
+    .slice(0, 24);
+}
+
+async function flushAIPersonalLayer(userId, characterId = AI_CHARACTER_ID, { deletedMemoryIds = [], resetRelationship = false } = {}) {
+  if (process.env.WRITE_MODE === 'read-only') return false;
+  if (!MONGODB_URI) { persist(); return true; }
+  const db = await getDurableDatabase();
+  const collection = db.collection('pastelchat_personal_layers');
+  const _id = personalLayerId(userId, characterId);
+  const incomingMemories = getAIMemories(userId, characterId);
+  const incomingRelationship = getAIRelationship(userId, characterId);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const current = await collection.findOne({ _id });
+    if (current && (String(current.userId) !== String(userId) || String(current.characterId) !== String(characterId))) throw new Error('Personal layer ownership mismatch');
+    const memories = mergePersonalMemories((current?.memories || []).filter(memory => String(memory.userId) === String(userId) && String(memory.characterId || AI_CHARACTER_ID) === String(characterId)), incomingMemories, deletedMemoryIds);
+    const currentRelationship = current?.relationship && String(current.relationship.userId) === String(userId) && String(current.relationship.characterId || AI_CHARACTER_ID) === String(characterId) ? current.relationship : {};
+    const relationship = { ...(resetRelationship ? {} : currentRelationship), ...incomingRelationship, userId: String(userId), characterId: String(characterId) };
+    if (!resetRelationship) {
+      relationship.interaction_count = Math.max(currentRelationship.interaction_count || 0, incomingRelationship?.interaction_count || 0);
+      for (const field of ['shared_history', 'proactive_history']) {
+        if (Array.isArray(currentRelationship[field]) && Array.isArray(incomingRelationship?.[field])) {
+          const idOf = item => field === 'shared_history' ? item?.userMessageId : item?.window;
+          relationship[field] = [...new Map([...currentRelationship[field], ...incomingRelationship[field]].filter(idOf).map(item => [idOf(item), item])).values()].slice(-8);
+        }
+      }
+    }
+    const revision = Number(current?.revision || 0);
+    const filter = current ? { _id, revision: current.revision ?? { $exists: false } } : { _id, revision: { $exists: false } };
+    try {
+      const result = await collection.updateOne(filter, {
+        $set: { userId: String(userId), characterId: String(characterId), memories, relationship, revision: revision + 1, updatedAt: new Date() }
+      }, { upsert: !current });
+      if (result.matchedCount || result.upsertedCount) return true;
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+    }
+  }
+  throw new Error('Personal layer changed concurrently; retry the request');
 }
 
 async function getDurableCollection() {
@@ -531,20 +688,37 @@ function sanitizeForDurableStorage(data) {
     }
   }
 
+  if (Array.isArray(data.aiMemories)) {
+    const perLayer = new Map();
+    data.aiMemories = data.aiMemories.filter(memory => {
+      if (!memory?.userId || !memory?.key || typeof memory.value !== 'string') return false;
+      if (memory.value.length > 180 || /data:[^\s]+;base64,|<svg|<img/i.test(memory.value)) return false;
+      const scope = JSON.stringify([String(memory.userId), String(memory.characterId || AI_CHARACTER_ID)]);
+      const count = perLayer.get(scope) || 0;
+      if (count >= 24) return false;
+      perLayer.set(scope, count + 1);
+      return true;
+    });
+  }
+
   return data;
 }
 
 let pendingDurableWrite = null;
+function durableSnapshotData() {
+  return { ...store, aiMemories: legacyAiMemories, aiRelationshipState: legacyAiRelationships };
+}
 async function writeDurableSnapshot() {
+  if (process.env.WRITE_MODE === 'read-only') return;
   if (!mongoConnected) return;
   try {
     const col = await getDurableCollection();
     if (!col) return;
-    sanitizeForDurableStorage(store);
+    const snapshotData = sanitizeForDurableStorage(durableSnapshotData());
     const now = new Date();
     pendingDurableWrite = col.updateOne(
       { key: 'primary' },
-      { $set: { key: 'primary', data: store, updatedAt: now }, $setOnInsert: { createdAt: now } },
+      { $set: { key: 'primary', data: snapshotData, updatedAt: now }, $setOnInsert: { createdAt: now } },
       { upsert: true }
     );
     await pendingDurableWrite;
@@ -621,7 +795,7 @@ async function hydrateFromDurableStore() {
       if (meta?.dataFields) console.log('[DB] Data fields sizes:', JSON.stringify(meta.dataFields));
 
       const isBloated = sizeBytes > 300000;
-      if (isBloated) {
+      if (isBloated && process.env.WRITE_MODE !== 'read-only') {
         console.warn(`[DB] Primary snapshot is bloated (${Math.round(sizeBytes / 1024)} KB). Repairing directly in Atlas...`);
         // Dynamically clear any bloated fields in data (notes, auditLogs, pushSubscriptions, etc.)
         for (const f of meta?.dataFields || []) {
@@ -659,12 +833,12 @@ async function hydrateFromDurableStore() {
         ensureAICharacter();
         console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
 
-        if (isBloated) {
+        if (isBloated && process.env.WRITE_MODE !== 'read-only') {
           console.log('[DB] Writing slim, sanitized snapshot back to MongoDB Atlas to permanently fix document bloat...');
           const tSlim = Date.now();
           await col.updateOne(
             { key: 'primary' },
-            { $set: { key: 'primary', data: store, updatedAt: new Date() } },
+            { $set: { key: 'primary', data: sanitizeForDurableStorage(durableSnapshotData()), updatedAt: new Date() } },
             { upsert: true }
           );
           console.log(`[DB] Successfully wrote slim snapshot (${store.users.length} users, ${store.messages.length} msgs) in ${Date.now() - tSlim}ms!`);
@@ -1804,6 +1978,6 @@ module.exports = {
   AI_USER_ID, AI_CHARACTER_ID, ensureAICharacter, ensureAIFriendship,
   getAICharacter, getAICharacterState, updateAICharacterState,
   getAIRelationship, updateAIRelationship,
-  getAIMemories, addAIMemory, deleteAIMemory, getAILifeEvents, isAIUser, updateAIAvatar,
+  getAIMemories, addAIMemory, deleteAIMemory, hydrateAIPersonalLayer, hydrateAllAIPersonalLayers, flushAIPersonalLayer, getAILifeEvents, claimAIProactiveWindow, isAIUser, updateAIAvatar,
   storeAIAvatarMedia, getAIAvatarMedia
 };

@@ -22,6 +22,7 @@ const {
   clearActiveChat
 } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
+const { invalidateConversation } = require('../ai/conversationDirector');
 
 const setupSocket = (io) => {
   const emitToUser = (userId, event, payload) => {
@@ -60,6 +61,10 @@ const setupSocket = (io) => {
     const { user } = socket;
     console.log(`[Socket] Connected: ${user.name}`);
 
+    // Standby sockets may authenticate and receive events, but cannot mutate
+    // application or Atlas state through any socket handler.
+    if (process.env.WRITE_MODE === 'read-only') return;
+
     updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
     broadcastOnlineFriends();
 
@@ -76,6 +81,7 @@ const setupSocket = (io) => {
     let typingTimeouts = {};
     socket.on('user_typing', ({ to, isTyping }) => {
       if (!to || !canContact(user._id, to)) return;
+      if (findUserById(to)?.isAI) return;
       clearTimeout(typingTimeouts[to]);
       const payload = {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
@@ -141,10 +147,18 @@ const setupSocket = (io) => {
         replyTo: replyTo || null,
         media: validMedia
       });
+      const target = findUserById(to);
+      const targetAI = target?.isAI ? target : null;
+      if (targetAI) invalidateConversation(user._id, targetAI.aiCharacterId || 'char_lyra', msg._id);
       const populated = populateMessage(msg);
-      io.emit(`msg:${user._id}:${to}`, populated);
-      io.emit(`msg:${to}:${user._id}`, populated);
-      notifyInApp(io, to, {
+      if (targetAI) {
+        emitToUser(user._id, `msg:${user._id}:${to}`, populated);
+        emitToUser(user._id, `msg:${to}:${user._id}`, populated);
+      } else {
+        io.emit(`msg:${user._id}:${to}`, populated);
+        io.emit(`msg:${to}:${user._id}`, populated);
+      }
+      if (!targetAI) notifyInApp(io, to, {
         type: 'new_message',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         preview: populated.content.slice(0, 80),
@@ -155,7 +169,7 @@ const setupSocket = (io) => {
         data: { route: `/chat/${user._id}`, friendId: user._id, messageId: populated._id }
       });
       // Push notification for when recipient's app is closed/backgrounded
-      sendMessagePush(to, user, validMedia || populated.content).catch(e =>
+      if (!targetAI) sendMessagePush(to, user, validMedia || populated.content).catch(e =>
         console.error('[Push] Failed to send socket message push:', e.message)
       );
     });
