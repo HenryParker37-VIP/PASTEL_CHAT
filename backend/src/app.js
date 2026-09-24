@@ -38,6 +38,7 @@ const { isReadOnlyMode, assertSingleWriterConfiguration } = require('./config/ru
 const crypto = require('crypto');
 const { installGracefulShutdown } = require('./lifecycle/gracefulShutdown');
 const { shouldStartTelegramPolling } = require('./config/telegram');
+const { blockCloudflareInternalRequests } = require('./middleware/internalAccess');
 
 const app = express();
 const server = http.createServer(app);
@@ -84,6 +85,11 @@ function controlTokenMatches(received, expected) {
   const right = Buffer.from(String(expected));
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
+
+// A future Cloudflare Tunnel may proxy the public API here. Cloudflare edge
+// headers identify those requests so internal controls are never tunnelable.
+// Direct local calls remain available for authenticated standby rehydration.
+app.use('/internal', blockCloudflareInternalRequests);
 
 app.post('/internal/rehydrate', async (req, res) => {
   if (!persistentService || !isReadOnlyMode()) return res.status(404).json({ message: 'Not found' });

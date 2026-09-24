@@ -12,6 +12,7 @@ const { shouldStartTelegramPolling } = require('../src/config/telegram');
 const { installGracefulShutdown } = require('../src/lifecycle/gracefulShutdown');
 const { emitToUser } = require('../src/socket/emitToUser');
 const { assertSingleWriterConfiguration } = require('../src/config/runtimeMode');
+const { blockCloudflareInternalRequests } = require('../src/middleware/internalAccess');
 
 function onceEvent(socket, event, timeoutMs = 2500) {
   return new Promise((resolve, reject) => {
@@ -98,6 +99,25 @@ test('credentialed CORS accepts production and explicit project origins only', (
     allowed(explicitPreview).then((value) => assert.equal(value, true)),
     assert.rejects(allowed('https://unrelated-project.vercel.app'), /CORS origin not allowed/)
   ]);
+});
+
+test('Cloudflare edge requests cannot reach internal endpoints while local calls remain available', () => {
+  const makeResponse = () => ({
+    statusCode: 200,
+    body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; }
+  });
+  const next = () => 'next';
+  const localResponse = makeResponse();
+  assert.equal(blockCloudflareInternalRequests({ get: () => undefined }, localResponse, next), 'next');
+
+  for (const header of ['cf-connecting-ip', 'cf-ray']) {
+    const response = makeResponse();
+    assert.equal(blockCloudflareInternalRequests({ get: (name) => name === header ? 'present' : undefined }, response, next), response);
+    assert.equal(response.statusCode, 404);
+    assert.deepEqual(response.body, { message: 'Not found' });
+  }
 });
 
 test('Telegram polling is strictly opt-in', () => {
