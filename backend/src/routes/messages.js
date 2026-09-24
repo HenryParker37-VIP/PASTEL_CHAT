@@ -3,7 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { sendMessagePush } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
-const { emitToUser } = require('../services/userSocket');
+const { emitToUser, emitToUsers } = require('../services/userSocket');
 const {
   createMessage,
   findMessageByClientMessageId,
@@ -68,7 +68,7 @@ router.delete('/clear/:friendId', authMiddleware, (req, res) => {
   if (!canAccessConversation(req.user._id, req.params.friendId)) return res.status(403).json({ message: 'Conversation access denied' });
   const count = clearConversation(req.user._id, req.params.friendId);
   const io = req.app.get('io');
-  io.emit(`notify:${req.params.friendId}`, {
+  emitToUser(io, req.params.friendId, `notify:${req.params.friendId}`, {
     type: 'chat_cleared',
     from: { _id: req.user._id, name: req.user.name }
   });
@@ -156,8 +156,8 @@ router.post('/', authMiddleware, async (req, res) => {
       emitToUser(io, req.user._id, `msg:${req.user._id}:${receiverId}`, populated);
       emitToUser(io, req.user._id, `msg:${receiverId}:${req.user._id}`, populated);
     } else {
-      io.emit(`msg:${req.user._id}:${receiverId}`, populated);
-      io.emit(`msg:${receiverId}:${req.user._id}`, populated);
+      emitToUsers(io, [req.user._id, receiverId], `msg:${req.user._id}:${receiverId}`, populated);
+      emitToUsers(io, [req.user._id, receiverId], `msg:${receiverId}:${req.user._id}`, populated);
     }
     // Also notify receiver for toast
     if (!receiver.isAI) notifyInApp(io, receiverId, {
@@ -248,7 +248,9 @@ router.post('/:id/delivered', authMiddleware, (req, res) => {
   if (!message || String(message.receiverId) !== String(req.user._id)) return res.status(404).json({ message: 'Message not found' });
   const updated = markMessageDelivered(message._id, req.user._id);
   const io = req.app.get('io');
-  io.emit(`message_status:${message.senderId}`, { messageId: message._id, clientMessageId: message.clientMessageId, status: 'delivered', deliveredAt: updated.deliveredAt });
+  const payload = { messageId: message._id, clientMessageId: message.clientMessageId, status: 'delivered', deliveredAt: updated.deliveredAt };
+  emitToUser(io, message.senderId, 'message_status', payload);
+  emitToUser(io, message.senderId, `message_status:${message.senderId}`, payload);
   res.json({ success: true, messageId: message._id, status: 'delivered', deliveredAt: updated.deliveredAt });
 });
 
@@ -257,7 +259,9 @@ router.post('/:id/read', authMiddleware, (req, res) => {
   if (!message || String(message.receiverId) !== String(req.user._id)) return res.status(404).json({ message: 'Message not found' });
   const updated = markMessageRead(message._id, req.user._id);
   const io = req.app.get('io');
-  io.emit(`message_status:${message.senderId}`, { messageId: message._id, clientMessageId: message.clientMessageId, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt });
+  const payload = { messageId: message._id, clientMessageId: message.clientMessageId, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt };
+  emitToUser(io, message.senderId, 'message_status', payload);
+  emitToUser(io, message.senderId, `message_status:${message.senderId}`, payload);
   res.json({ success: true, messageId: message._id, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt });
 });
 
@@ -271,8 +275,8 @@ router.delete('/:id', authMiddleware, (req, res) => {
 
     updateMessage(msg._id, { isRecalled: true, content: 'This message has been recalled' });
     const io = req.app.get('io');
-    io.emit(`msg_recall:${msg.senderId}:${msg.receiverId}`, { messageId: msg._id });
-    io.emit(`msg_recall:${msg.receiverId}:${msg.senderId}`, { messageId: msg._id });
+    emitToUsers(io, [msg.senderId, msg.receiverId], `msg_recall:${msg.senderId}:${msg.receiverId}`, { messageId: msg._id });
+    emitToUsers(io, [msg.senderId, msg.receiverId], `msg_recall:${msg.receiverId}:${msg.senderId}`, { messageId: msg._id });
     res.json({ success: true, messageId: msg._id });
   } catch (e) {
     res.status(500).json({ message: 'Failed to recall' });
@@ -291,8 +295,8 @@ router.post('/:id/pin', authMiddleware, (req, res) => {
   const updated = updateMessage(msg._id, { isPinned: !msg.isPinned });
   const populated = populateMessage(updated);
   const io = req.app.get('io');
-  io.emit(`msg_pin:${msg.senderId}:${msg.receiverId}`, populated);
-  io.emit(`msg_pin:${msg.receiverId}:${msg.senderId}`, populated);
+  emitToUsers(io, [msg.senderId, msg.receiverId], `msg_pin:${msg.senderId}:${msg.receiverId}`, populated);
+  emitToUsers(io, [msg.senderId, msg.receiverId], `msg_pin:${msg.receiverId}:${msg.senderId}`, populated);
   res.json(populated);
 });
 
@@ -313,8 +317,8 @@ router.post('/:id/react', authMiddleware, (req, res) => {
     const updated = toggleReaction(msg._id, req.user._id, emoji);
     const populated = populateMessage(updated);
     const io = req.app.get('io');
-    io.emit(`msg_reaction:${msg.senderId}:${msg.receiverId}`, { messageId: msg._id, reactions: populated.reactions });
-    io.emit(`msg_reaction:${msg.receiverId}:${msg.senderId}`, { messageId: msg._id, reactions: populated.reactions });
+    emitToUsers(io, [msg.senderId, msg.receiverId], `msg_reaction:${msg.senderId}:${msg.receiverId}`, { messageId: msg._id, reactions: populated.reactions });
+    emitToUsers(io, [msg.senderId, msg.receiverId], `msg_reaction:${msg.receiverId}:${msg.senderId}`, { messageId: msg._id, reactions: populated.reactions });
     res.json({ messageId: msg._id, reactions: populated.reactions });
   } catch (e) {
     res.status(500).json({ message: 'Failed to react' });
@@ -354,8 +358,8 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
       emitToUser(io, req.user._id, `msg:${req.user._id}:${otherId}`, populated);
       emitToUser(io, req.user._id, `msg:${otherId}:${req.user._id}`, populated);
     } else {
-      io.emit(`msg:${req.user._id}:${otherId}`, populated);
-      io.emit(`msg:${otherId}:${req.user._id}`, populated);
+      emitToUsers(io, [req.user._id, otherId], `msg:${req.user._id}:${otherId}`, populated);
+      emitToUsers(io, [req.user._id, otherId], `msg:${otherId}:${req.user._id}`, populated);
     }
     if (!otherUser?.isAI) notifyInApp(io, otherId, {
       type: 'new_message',

@@ -7,6 +7,7 @@ const {
   createMessage, flushMessageWrites, findMessageByClientMessageId, populateMessage, findUserById, findMessage, updateMessage, toggleReaction
 } = require('../db/store');
 const { notifyInApp } = require('../services/inAppNotifications');
+const { emitToUser, emitToUsers } = require('../services/userSocket');
 
 // GET /groups — list groups I belong to
 router.get('/', authMiddleware, (req, res) => {
@@ -75,7 +76,7 @@ router.post('/:id/invite', authMiddleware, (req, res) => {
     body: `${req.user.name} đã mời bạn vào nhóm “${pub.name}”.`,
     data: { route: `/group/${pub._id}` }
   });
-  io.emit(`group:updated:${group._id}`, pub);
+  emitToUsers(io, updated.members, `group:updated:${group._id}`, pub);
   res.json(pub);
 });
 
@@ -84,9 +85,9 @@ router.delete('/:id/leave', authMiddleware, (req, res) => {
   const group = findGroup(req.params.id);
   if (!group) return res.status(404).json({ message: 'Not found' });
   if (!group.members.includes(req.user._id)) return res.status(403).json({ message: 'Not a member' });
-  removeGroupMember(group._id, req.user._id);
+  const updated = removeGroupMember(group._id, req.user._id);
   const io = req.app.get('io');
-  io.emit(`group:updated:${group._id}`, groupPublic(findGroup(group._id)));
+  emitToUsers(io, [...(updated?.members || []), req.user._id], `group:updated:${group._id}`, groupPublic(findGroup(group._id)));
   res.json({ success: true });
 });
 
@@ -153,7 +154,7 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
   const io = req.app.get('io');
   // emit to all group members
   group.members.forEach(memberId => {
-    io.emit(`msg:group:${group._id}:${memberId}`, populated);
+    emitToUser(io, memberId, `msg:group:${group._id}:${memberId}`, populated);
     if (memberId !== req.user._id) {
       notifyInApp(io, memberId, {
         type: 'group_message',
@@ -175,6 +176,7 @@ router.post('/:id/messages', authMiddleware, async (req, res) => {
 router.delete('/:id/messages/:msgId', authMiddleware, (req, res) => {
   const group = findGroup(req.params.id);
   if (!group) return res.status(404).json({ message: 'Not found' });
+  if (!group.members.includes(req.user._id)) return res.status(403).json({ message: 'Not a member' });
   const msg = findMessage(req.params.msgId);
   if (!msg) return res.status(404).json({ message: 'Message not found' });
   if (msg.groupId !== group._id) return res.status(403).json({ message: 'Message is not in this group' });
@@ -182,7 +184,7 @@ router.delete('/:id/messages/:msgId', authMiddleware, (req, res) => {
   updateMessage(msg._id, { isRecalled: true, content: 'This message has been recalled' });
   const io = req.app.get('io');
   group.members.forEach(memberId => {
-    io.emit(`msg_recall:group:${group._id}:${memberId}`, { messageId: msg._id });
+    emitToUser(io, memberId, `msg_recall:group:${group._id}:${memberId}`, { messageId: msg._id });
   });
   res.json({ success: true, messageId: msg._id });
 });
@@ -201,7 +203,7 @@ router.post('/:id/messages/:msgId/react', authMiddleware, (req, res) => {
   const populated = populateMessage(updated);
   const io = req.app.get('io');
   group.members.forEach(memberId => {
-    io.emit(`msg_reaction:group:${group._id}:${memberId}`, { messageId: msg._id, reactions: populated.reactions });
+    emitToUser(io, memberId, `msg_reaction:group:${group._id}:${memberId}`, { messageId: msg._id, reactions: populated.reactions });
   });
   res.json({ messageId: msg._id, reactions: populated.reactions });
 });

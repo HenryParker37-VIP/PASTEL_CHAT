@@ -5,6 +5,7 @@ const requireOwner = requireAdmin.requireOwner;
 const rateLimit = require('../middleware/rateLimit');
 const { store, createRelease, findRelease, notifyUsersOfRelease, createAuditLog } = require('../db/store');
 const { sendPushToUser, getPushLanguage } = require('../services/pushService');
+const { emitToUser } = require('../services/userSocket');
 
 function cleanList(value) {
   return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean).slice(0, 20) : [];
@@ -29,7 +30,7 @@ router.post('/', requireOwner, rateLimit({ name: 'admin-release', windowMs: 5 * 
   const io = req.app.get('io');
   if (io) store.users.forEach((user) => {
     const notification = store.notifications.find((item) => item.userId === user._id && item.type === 'release_published' && item.data?.releaseVersion === release.version);
-    if (notification) io.emit(`notify:${user._id}`, { type: notification.type, releaseVersion: release.version, notificationId: notification._id, data: notification.data });
+    if (notification) emitToUser(io, user._id, `notify:${user._id}`, { type: notification.type, releaseVersion: release.version, notificationId: notification._id, data: notification.data });
   });
   let pushesSent = 0;
   if (release.important && release.pushEnabled) {

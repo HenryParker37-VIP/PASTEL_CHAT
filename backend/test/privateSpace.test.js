@@ -113,11 +113,12 @@ test('Only the owner can delete shared media and recipients receive the deletion
   const denied = runHandler(deleteMedia, { user: accountB, params: { id: media._id } });
   assert.strictEqual(denied.statusCode, 403);
   const events = [];
-  const deleted = runHandler(deleteMedia, { user: accountA, params: { id: media._id }, io: { emit: (event, payload) => events.push({ event, payload }) } });
+  const deleted = runHandler(deleteMedia, { user: accountA, params: { id: media._id }, io: { to: (room) => ({ emit: (event, payload) => events.push({ room, event, payload }) }) } });
   assert.strictEqual(deleted.statusCode, 200);
   assert.ok(!store.sharedPhotos.some((item) => item._id === media._id));
   assert.ok(events.some(({ event }) => event === `shared_media_deleted:${accountA._id}`));
   assert.ok(events.some(({ event }) => event === `shared_media_deleted:${accountB._id}`));
+  assert.ok(events.every(({ room, event }) => room === `user:${event.split(':').at(-1)}`));
 });
 
 console.log(`\nPrivate Space Results: ${passed} passed, ${failed} failed\n`);

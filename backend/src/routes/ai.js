@@ -5,14 +5,7 @@ const storeDb = require('../db/store');
 const { syncCharacterRhythm, getConversationDebug } = require('../ai/conversationDirector');
 const { triggerProactiveTick } = require('../ai/proactiveEngine');
 const { parseAvatarDataUrl, avatarMediaPath } = require('../services/aiAvatarMedia');
-
-function emitToAuthenticatedUsers(io, event, payload) {
-  const sockets = io?.sockets?.sockets;
-  if (!sockets) return;
-  sockets.forEach((socket) => {
-    if (socket.user?._id) socket.emit(event, payload);
-  });
-}
+const { emitToAuthenticatedUsers } = require('../services/userSocket');
 
 // GET /ai/status - Public or authenticated info about Lyra's current state
 router.get('/status', (req, res) => {

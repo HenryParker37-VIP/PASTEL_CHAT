@@ -26,13 +26,10 @@ const {
 } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
 const { invalidateConversation } = require('../ai/conversationDirector');
+const { joinAuthenticatedRooms, emitToUser: emitUser, emitToUsers } = require('../services/userSocket');
 
 const setupSocket = (io) => {
-  const emitToUser = (userId, event, payload) => {
-    io.sockets.sockets.forEach((client) => {
-      if (client.user && String(client.user._id) === String(userId)) client.emit(event, payload);
-    });
-  };
+  const emitToUser = (userId, event, payload) => emitUser(io, userId, event, payload);
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -62,6 +59,7 @@ const setupSocket = (io) => {
 
   io.on('connection', (socket) => {
     const { user } = socket;
+    joinAuthenticatedRooms(socket, user._id);
     console.log(`[Socket] Connected: ${user.name}`);
 
     // Standby sockets may authenticate and receive events, but cannot mutate
@@ -91,10 +89,10 @@ const setupSocket = (io) => {
         to,
         isTyping
       };
-      io.emit(`typing:${to}`, payload);
+      emitToUser(to, `typing:${to}`, payload);
       if (isTyping) {
         typingTimeouts[to] = setTimeout(() => {
-          io.emit(`typing:${to}`, { ...payload, isTyping: false });
+          emitToUser(to, `typing:${to}`, { ...payload, isTyping: false });
         }, 3000);
       }
     });
@@ -175,8 +173,8 @@ const setupSocket = (io) => {
         emitToUser(user._id, `msg:${user._id}:${to}`, populated);
         emitToUser(user._id, `msg:${to}:${user._id}`, populated);
       } else {
-        io.emit(`msg:${user._id}:${to}`, populated);
-        io.emit(`msg:${to}:${user._id}`, populated);
+        emitToUsers(io, [user._id, to], `msg:${user._id}:${to}`, populated);
+        emitToUsers(io, [user._id, to], `msg:${to}:${user._id}`, populated);
       }
       if (!targetAI) notifyInApp(io, to, {
         type: 'new_message',
@@ -227,7 +225,7 @@ const setupSocket = (io) => {
     });
 
     socket.on('call:end', ({ to }) => {
-      if (!to) return;
+      if (!to || !canContact(user._id, to)) return;
       emitToUser(to, `call:ended:${to}`, { from: user._id });
     });
 
@@ -274,7 +272,7 @@ const setupSocket = (io) => {
       }
       const populated = populateMessage(msg);
       group.members.forEach(memberId => {
-        io.emit(`msg:group:${groupId}:${memberId}`, populated);
+        emitToUser(memberId, `msg:group:${groupId}:${memberId}`, populated);
         if (memberId !== user._id) {
           notifyInApp(io, memberId, {
             type: 'group_message',
@@ -318,17 +316,17 @@ const setupSocket = (io) => {
       addSharedPhoto(payload);
       // Deliver to every friend (online or offline — they'll see it on load)
       friends.forEach(f => {
-        io.emit(`new_photo_shared:${f.friendId}`, payload);
+        emitToUser(f.friendId, `new_photo_shared:${f.friendId}`, payload);
       });
       // Echo back to sender so it appears in their own feed immediately
-      socket.emit(`new_photo_shared:${user._id}`, payload);
+      emitToUser(user._id, `new_photo_shared:${user._id}`, payload);
       respond({ ok: true, photo: payload });
     });
 
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay
     socket.on('wish_birthday', ({ targetUserId, age }) => {
       if (!targetUserId || !canContact(user._id, targetUserId)) return;
-      io.emit(`notify:${targetUserId}`, {
+      emitToUser(targetUserId, `notify:${targetUserId}`, {
         type: 'happy_birthday',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         age: age || null
