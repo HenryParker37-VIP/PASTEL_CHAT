@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const { avatarBytes } = require('../services/aiAvatarMedia');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 let rawMongo = (process.env.MONGODB_URI || '').trim();
@@ -463,7 +464,7 @@ async function getDurableCollection() {
 }
 
 async function storeAIAvatarMedia({ version, buffer, contentType }) {
-  if (isReadOnlyMode()) throw new Error('Avatar media writes are disabled in read-only mode');
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('Avatar media writes are disabled in read-only mode');
   if (!/^[a-f0-9]{64}$/i.test(String(version || '')) || !Buffer.isBuffer(buffer) || !['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
     throw new Error('Avatar media payload is invalid');
   }
@@ -482,8 +483,9 @@ async function getAIAvatarMedia(version) {
   const db = await getDurableDatabase();
   if (!db) return null;
   const media = await db.collection('pastelchat_media').findOne({ _id: `lyra-avatar:${version}` });
-  if (!media || !Buffer.isBuffer(media.data) || !['image/jpeg', 'image/png', 'image/webp'].includes(media.contentType)) return null;
-  return { buffer: media.data, contentType: media.contentType };
+  const buffer = avatarBytes(media?.data);
+  if (!buffer || !['image/jpeg', 'image/png', 'image/webp'].includes(media.contentType)) return null;
+  return { buffer, contentType: media.contentType };
 }
 
 function sanitizeForDurableStorage(data) {

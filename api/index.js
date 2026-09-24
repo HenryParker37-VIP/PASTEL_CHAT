@@ -7,10 +7,10 @@ let lastHydrateAt = 0;
 module.exports = async (req, res) => {
   const rawUrl = req.url || '';
   const pathOnly = rawUrl.split('?')[0];
-  const isHealthOrDiagnostic = pathOnly === '/health' || pathOnly === '/api/version' || req.path === '/health' || req.path === '/api/version';
+  const isVersion = pathOnly === '/api/version' || req.path === '/api/version';
 
-  // Fast-path health probes immediately so monitoring/readiness never blocks
-  if (isHealthOrDiagnostic) {
+  // Version is independent of storage. Health must wait for durable hydration.
+  if (isVersion) {
     return app(req, res);
   }
 
