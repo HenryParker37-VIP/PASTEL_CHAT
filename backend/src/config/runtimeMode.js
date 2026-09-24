@@ -8,12 +8,12 @@ function isReadOnlyMode() {
 }
 
 function assertSingleWriterConfiguration() {
-  if (isPersistentService() && process.env.KOYEB_INSTANCE_COUNT !== '1') {
-    throw new Error('Persistent service requires KOYEB_INSTANCE_COUNT=1 and fixed single-instance Koyeb scaling');
+  if (isPersistentService() && process.env.PERSISTENT_INSTANCE_COUNT !== '1') {
+    throw new Error('Persistent service requires PERSISTENT_INSTANCE_COUNT=1 and fixed single-instance scaling');
   }
   if (isPersistentService() && process.env.WRITE_MODE === 'enabled'
-    && process.env.KOYEB_DEPLOYMENT_STRATEGY !== 'immediate') {
-    throw new Error('Writable Koyeb service requires KOYEB_DEPLOYMENT_STRATEGY=immediate to prevent overlapping deployments');
+    && process.env.SINGLE_WRITER_DEPLOYMENT_POLICY !== 'no-overlap') {
+    throw new Error('Writable persistent service requires SINGLE_WRITER_DEPLOYMENT_POLICY=no-overlap');
   }
 }
 

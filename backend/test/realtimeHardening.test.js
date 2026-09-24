@@ -109,28 +109,28 @@ test('Telegram polling is strictly opt-in', () => {
 
 test('persistent service refuses to start without a one-instance configuration', () => {
   const previousPersistent = process.env.PERSISTENT_SERVICE;
-  const previousCount = process.env.KOYEB_INSTANCE_COUNT;
+  const previousCount = process.env.PERSISTENT_INSTANCE_COUNT;
   const previousWriteMode = process.env.WRITE_MODE;
-  const previousStrategy = process.env.KOYEB_DEPLOYMENT_STRATEGY;
+  const previousPolicy = process.env.SINGLE_WRITER_DEPLOYMENT_POLICY;
   process.env.PERSISTENT_SERVICE = 'true';
   process.env.WRITE_MODE = 'read-only';
-  delete process.env.KOYEB_INSTANCE_COUNT;
-  assert.throws(assertSingleWriterConfiguration, /KOYEB_INSTANCE_COUNT=1/);
-  process.env.KOYEB_INSTANCE_COUNT = '1';
+  delete process.env.PERSISTENT_INSTANCE_COUNT;
+  assert.throws(assertSingleWriterConfiguration, /PERSISTENT_INSTANCE_COUNT=1/);
+  process.env.PERSISTENT_INSTANCE_COUNT = '1';
   assert.doesNotThrow(assertSingleWriterConfiguration);
   process.env.WRITE_MODE = 'enabled';
-  delete process.env.KOYEB_DEPLOYMENT_STRATEGY;
-  assert.throws(assertSingleWriterConfiguration, /KOYEB_DEPLOYMENT_STRATEGY=immediate/);
-  process.env.KOYEB_DEPLOYMENT_STRATEGY = 'immediate';
+  delete process.env.SINGLE_WRITER_DEPLOYMENT_POLICY;
+  assert.throws(assertSingleWriterConfiguration, /SINGLE_WRITER_DEPLOYMENT_POLICY=no-overlap/);
+  process.env.SINGLE_WRITER_DEPLOYMENT_POLICY = 'no-overlap';
   assert.doesNotThrow(assertSingleWriterConfiguration);
   if (previousPersistent === undefined) delete process.env.PERSISTENT_SERVICE;
   else process.env.PERSISTENT_SERVICE = previousPersistent;
-  if (previousCount === undefined) delete process.env.KOYEB_INSTANCE_COUNT;
-  else process.env.KOYEB_INSTANCE_COUNT = previousCount;
+  if (previousCount === undefined) delete process.env.PERSISTENT_INSTANCE_COUNT;
+  else process.env.PERSISTENT_INSTANCE_COUNT = previousCount;
   if (previousWriteMode === undefined) delete process.env.WRITE_MODE;
   else process.env.WRITE_MODE = previousWriteMode;
-  if (previousStrategy === undefined) delete process.env.KOYEB_DEPLOYMENT_STRATEGY;
-  else process.env.KOYEB_DEPLOYMENT_STRATEGY = previousStrategy;
+  if (previousPolicy === undefined) delete process.env.SINGLE_WRITER_DEPLOYMENT_POLICY;
+  else process.env.SINGLE_WRITER_DEPLOYMENT_POLICY = previousPolicy;
 });
 
 test('Vercel cutover freeze bypasses snapshot hydrate and flush logic', async () => {

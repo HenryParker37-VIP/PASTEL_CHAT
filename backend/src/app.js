@@ -159,8 +159,8 @@ app.get('/health', (_, res) => {
     realtime: 'socket.io',
     writeMode: isReadOnlyMode() || applicationWritesDisabled ? 'read-only' : 'enabled',
     singleWriterConfigured: !persistentService || (
-      process.env.KOYEB_INSTANCE_COUNT === '1'
-      && (isReadOnlyMode() || process.env.KOYEB_DEPLOYMENT_STRATEGY === 'immediate')
+      process.env.PERSISTENT_INSTANCE_COUNT === '1'
+      && (isReadOnlyMode() || process.env.SINGLE_WRITER_DEPLOYMENT_POLICY === 'no-overlap')
     ),
     timestamp: new Date().toISOString()
   });
