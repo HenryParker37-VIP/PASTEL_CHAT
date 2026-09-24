@@ -1,8 +1,7 @@
 import axios from 'axios';
-
-let rawBackendUrl = (process.env.REACT_APP_BACKEND_URL || '').trim();
-if (rawBackendUrl.includes('onrender.com')) rawBackendUrl = '';
-const BACKEND_URL = rawBackendUrl;
+import { backendEndpoints } from './backendConfig';
+const BACKEND_URL = backendEndpoints.restBaseURL;
+if (!backendEndpoints.valid) console.error(`[App] Backend routing disabled: ${backendEndpoints.error}`);
 console.log('[App] Target API Base:', BACKEND_URL || '(same-origin)');
 
 const api = axios.create({
@@ -13,6 +12,7 @@ const api = axios.create({
 
 // Attach JWT from localStorage on every request
 api.interceptors.request.use((config) => {
+  if (!backendEndpoints.valid) return Promise.reject(new Error(`Backend routing disabled: ${backendEndpoints.error}`));
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;

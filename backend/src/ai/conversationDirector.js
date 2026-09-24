@@ -11,6 +11,7 @@ const { sleep, calculateTypingDuration, calculateInitialDelay, getInterBubblePau
 const { filterRelevantMemories, processMemoryUpdates, updateRelationshipOnInteraction } = require('./memoryEngine');
 const { notifyInApp } = require('../services/inAppNotifications');
 const { sendMessagePush } = require('../services/pushService');
+const { emitToUser } = require('../socket/emitToUser');
 
 const modelRouter = new AIModelRouter();
 const conversationQueues = new Map();
@@ -120,7 +121,7 @@ async function executeLatestUserMessage({
   const emitTyping = (isTyping) => {
     if (io && typeof io.emit === 'function') {
       try {
-        io.emit(`typing:${user._id}`, { from: lyraSender, isTyping });
+        emitToUser(io, user._id, `typing:${user._id}`, { from: lyraSender, isTyping });
       } catch (err) {
         console.warn('[AI Director] Typing emit warning:', err.message);
       }
@@ -165,8 +166,8 @@ async function executeLatestUserMessage({
       const updated = storeDb.toggleReaction(userMessage._id, aiUser._id, plan.reaction);
       const populated = storeDb.populateMessage(updated, user._id);
       if (io && typeof io.emit === 'function') {
-        io.emit(`msg_reaction:${user._id}:${aiUser._id}`, { messageId: userMessage._id, reactions: populated.reactions });
-        io.emit(`msg_reaction:${aiUser._id}:${user._id}`, { messageId: userMessage._id, reactions: populated.reactions });
+        emitToUser(io, user._id, `msg_reaction:${user._id}:${aiUser._id}`, { messageId: userMessage._id, reactions: populated.reactions });
+        emitToUser(io, user._id, `msg_reaction:${aiUser._id}:${user._id}`, { messageId: userMessage._id, reactions: populated.reactions });
       }
     } catch (err) {
       console.warn('[AI Director] Reaction warning:', err.message);
@@ -196,8 +197,8 @@ async function executeLatestUserMessage({
 
     if (io && typeof io.emit === 'function') {
       try {
-        io.emit(`msg:${aiUser._id}:${user._id}`, populated);
-        io.emit(`msg:${user._id}:${aiUser._id}`, populated);
+        emitToUser(io, user._id, `msg:${aiUser._id}:${user._id}`, populated);
+        emitToUser(io, user._id, `msg:${user._id}:${aiUser._id}`, populated);
 
         notifyInApp(io, user._id, {
           type: 'new_message',

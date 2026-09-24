@@ -22,10 +22,11 @@ const {
   clearActiveChat
 } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
+const { userRoom, emitToUser } = require('./emitToUser');
+const { isReadOnlyMode } = require('../config/runtimeMode');
 
 const setupSocket = (io) => {
-  const userRoom = (userId) => `user:${String(userId)}`;
-  const emitToUser = (userId, event, payload) => io.to(userRoom(userId)).emit(event, payload);
+  const sendToUser = (userId, event, payload) => emitToUser(io, userId, event, payload);
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -58,6 +59,11 @@ const setupSocket = (io) => {
     socket.join(userRoom(user._id));
     console.log(`[Socket] Connected: ${user.name}`);
 
+    if (isReadOnlyMode()) {
+      socket.on('disconnect', () => {});
+      return;
+    }
+
     updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
     broadcastOnlineFriends();
 
@@ -80,10 +86,10 @@ const setupSocket = (io) => {
         to,
         isTyping
       };
-      emitToUser(to, `typing:${to}`, payload);
+      sendToUser(to, `typing:${to}`, payload);
       if (isTyping) {
         typingTimeouts[to] = setTimeout(() => {
-          emitToUser(to, `typing:${to}`, { ...payload, isTyping: false });
+          sendToUser(to, `typing:${to}`, { ...payload, isTyping: false });
         }, 3000);
       }
     });
@@ -100,7 +106,7 @@ const setupSocket = (io) => {
       const updated = markReceipt(message._id, user._id);
       if (!updated) return;
       const groupReceipt = updated.deliveryReceipts?.[user._id] || {};
-      emitToUser(updated.senderId, 'message_status', {
+      sendToUser(updated.senderId, 'message_status', {
         messageId: updated._id,
         clientMessageId: updated.clientMessageId,
         status,
@@ -140,8 +146,8 @@ const setupSocket = (io) => {
         media: validMedia
       });
       const populated = populateMessage(msg);
-      emitToUser(user._id, `msg:${user._id}:${to}`, populated);
-      emitToUser(to, `msg:${to}:${user._id}`, populated);
+      sendToUser(user._id, `msg:${user._id}:${to}`, populated);
+      sendToUser(to, `msg:${to}:${user._id}`, populated);
       notifyInApp(io, to, {
         type: 'new_message',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
@@ -164,7 +170,7 @@ const setupSocket = (io) => {
     socket.on('call:invite', ({ to, callType }) => {
       if (!to || !canContact(user._id, to)) return;
       const type = callType === 'video' ? 'video' : 'voice';
-      emitToUser(to, `call:incoming:${to}`, {
+      sendToUser(to, `call:incoming:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         callType: type
       });
@@ -180,35 +186,35 @@ const setupSocket = (io) => {
 
     socket.on('call:accept', ({ to }) => {
       if (!to || !canContact(user._id, to)) return;
-      emitToUser(to, `call:accepted:${to}`, {
+      sendToUser(to, `call:accepted:${to}`, {
         from: { _id: user._id, name: user.name, avatar: user.avatar }
       });
     });
 
     socket.on('call:reject', ({ to }) => {
       if (!to || !canContact(user._id, to)) return;
-      emitToUser(to, `call:rejected:${to}`, { from: user._id });
+      sendToUser(to, `call:rejected:${to}`, { from: user._id });
     });
 
     socket.on('call:end', ({ to }) => {
       if (!to) return;
-      emitToUser(to, `call:ended:${to}`, { from: user._id });
+      sendToUser(to, `call:ended:${to}`, { from: user._id });
     });
 
     // WebRTC handshake relay
     socket.on('call:offer', ({ to, offer, iceRestart }) => {
       if (!to || !canContact(user._id, to) || !offer) return;
-      emitToUser(to, `call:offer:${to}`, { from: user._id, offer, iceRestart: Boolean(iceRestart) });
+      sendToUser(to, `call:offer:${to}`, { from: user._id, offer, iceRestart: Boolean(iceRestart) });
     });
 
     socket.on('call:answer', ({ to, answer, iceRestart }) => {
       if (!to || !canContact(user._id, to) || !answer) return;
-      emitToUser(to, `call:answer:${to}`, { from: user._id, answer, iceRestart: Boolean(iceRestart) });
+      sendToUser(to, `call:answer:${to}`, { from: user._id, answer, iceRestart: Boolean(iceRestart) });
     });
 
     socket.on('call:ice', ({ to, candidate }) => {
       if (!to || !canContact(user._id, to) || !candidate) return;
-      emitToUser(to, `call:ice:${to}`, { from: user._id, candidate });
+      sendToUser(to, `call:ice:${to}`, { from: user._id, candidate });
     });
 
     // Group message via socket
@@ -232,7 +238,7 @@ const setupSocket = (io) => {
       });
       const populated = populateMessage(msg);
       group.members.forEach(memberId => {
-        emitToUser(memberId, `msg:group:${groupId}:${memberId}`, populated);
+        sendToUser(memberId, `msg:group:${groupId}:${memberId}`, populated);
         if (memberId !== user._id) {
           notifyInApp(io, memberId, {
             type: 'group_message',
@@ -276,7 +282,7 @@ const setupSocket = (io) => {
       addSharedPhoto(payload);
       // Deliver to every friend (online or offline — they'll see it on load)
       friends.forEach(f => {
-        emitToUser(f.friendId, `new_photo_shared:${f.friendId}`, payload);
+        sendToUser(f.friendId, `new_photo_shared:${f.friendId}`, payload);
       });
       // Echo back to sender so it appears in their own feed immediately
       socket.emit(`new_photo_shared:${user._id}`, payload);
@@ -286,7 +292,7 @@ const setupSocket = (io) => {
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay
     socket.on('wish_birthday', ({ targetUserId, age }) => {
       if (!targetUserId || !canContact(user._id, targetUserId)) return;
-      emitToUser(targetUserId, `notify:${targetUserId}`, {
+      sendToUser(targetUserId, `notify:${targetUserId}`, {
         type: 'happy_birthday',
         from: { _id: user._id, name: user.name, avatar: user.avatar },
         age: age || null

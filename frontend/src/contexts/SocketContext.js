@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { backendEndpoints } from '../services/backendConfig';
 
 const SocketContext = createContext(null);
 
@@ -14,16 +15,20 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [connected, setConnected] = useState(false);
+  const [misconfigured, setMisconfigured] = useState(!backendEndpoints.valid);
   const { getToken, user } = useAuth();
   const socketRef = useRef(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token || !user) return;
-
-    let rawSocketUrl = (process.env.REACT_APP_SIGNALING_URL || process.env.REACT_APP_BACKEND_URL || '').trim();
-    if (rawSocketUrl.includes('onrender.com')) rawSocketUrl = '';
-    const SIGNALING_URL = rawSocketUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (!backendEndpoints.valid) {
+      console.error(`[Socket] Realtime disabled: ${backendEndpoints.error}`);
+      setMisconfigured(true);
+      return;
+    }
+    setMisconfigured(false);
+    const SIGNALING_URL = backendEndpoints.socketURL || (typeof window !== 'undefined' ? window.location.origin : '');
     console.log('[Socket] Connecting to:', SIGNALING_URL || '(current origin)');
 
     const newSocket = io(
@@ -81,7 +86,7 @@ export const SocketProvider = ({ children }) => {
   }, [user?._id]);
 
   return (
-    <SocketContext.Provider value={{ socket, onlineUsers, connected }}>
+    <SocketContext.Provider value={{ socket, onlineUsers, connected, misconfigured }}>
       {children}
     </SocketContext.Provider>
   );
