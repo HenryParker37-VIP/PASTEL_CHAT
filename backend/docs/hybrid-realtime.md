@@ -14,8 +14,10 @@ then emits only to authenticated user rooms. Typing and WebRTC signaling are
 transient socket-only events. They cannot be guaranteed while Render sleeps.
 The relay does not send push notifications or perform durable mutations.
 Vercel handles all application writes. Atlas must grant the Render credential
-read-only rights, including change-stream reads. The relay fails to start if
-`WRITE_MODE` is not `read-only` or `MONGODB_URI` is absent.
+read-only rights, including change-stream reads. At startup the relay inspects
+its Atlas privileges and refuses to serve if the credential has write actions.
+The relay also fails to start if `WRITE_MODE` is not `read-only` or
+`MONGODB_URI` is absent.
 
 Render service configuration:
 
