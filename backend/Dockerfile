@@ -7,4 +7,5 @@ COPY package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps
 COPY . .
 EXPOSE 5001
+USER node
 CMD ["node", "src/app.js"]
