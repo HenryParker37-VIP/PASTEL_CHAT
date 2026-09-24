@@ -73,8 +73,8 @@ async function runAITests() {
   // Plain text formatting recovery (must extract model text, never substitute canned response)
   const plainText = 'oh wow\nthat sounds really interesting!';
   const parsed2 = parseAndRecoverResponse(plainText);
-  assert.strictEqual(parsed2.bubbles.length, 2);
-  assert.strictEqual(parsed2.bubbles[0], 'oh wow');
+  assert.strictEqual(parsed2.bubbles.length, 1, 'A single paragraph must not be split into artificial bubbles');
+  assert(parsed2.bubbles[0].startsWith('oh wow'));
   console.log('  ✅ Structured output parser and formatting recovery verified');
 
   // Test 8: Memory Engine & Persistence

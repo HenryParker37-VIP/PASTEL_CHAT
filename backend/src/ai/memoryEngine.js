@@ -1,94 +1,106 @@
-/**
- * Memory and Relationship State Engine for PastelChat AI Characters.
- * Separates raw conversational history from durable long-term facts.
- */
+/** Small, explicit, user-owned facts. Conversation messages remain short-term context. */
+const AI_CHARACTER_ID = 'char_lyra';
+const STOP_WORDS = new Set(['the', 'and', 'for', 'you', 'your', 'what', 'how', 'are', 'was', 'with', 'that', 'this', 'about']);
 
-const DURABLE_FACT_KEYS = new Set(['name', 'nickname', 'job', 'work', 'birthday', 'city', 'location', 'pet', 'interest', 'hobby', 'favorite']);
-
-/**
- * Filter memories relevant to current context.
- * Durable core facts (name, key preferences) are kept; situational facts are matched by keywords.
- */
-function filterRelevantMemories(allMemories = [], currentMessage = '', history = []) {
-  if (!Array.isArray(allMemories) || allMemories.length === 0) return [];
-
-  const contextText = `${currentMessage} ${(history || []).slice(-4).map(m => m.content || '').join(' ')}`.toLowerCase();
-  const contextWords = new Set(contextText.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 2));
-
-  return allMemories.filter(mem => {
-    if (!mem || !mem.key || !mem.value) return false;
-    const key = String(mem.key).toLowerCase();
-
-    // Always include critical durable identity facts (e.g. user name or key traits)
-    if (DURABLE_FACT_KEYS.has(key)) return true;
-
-    // Keyword match on key, subject, or value
-    const memWords = `${key} ${mem.subject || ''} ${mem.value || ''}`.toLowerCase().split(/[\s_]+/);
-    return memWords.some(w => contextWords.has(w));
-  }).slice(-8);
+function words(value) {
+  return String(value || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').split(' ').filter(word => word.length > 2 && !STOP_WORDS.has(word));
 }
 
-function processMemoryUpdates(storeDb, userId, characterId, memoriesToSave = []) {
-  if (!storeDb || !userId || !Array.isArray(memoriesToSave) || memoriesToSave.length === 0) return [];
+function filterRelevantMemories(allMemories = [], currentMessage = '', history = []) {
+  if (!Array.isArray(allMemories)) return [];
+  const context = new Set(words(`${currentMessage} ${(history || []).slice(-3).map(message => message.content || '').join(' ')}`));
+  return allMemories
+    .filter(memory => memory?.key && typeof memory?.value === 'string' && memory.value.length <= 180 && !/data:[^\s]+;base64,|<svg|<img/i.test(memory.value) && memory.source !== 'INFERRED')
+    .map(memory => {
+      const terms = words(`${memory.key.replace(/_/g, ' ')} ${memory.subject || ''} ${memory.value}`);
+      const matches = terms.filter(term => context.has(term)).length;
+      const questionMatch = (memory.key === 'name' && /\b(name|call me)\b/i.test(currentMessage)) ||
+        (memory.key === 'city' && /\b(live|city|location|where)\b/i.test(currentMessage)) ||
+        (memory.key === 'communication_preference' && /\b(reply|replies|respond|style)\b/i.test(currentMessage)) ||
+        (memory.key.startsWith('interest_') && /\b(hobb(?:y|ies)|interests?)\b/i.test(currentMessage));
+      return { memory, score: matches + (questionMatch ? 2 : 0) };
+    })
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || new Date(b.memory.lastConfirmedAt || 0) - new Date(a.memory.lastConfirmedAt || 0))
+    .slice(0, 5)
+    .map(item => item.memory);
+}
+
+const FACT_PATTERNS = [
+  { regex: /\bmy name is\s+([^.!?\n]{2,60})/i, key: 'name', type: 'fact', subject: 'identity' },
+  { regex: /\b(?:i live in|i moved to)\s+([^.!?\n]{2,80})/i, key: 'city', type: 'fact', subject: 'location' },
+  { regex: /\b(?:i work as|my job is)\s+([^.!?\n]{2,100})/i, key: 'work', type: 'fact', subject: 'work' },
+  { regex: /\b(?:my favorite|my favourite)\s+(tea|food|music|movie|book)\s+is\s+([^.!?\n]{2,100})/i, dynamicKey: true, type: 'preference', subject: 'favorites' },
+  { regex: /\b(?:i prefer|please (?:use|keep))\s+([^.!?\n]{3,100})/i, key: 'communication_preference', type: 'preference', subject: 'communication' },
+  { regex: /\b(?:i am interested in|i'm interested in|my hobby is)\s+([^.!?\n]{3,100})/i, interest: true, type: 'interest', subject: 'hobbies' },
+  { regex: /\bmy birthday is\s+([^.!?\n]{3,60})/i, key: 'birthday', type: 'fact', subject: 'identity' },
+  { regex: /\b(?:i am worried about|i'm worried about)\s+([^.!?\n]{3,100})/i, key: 'current_concern', type: 'event', subject: 'concerns' },
+  { regex: /(?:^|[.!?]\s+)(?:thật ra[, ]+)?(?:mình|tôi) tên là\s+([^.!?\n]{2,60})/i, key: 'name', type: 'fact', subject: 'identity' },
+  { regex: /(?:^|[.!?]\s+)(?:thật ra[, ]+)?(?:mình|tôi) sống ở\s+([^.!?\n]{2,80})/i, key: 'city', type: 'fact', subject: 'location' },
+  { regex: /\bi (?:have|am taking|am going to|will have)\s+(an? (?:interview|exam|trip|appointment|presentation))\s+([^.!?\n]{2,100})/i, key: 'upcoming_event', type: 'event', subject: 'plans' }
+];
+
+function extractExplicitMemoryCandidates(message = '') {
+  const text = String(message || '').trim();
+  if (!text || text.length > 2000 || /data:[^\s]+;base64,|<svg|<img|https?:\/\//i.test(text)) return [];
+  if (/^(?:what if|imagine|suppose|maybe|perhaps|i might|i could)\b/i.test(text)) return [];
+  const candidates = [];
+  for (const pattern of FACT_PATTERNS) {
+    const match = text.match(pattern.regex);
+    if (!match) continue;
+    const key = pattern.dynamicKey ? `favorite_${match[1].toLowerCase()}` : pattern.interest ? `interest_${String(match[1]).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 35)}` : pattern.key;
+    const rawValue = pattern.type === 'event' && match[2] ? `${match[1]} ${match[2]}` : match[pattern.dynamicKey ? 2 : 1];
+    const value = String(rawValue).replace(/\s+(?:and|but)\s+.*$/i, '').trim();
+    if (!value || value.endsWith('?') || /\b(?:maybe|might|probably|perhaps)\b/i.test(value)) continue;
+    candidates.push({ key, value, type: pattern.type, subject: pattern.subject, source: 'USER_STATED' });
+  }
+  return candidates;
+}
+
+function processMemoryUpdates(storeDb, userId, characterId = AI_CHARACTER_ID, memoriesToSave = [], sourceMessageId = null, sourceMessageAt = null) {
+  if (!storeDb || !userId || !Array.isArray(memoriesToSave)) return [];
   const saved = [];
-
-  memoriesToSave.forEach(mem => {
-    if (!mem.key || !mem.value) return;
-    const added = storeDb.addAIMemory({
-      userId: String(userId),
-      characterId: characterId || 'char_lyra',
-      type: mem.type || 'preference',
-      subject: mem.subject || 'general',
-      key: String(mem.key).trim().toLowerCase().slice(0, 50),
-      value: String(mem.value).trim().slice(0, 200),
-      confidence: 0.9,
-      importance: 0.8
-    });
+  for (const candidate of memoriesToSave) {
+    if (!candidate?.key || !candidate?.value || candidate.source === 'INFERRED') continue;
+    const existing = storeDb.getAIMemories?.(userId, characterId)?.find(memory => memory.key === candidate.key);
+    if (existing?.sourceMessageId === sourceMessageId && sourceMessageId) continue;
+    if (sourceMessageAt && existing?.sourceMessageAt && new Date(sourceMessageAt) < new Date(existing.sourceMessageAt)) continue;
+    const added = storeDb.addAIMemory({ ...candidate, userId: String(userId), characterId, sourceMessageId, sourceMessageAt });
     if (added) saved.push(added);
-  });
-
+  }
   return saved;
 }
 
-function updateRelationshipOnInteraction(storeDb, userId, { sleepIntent = false, activeLanguage = null } = {}) {
+function validTimeZone(timeZone) {
+  if (typeof timeZone !== 'string' || timeZone.length > 64) return null;
+  try { return new Intl.DateTimeFormat('en-US', { timeZone }).resolvedOptions().timeZone; } catch { return null; }
+}
+
+function updateRelationshipOnInteraction(storeDb, userId, { characterId = AI_CHARACTER_ID, messageId = null, sleepIntent = false, activeLanguage = null, timeZone = null } = {}) {
   if (!storeDb || !userId) return null;
-  const currentRel = storeDb.getAIRelationship(userId) || {
-    userId: String(userId),
-    characterId: 'char_lyra',
-    familiarity: 1,
-    trust: 1,
-    affection: 1,
-    comfort: 1,
-    sleep_intent_received: false,
-    last_sleep_intent_at: null,
-    proactive_count_today: 0,
-    last_proactive_at: null,
-    consecutive_ignored_count: 0
-  };
-
+  const current = storeDb.getAIRelationship(userId, characterId);
+  if (messageId && current?.last_user_message_id === String(messageId)) return current;
   const updates = {
+    interaction_count: (current?.interaction_count || 0) + 1,
     last_interaction_at: new Date().toISOString(),
-    consecutive_ignored_count: 0
+    consecutive_ignored_count: 0,
+    familiarity: Math.min(10, (current?.familiarity || 1) + 0.2),
+    context_confidence: Math.min(1, (storeDb.getAIMemories?.(userId, characterId)?.length || 0) / 8)
   };
-
-  if (activeLanguage) {
-    updates.active_language = activeLanguage;
-  }
-
-  if (currentRel.familiarity < 10) updates.familiarity = Math.min(10, (currentRel.familiarity || 1) + 0.2);
-  if (currentRel.comfort < 10) updates.comfort = Math.min(10, (currentRel.comfort || 1) + 0.15);
-  if (currentRel.trust < 10) updates.trust = Math.min(10, (currentRel.trust || 1) + 0.1);
-
+  if (messageId) updates.last_user_message_id = String(messageId);
+  if (activeLanguage) updates.active_language = activeLanguage;
+  if (validTimeZone(timeZone)) updates.time_zone = validTimeZone(timeZone);
   if (sleepIntent) {
     updates.sleep_intent_received = true;
     updates.last_sleep_intent_at = new Date().toISOString();
   }
-
-  return storeDb.updateAIRelationship(userId, updates);
+  return storeDb.updateAIRelationship(userId, updates, characterId);
 }
 
 module.exports = {
   filterRelevantMemories,
+  extractExplicitMemoryCandidates,
   processMemoryUpdates,
-  updateRelationshipOnInteraction
+  updateRelationshipOnInteraction,
+  validTimeZone
 };

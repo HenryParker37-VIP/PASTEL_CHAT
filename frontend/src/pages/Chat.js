@@ -380,7 +380,8 @@ const Chat = () => {
 
     try {
       const { data } = await api.post('/messages/ai-reply', {
-        receiverId: friendId
+        receiverId: friendId,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
       const current = activeAiTurnRef.current;
@@ -395,6 +396,13 @@ const Chat = () => {
       }
 
       const elapsed = Date.now() - turn.startTime;
+      if (data?.deliveryMode === 'server-paced') {
+        aiBubbleIdsInFlightRef.current.clear();
+        setAiTyping(null);
+        current.deliveryState = TURN_STATE.IDLE;
+        await fetchMessages(true);
+        return;
+      }
       if (Array.isArray(data?.aiReplies) && data.aiReplies.length > 0) {
         data.aiReplies.forEach((b) => aiBubbleIdsInFlightRef.current.add(b._id));
         current.pendingBubbles = [...data.aiReplies];
@@ -722,7 +730,7 @@ const Chat = () => {
 
       // If this message belongs to an AI generation that the coordinator is currently pacing,
       // let the coordinator deliver it at the natural typing moment rather than popping in early
-      if (aiBubbleIdsInFlightRef.current.has(msg._id)) {
+      if (msg.aiDeliveryMode !== 'server-paced' && aiBubbleIdsInFlightRef.current.has(msg._id)) {
         return;
       }
 
@@ -731,7 +739,8 @@ const Chat = () => {
         (senderId === 'user_ai_lyra' || (friend && (friend._id === senderId || friendId === senderId) && friend.isAI)) &&
         activeAiTurnRef.current &&
         activeAiTurnRef.current.deliveryState !== 'completed' &&
-        activeAiTurnRef.current.deliveryState !== 'cancelled'
+        activeAiTurnRef.current.deliveryState !== 'cancelled' &&
+        msg.aiDeliveryMode !== 'server-paced'
       ) {
         aiBubbleIdsInFlightRef.current.add(msg._id);
         return;

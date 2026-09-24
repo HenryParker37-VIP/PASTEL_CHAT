@@ -42,8 +42,9 @@ router.get('/status', (req, res) => {
 });
 
 // GET /ai/memories - Authenticated user's memories stored by Lyra
-router.get('/memories', authMiddleware, (req, res) => {
+router.get('/memories', authMiddleware, async (req, res) => {
   try {
+    await storeDb.hydrateAIPersonalLayer(req.user._id);
     const memories = storeDb.getAIMemories(req.user._id);
     res.json(memories);
   } catch (err) {
@@ -52,9 +53,11 @@ router.get('/memories', authMiddleware, (req, res) => {
 });
 
 // DELETE /ai/memories/:id - Remove a memory
-router.delete('/memories/:id', authMiddleware, (req, res) => {
+router.delete('/memories/:id', authMiddleware, async (req, res) => {
   try {
+    await storeDb.hydrateAIPersonalLayer(req.user._id);
     const success = storeDb.deleteAIMemory(req.params.id, req.user._id);
+    if (success) await storeDb.flushAIPersonalLayer(req.user._id, 'char_lyra', { deletedMemoryIds: [req.params.id] });
     res.json({ success });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete memory' });
@@ -62,8 +65,9 @@ router.delete('/memories/:id', authMiddleware, (req, res) => {
 });
 
 // GET /ai/relationship - Authenticated user's relationship with Lyra
-router.get('/relationship', authMiddleware, (req, res) => {
+router.get('/relationship', authMiddleware, async (req, res) => {
   try {
+    await storeDb.hydrateAIPersonalLayer(req.user._id);
     const rel = storeDb.getAIRelationship(req.user._id);
     res.json(rel);
   } catch (err) {
@@ -73,11 +77,12 @@ router.get('/relationship', authMiddleware, (req, res) => {
 
 // Structured operational diagnostics only. Never includes prompts, hidden
 // reasoning, credentials, or another user's conversation data.
-router.get('/debug/conversation', authMiddleware, (req, res) => {
+router.get('/debug/conversation', authMiddleware, async (req, res) => {
   if (process.env.NODE_ENV === 'production' && !req.user.isAdmin) {
     return res.status(403).json({ message: 'Debug access is restricted' });
   }
   try {
+    await storeDb.hydrateAIPersonalLayer(req.user._id);
     const relationship = storeDb.getAIRelationship(req.user._id);
     const state = storeDb.getAICharacterState();
     const debug = getConversationDebug(req.user._id);
@@ -106,7 +111,7 @@ router.get('/debug/conversation', authMiddleware, (req, res) => {
 router.post('/proactive/tick', authMiddleware, async (req, res) => {
   try {
     const io = req.app.get('io');
-    const { targetUserId } = req.body;
+    const { targetUserId } = req.body || {};
     // Allow triggering for self if not admin, or any target if admin
     const target = (req.user.isAdmin && targetUserId) ? targetUserId : req.user._id;
     const result = await triggerProactiveTick(storeDb, io, target);
@@ -118,8 +123,9 @@ router.post('/proactive/tick', authMiddleware, async (req, res) => {
 });
 
 // POST /ai/debug/reset-relationship - Reset memories and relationship for test
-router.post('/debug/reset-relationship', authMiddleware, (req, res) => {
+router.post('/debug/reset-relationship', authMiddleware, async (req, res) => {
   try {
+    await storeDb.hydrateAIPersonalLayer(req.user._id);
     const memories = storeDb.getAIMemories(req.user._id);
     memories.forEach(m => storeDb.deleteAIMemory(m._id, req.user._id));
 
@@ -128,13 +134,21 @@ router.post('/debug/reset-relationship', authMiddleware, (req, res) => {
       trust: 1,
       affection: 1,
       comfort: 1,
+      interaction_count: 0,
+      communication_style: null,
+      context_confidence: 0,
+      time_zone: null,
+      last_interaction_at: null,
+      last_user_message_id: null,
       shared_history: [],
+      proactive_history: [],
       sleep_intent_received: false,
       last_sleep_intent_at: null,
       proactive_count_today: 0,
       last_proactive_at: null,
       consecutive_ignored_count: 0
     });
+    await storeDb.flushAIPersonalLayer(req.user._id, 'char_lyra', { deletedMemoryIds: memories.map(memory => memory._id), resetRelationship: true });
 
     res.json({ success: true, message: 'Relationship and memories reset' });
   } catch (err) {

@@ -8,24 +8,25 @@ const { AIModelRouter } = require('./modelRouter');
 const { CharacterConfig } = require('./characterConfig');
 const { buildCharacterSystemPrompt } = require('./promptBuilder');
 const { sleep, calculateTypingDuration, calculateInitialDelay, getInterBubblePause } = require('./timingEngine');
-const { filterRelevantMemories, processMemoryUpdates, updateRelationshipOnInteraction } = require('./memoryEngine');
+const { filterRelevantMemories, extractExplicitMemoryCandidates, processMemoryUpdates, updateRelationshipOnInteraction } = require('./memoryEngine');
 const { notifyInApp } = require('../services/inAppNotifications');
 const { sendMessagePush } = require('../services/pushService');
+const { emitToUser } = require('../services/userSocket');
 
 const modelRouter = new AIModelRouter();
 const conversationQueues = new Map();
 const latestMessageByConversation = new Map();
 
-function getConversationKey(userId, characterUserId = 'user_ai_lyra') {
-  return `${String(userId)}:${String(characterUserId)}`;
+function getConversationKey(userId, characterId = 'char_lyra') {
+  return JSON.stringify([String(userId), String(characterId)]);
 }
 
 /**
  * Updates character activity based on time of day schedule.
  */
-function syncCharacterRhythm(storeDb) {
-  const character = storeDb.getAICharacter();
-  const state = storeDb.getAICharacterState();
+function syncCharacterRhythm(storeDb, characterId = 'char_lyra') {
+  const character = storeDb.getAICharacter(characterId);
+  const state = storeDb.getAICharacterState(characterId);
   if (!character || !character.dailySchedule || !state) return state;
 
   const currentHour = new Date().getHours();
@@ -37,16 +38,16 @@ function syncCharacterRhythm(storeDb) {
       busy_level: scheduleItem.busyLevel,
       mood: scheduleItem.mood,
       sleep_state: scheduleItem.activity === 'sleeping' ? 'sleeping' : 'awake'
-    });
+    }, characterId);
   }
 
-  return storeDb.getAICharacterState();
+  return storeDb.getAICharacterState(characterId);
 }
 
 /**
  * Clean history to prevent duplicated latest messages and maintain strict turn order.
  */
-function prepareContextHistory(history = [], currentMessageContent = '') {
+function prepareContextHistory(history = [], currentMessageContent = '', characterUserId = 'user_ai_lyra') {
   const normCurrent = String(currentMessageContent || '').trim().toLowerCase();
   const rows = (history || []).slice(-15);
 
@@ -54,7 +55,7 @@ function prepareContextHistory(history = [], currentMessageContent = '') {
   // because it will be passed explicitly as userMessage.
   if (rows.length > 0) {
     const last = rows[rows.length - 1];
-    const isUser = !last.isAI && last.senderId !== 'user_ai_lyra' && last.senderId?._id !== 'user_ai_lyra';
+    const isUser = !last.isAI && last.senderId !== characterUserId && last.senderId?._id !== characterUserId;
     if (isUser && String(last.content || '').trim().toLowerCase() === normCurrent) {
       return rows.slice(0, -1);
     }
@@ -71,15 +72,21 @@ async function executeLatestUserMessage({
   user,
   userMessage,
   recentHistory = [],
-  fastMode = false
+  fastMode = false,
+  characterUserId = 'user_ai_lyra',
+  router = modelRouter,
+  delay = sleep,
+  timeZone = null
 }) {
-  const aiUser = storeDb.findUserById('user_ai_lyra');
-  if (!aiUser) {
+  if (process.env.WRITE_MODE === 'read-only') return [];
+  const aiUser = storeDb.findUserById(characterUserId);
+  if (!aiUser?.isAI) {
     console.error('[AI Director] AI user record not found in database');
     return [];
   }
 
-  const key = getConversationKey(user._id, aiUser._id);
+  const characterId = aiUser.aiCharacterId || 'char_lyra';
+  const key = getConversationKey(user._id, characterId);
 
   // A newer user message arrived while this turn was queued.
   if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
@@ -87,17 +94,36 @@ async function executeLatestUserMessage({
     return [];
   }
 
-  const rawCharacter = storeDb.getAICharacter() || {
+  await storeDb.hydrateAIPersonalLayer?.(user._id, characterId);
+  if (latestMessageByConversation.get(key) !== String(userMessage._id)) return [];
+  if (storeDb.getAIRelationship(user._id, characterId, false)?.shared_history?.some(entry => entry.userMessageId === String(userMessage._id))) return [];
+
+  const rawCharacter = storeDb.getAICharacter(characterId) || {
     name: aiUser.name || 'Lyra',
     age: 22,
     occupation: 'Barista & design student',
     bio: aiUser.bio || 'coffee, design, film cameras, quiet cafes'
   };
   const characterConfig = new CharacterConfig(rawCharacter);
-  const characterState = syncCharacterRhythm(storeDb);
-  const allMemories = storeDb.getAIMemories(user._id);
+  const characterState = syncCharacterRhythm(storeDb, characterId);
+  // Only statements authored by this authenticated user may enter their layer.
+  const authored = [...recentHistory, userMessage].filter(message => {
+    const sender = message.senderId?._id || message.senderId;
+    return message === userMessage || String(sender) === String(user._id);
+  });
+  for (const message of authored) {
+    const candidates = extractExplicitMemoryCandidates(message.content);
+    processMemoryUpdates(storeDb, user._id, characterId, candidates, message._id, message.timestamp);
+  }
+  const communication = storeDb.getAIMemories(user._id, characterId).find(memory => memory.key === 'communication_preference');
+  if (communication) storeDb.updateAIRelationship(user._id, { communication_style: communication.value }, characterId);
+  const relationship = updateRelationshipOnInteraction(storeDb, user._id, {
+    characterId, messageId: userMessage._id, timeZone,
+    sleepIntent: /\b(?:good night|going to sleep|i'm going to bed)\b/i.test(userMessage.content || '')
+  });
+  await storeDb.flushAIPersonalLayer?.(user._id, characterId);
+  const allMemories = storeDb.getAIMemories(user._id, characterId);
   const relevantMemories = filterRelevantMemories(allMemories, userMessage.content, recentHistory);
-  const relationship = storeDb.getAIRelationship(user._id);
 
   // Build high-priority system prompt
   const systemPrompt = buildCharacterSystemPrompt({
@@ -108,7 +134,7 @@ async function executeLatestUserMessage({
     detectedLanguage: relationship?.active_language || 'auto'
   });
 
-  const cleanHistory = prepareContextHistory(recentHistory, userMessage.content);
+  const cleanHistory = prepareContextHistory(recentHistory, userMessage.content, aiUser._id);
   const startTime = Date.now();
 
   const lyraSender = {
@@ -118,20 +144,14 @@ async function executeLatestUserMessage({
   };
 
   const emitTyping = (isTyping) => {
-    if (io && typeof io.emit === 'function') {
-      try {
-        io.emit(`typing:${user._id}`, { from: lyraSender, isTyping });
-      } catch (err) {
-        console.warn('[AI Director] Typing emit warning:', err.message);
-      }
-    }
+    emitToUser(io, user._id, `typing:${user._id}`, { from: lyraSender, isTyping });
   };
 
   let plan;
   try {
     emitTyping(true);
 
-    plan = await modelRouter.generate({
+    plan = await router.generate({
       userMessage: userMessage.content,
       history: cleanHistory,
       systemPrompt,
@@ -156,7 +176,12 @@ async function executeLatestUserMessage({
   // Initial Reading Delay & Typing Start
   if (!fastMode) {
     const readingDelay = calculateInitialDelay((userMessage.content || '').length, llmDuration);
-    await sleep(readingDelay);
+    await delay(readingDelay);
+  }
+
+  if (latestMessageByConversation.get(key) !== String(userMessage._id)) {
+    emitTyping(false);
+    return [];
   }
 
   // Apply Reaction to User Message if planned
@@ -164,10 +189,8 @@ async function executeLatestUserMessage({
     try {
       const updated = storeDb.toggleReaction(userMessage._id, aiUser._id, plan.reaction);
       const populated = storeDb.populateMessage(updated, user._id);
-      if (io && typeof io.emit === 'function') {
-        io.emit(`msg_reaction:${user._id}:${aiUser._id}`, { messageId: userMessage._id, reactions: populated.reactions });
-        io.emit(`msg_reaction:${aiUser._id}:${user._id}`, { messageId: userMessage._id, reactions: populated.reactions });
-      }
+      emitToUser(io, user._id, `msg_reaction:${user._id}:${aiUser._id}`, { messageId: userMessage._id, reactions: populated.reactions });
+      emitToUser(io, user._id, `msg_reaction:${aiUser._id}:${user._id}`, { messageId: userMessage._id, reactions: populated.reactions });
     } catch (err) {
       console.warn('[AI Director] Reaction warning:', err.message);
     }
@@ -179,27 +202,32 @@ async function executeLatestUserMessage({
   for (let i = 0; i < plan.bubbles.length; i++) {
     const bubbleText = plan.bubbles[i];
 
+    if (typeof bubbleText !== 'string' || !bubbleText.trim() || /data:[^\s]+;base64,|<svg|<img/i.test(bubbleText)) continue;
+
+    if (latestMessageByConversation.get(key) !== String(userMessage._id)) break;
+
     if (!fastMode) {
       const typingTime = calculateTypingDuration(bubbleText);
-      await sleep(typingTime);
+      await delay(typingTime);
     }
+    if (latestMessageByConversation.get(key) !== String(userMessage._id)) break;
 
     const msg = storeDb.createMessage({
       senderId: aiUser._id,
       receiverId: user._id,
       content: bubbleText,
+      aiDeliveryMode: fastMode ? 'client-paced' : 'server-paced',
       replyTo: null
     });
 
     const populated = storeDb.populateMessage(msg, user._id);
     createdMessages.push(populated);
 
-    if (io && typeof io.emit === 'function') {
-      try {
-        io.emit(`msg:${aiUser._id}:${user._id}`, populated);
-        io.emit(`msg:${user._id}:${aiUser._id}`, populated);
+    try {
+      emitToUser(io, user._id, `msg:${aiUser._id}:${user._id}`, populated);
+      emitToUser(io, user._id, `msg:${user._id}:${aiUser._id}`, populated);
 
-        notifyInApp(io, user._id, {
+      if (i === 0) notifyInApp(io, user._id, {
           type: 'new_message',
           from: lyraSender,
           preview: populated.content.slice(0, 80),
@@ -208,32 +236,39 @@ async function executeLatestUserMessage({
           title: `Tin nhắn mới từ ${aiUser.name}`,
           body: populated.content.slice(0, 160),
           data: { route: `/chat/${aiUser._id}`, friendId: aiUser._id, messageId: populated._id }
-        });
-      } catch (e) {
-        console.warn('[AI Director] Socket emit warning:', e.message);
-      }
+      });
+    } catch (e) {
+      console.warn('[AI Director] Socket emit warning:', e.message);
     }
 
-    sendMessagePush(user._id, lyraSender, populated.content).catch(e =>
+    if (i === 0) sendMessagePush(user._id, lyraSender, populated.content).catch(e =>
       console.error('[Push] AI push notification error:', e.message)
     );
 
     if (i < plan.bubbles.length - 1 && !fastMode) {
-      await sleep(getInterBubblePause());
+      await delay(getInterBubblePause());
     }
   }
 
   emitTyping(false);
 
-  // Post-Turn Updates: Relationship
-  updateRelationshipOnInteraction(storeDb, user._id);
+  if (createdMessages.length) {
+    router.recordRecentOutputs?.(key, createdMessages.map(message => message.content));
+    const rel = storeDb.getAIRelationship(user._id, characterId);
+    const history = (rel?.shared_history || []).filter(entry => entry?.userMessageId !== String(userMessage._id));
+    storeDb.updateAIRelationship(user._id, {
+      shared_history: [...history, { userMessageId: String(userMessage._id), aiMessageIds: createdMessages.map(message => message._id), at: new Date().toISOString() }].slice(-8)
+    }, characterId);
+    await storeDb.flushAIPersonalLayer?.(user._id, characterId);
+  }
 
   return createdMessages;
 }
 
 function handleUserMessageToAI(args) {
-  const aiUserId = 'user_ai_lyra';
-  const key = getConversationKey(args.user._id, aiUserId);
+  const aiUserId = args.characterUserId || 'user_ai_lyra';
+  const characterId = args.storeDb.findUserById(aiUserId)?.aiCharacterId || 'char_lyra';
+  const key = getConversationKey(args.user._id, characterId);
   latestMessageByConversation.set(key, String(args.userMessage._id));
 
   const previous = conversationQueues.get(key) || Promise.resolve();
@@ -250,13 +285,18 @@ function handleUserMessageToAI(args) {
   return task;
 }
 
-function getConversationDebug(userId) {
-  return modelRouter.getDebug(getConversationKey(userId));
+function getConversationDebug(userId, characterId = 'char_lyra') {
+  return modelRouter.getDebug(getConversationKey(userId, characterId));
+}
+
+function invalidateConversation(userId, characterId, messageId) {
+  latestMessageByConversation.set(getConversationKey(userId, characterId), String(messageId));
 }
 
 module.exports = {
   handleUserMessageToAI,
   syncCharacterRhythm,
   getConversationDebug,
+  invalidateConversation,
   modelRouter
 };

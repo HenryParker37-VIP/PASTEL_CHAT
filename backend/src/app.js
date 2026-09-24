@@ -64,6 +64,10 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(securityHeaders);
 app.use(express.json({ limit: '10mb', parameterLimit: 1000 }));
 app.set('io', io);
+app.use((req, res, next) => {
+  if (process.env.WRITE_MODE !== 'read-only' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || req.path === '/internal/rehydrate') return next();
+  return res.status(503).json({ status: 'read_only', message: 'Application writes are temporarily disabled' });
+});
 
 // Serve frontend static files
 const path = require('path');
@@ -149,6 +153,10 @@ app.get('*', (req, res) => {
 });
 
 setupSocket(io);
+// Automatic check-ins require a verified single persistent writer. Vercel
+// serverless instances never start this timer.
+const { startProactiveScheduler } = require('./ai/proactiveEngine');
+startProactiveScheduler(storeDb, io);
 
 // Telegram bot polling
 const startTelegramPolling = () => {

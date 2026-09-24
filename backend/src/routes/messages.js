@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { sendMessagePush } = require('../services/pushService');
 const { notifyInApp } = require('../services/inAppNotifications');
+const { emitToUser } = require('../services/userSocket');
 const {
   createMessage,
   findMessageByClientMessageId,
@@ -137,14 +138,21 @@ router.post('/', authMiddleware, async (req, res) => {
       replyTo: replyTo || null,
       media: validMedia
     });
+    if (receiver.isAI) {
+      require('../ai/conversationDirector').invalidateConversation(req.user._id, receiver.aiCharacterId || 'char_lyra', msg._id);
+    }
     const populated = populateMessage(msg, req.user._id);
 
     const io = req.app.get('io');
-    // Emit to both participants only
-    io.emit(`msg:${req.user._id}:${receiverId}`, populated);
-    io.emit(`msg:${receiverId}:${req.user._id}`, populated);
+    if (receiver.isAI) {
+      emitToUser(io, req.user._id, `msg:${req.user._id}:${receiverId}`, populated);
+      emitToUser(io, req.user._id, `msg:${receiverId}:${req.user._id}`, populated);
+    } else {
+      io.emit(`msg:${req.user._id}:${receiverId}`, populated);
+      io.emit(`msg:${receiverId}:${req.user._id}`, populated);
+    }
     // Also notify receiver for toast
-    notifyInApp(io, receiverId, {
+    if (!receiver.isAI) notifyInApp(io, receiverId, {
       type: 'new_message',
       from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar },
       preview: populated.content.slice(0, 80),
@@ -156,7 +164,7 @@ router.post('/', authMiddleware, async (req, res) => {
     });
 
     // Send Web Push notification
-    sendMessagePush(receiverId, req.user, validMedia || content).catch(e =>
+    if (!receiver.isAI) sendMessagePush(receiverId, req.user, validMedia || content).catch(e =>
       console.error('[Push] Failed to send message push:', e.message)
     );
 
@@ -175,7 +183,9 @@ router.post('/', authMiddleware, async (req, res) => {
           user: req.user,
           userMessage: populated,
           recentHistory,
-          fastMode: true
+          fastMode: process.env.PERSISTENT_SERVICE !== 'true',
+          characterUserId: receiver._id,
+          timeZone: req.body.timeZone
         });
       } catch (e) {
         console.error('[AI] Pipeline execution error:', e.message);
@@ -218,10 +228,12 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
       user: req.user,
       userMessage: populated,
       recentHistory,
-      fastMode: true
+      fastMode: process.env.PERSISTENT_SERVICE !== 'true',
+      characterUserId: receiver._id,
+      timeZone: req.body.timeZone
     });
 
-    res.json({ aiReplies: aiReplies || [] });
+    res.json({ aiReplies: aiReplies || [], deliveryMode: process.env.PERSISTENT_SERVICE === 'true' ? 'server-paced' : 'client-paced' });
   } catch (err) {
     console.error('[AI Reply Endpoint] Error:', err.message);
     res.status(500).json({ message: 'Failed to generate AI reply', error: err.message });
@@ -326,11 +338,20 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
       content: content.trim().slice(0, 2000),
       replyTo: original._id
     });
+    const otherUser = findUserById(otherId);
+    if (otherUser?.isAI) {
+      require('../ai/conversationDirector').invalidateConversation(req.user._id, otherUser.aiCharacterId || 'char_lyra', msg._id);
+    }
     const populated = populateMessage(msg);
     const io = req.app.get('io');
-    io.emit(`msg:${req.user._id}:${otherId}`, populated);
-    io.emit(`msg:${otherId}:${req.user._id}`, populated);
-    notifyInApp(io, otherId, {
+    if (otherUser?.isAI) {
+      emitToUser(io, req.user._id, `msg:${req.user._id}:${otherId}`, populated);
+      emitToUser(io, req.user._id, `msg:${otherId}:${req.user._id}`, populated);
+    } else {
+      io.emit(`msg:${req.user._id}:${otherId}`, populated);
+      io.emit(`msg:${otherId}:${req.user._id}`, populated);
+    }
+    if (!otherUser?.isAI) notifyInApp(io, otherId, {
       type: 'new_message',
       from: { _id: req.user._id, name: req.user.name, avatar: req.user.avatar },
       preview: populated.content.slice(0, 80),
@@ -342,13 +363,12 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
     });
 
     // Send Web Push notification
-    sendMessagePush(otherId, req.user, populated.content).catch(e =>
+    if (!otherUser?.isAI) sendMessagePush(otherId, req.user, populated.content).catch(e =>
       console.error('[Push] Failed to send reply push:', e.message)
     );
 
     // If recipient is AI, trigger conversation director and await responses
     let aiReplies = [];
-    const otherUser = findUserById(otherId);
     if (otherUser && otherUser.isAI) {
       const { handleUserMessageToAI } = require('../ai/conversationDirector');
       const storeDb = require('../db/store');
@@ -360,7 +380,9 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
           user: req.user,
           userMessage: populated,
           recentHistory,
-          fastMode: true
+          fastMode: process.env.PERSISTENT_SERVICE !== 'true',
+          characterUserId: otherUser._id,
+          timeZone: req.body.timeZone
         });
       } catch (e) {
         console.error('[AI] Reply pipeline execution error:', e.message);
