@@ -11,6 +11,8 @@ import PastelIcon from '../components/PastelIcon';
 import { useConfirm, useToast } from '../components/Toast';
 import { getPastelIdentity } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
+import { mergeMessages } from '../utils/conversationCache';
+import { reconciliationDelay } from '../utils/realtimePolicy';
 
 const isMobile = () => window.innerWidth <= 700;
 const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 };
@@ -18,7 +20,7 @@ const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 }
 const GroupChat = () => {
   const { groupId } = useParams();
   const { user } = useAuth();
-  const { socket, connected } = useSocket();
+  const { socket, connected, relayMode } = useSocket();
   const { t } = useLang();
   const { confirm } = useConfirm();
   const { push } = useToast();
@@ -50,20 +52,43 @@ const GroupChat = () => {
     }
   }, [groupId, navigate]);
 
-  const fetchMessages = useCallback(async () => {
-    setLoading(true);
+  const fetchMessages = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     try {
       const { data } = await api.get(`/groups/${groupId}/messages?limit=80`);
-      setMessages(Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []));
+      const authoritative = Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : []);
+      const pending = loadPendingMessages(user?._id).filter(message => message.groupId === groupId);
+      setMessages(current => mergeMessages(current, authoritative, pending));
     } catch (e) {
       console.error('Failed to load group messages', e);
-      setMessages([]);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, user?._id]);
 
   useEffect(() => { loadGroup(); fetchMessages(); }, [loadGroup, fetchMessages]);
+
+  useEffect(() => {
+    if (!groupId || !user?._id) return;
+    let active = true;
+    let timer;
+    const sync = async () => {
+      if (!active) return;
+      await fetchMessages(true);
+      if (active) timer = setTimeout(sync, reconciliationDelay({ relayMode, connected, visible: document.visibilityState === 'visible' }));
+    };
+    timer = setTimeout(sync, reconciliationDelay({ relayMode, connected, visible: document.visibilityState === 'visible' }));
+    const onVisible = () => { if (document.visibilityState === 'visible') { clearTimeout(timer); void sync(); } };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { active = false; clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, [connected, fetchMessages, groupId, relayMode, user?._id]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const reconcile = () => { void fetchMessages(true); };
+    socket.on('connect', reconcile);
+    return () => socket.off('connect', reconcile);
+  }, [fetchMessages, socket]);
 
   const sendPendingMessage = useCallback(async (pending) => {
     if (pendingSendInFlightRef.current.has(pending.clientMessageId)) return;
@@ -146,7 +171,8 @@ const GroupChat = () => {
       });
       if (senderId !== user._id && document.visibilityState === 'visible' && !deliveredAckRef.current.has(msg._id)) {
         deliveredAckRef.current.add(msg._id);
-        socket.emit('message:delivered', { messageId: msg._id });
+        if (relayMode) api.post(`/messages/${msg._id}/delivered`).catch(() => {});
+        else socket.emit('message:delivered', { messageId: msg._id });
       }
     };
     const onMessageStatus = ({ messageId, clientMessageId, status, deliveredAt, readAt }) => {
@@ -192,7 +218,7 @@ const GroupChat = () => {
       socket.off(`typing:group:${groupId}:${user._id}`, onTyping);
       socket.off('message_status', onMessageStatus);
     };
-  }, [socket, user, groupId]);
+  }, [socket, user, groupId, relayMode]);
 
   useEffect(() => {
     if (!socket || !user || document.visibilityState !== 'visible') return;
@@ -200,9 +226,11 @@ const GroupChat = () => {
       const senderId = message.senderId?._id || message.senderId;
       if (senderId === user._id || deliveredAckRef.current.has(message._id)) return;
       deliveredAckRef.current.add(message._id);
-      socket.emit('message:delivered', { messageId: message._id });
+      if (relayMode) api.post(`/messages/${message._id}/delivered`).catch(() => {});
+      else if (socket.connected) socket.emit('message:delivered', { messageId: message._id });
+      else api.post(`/messages/${message._id}/delivered`).catch(() => {});
     });
-  }, [messages, socket, user]);
+  }, [messages, relayMode, socket, user]);
 
   const handleSend = useCallback(async (content, media) => {
     const clientMessageId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -234,10 +262,11 @@ const GroupChat = () => {
 
   const handleMessageVisible = useCallback((message) => {
     const senderId = message.senderId?._id || message.senderId;
-    if (!socket || !user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
+    if (!user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
     readAckRef.current.add(message._id);
-    socket.emit('message:read', { messageId: message._id });
-  }, [socket, user]);
+    if (relayMode || !socket?.connected) api.post(`/messages/${message._id}/read`).catch(() => {});
+    else socket.emit('message:read', { messageId: message._id });
+  }, [relayMode, socket, user]);
 
   const handleRecall = (messageId) => {
     setMessages(prev => prev.map(m =>

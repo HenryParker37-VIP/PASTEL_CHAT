@@ -10,7 +10,7 @@ import { resolveCharacterAvatar } from '../utils/characterAvatar';
 
 const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = [], onMobileAvatarChange, avatarUploading = false }) => {
   const { user, logout } = useAuth();
-  const { onlineUsers, connected, lyraAvatar } = useSocket();
+  const { onlineUsers, connected, relayMode, lyraAvatar } = useSocket();
   const navigate = useNavigate();
   const { t } = useLang();
   const { confirm } = useConfirm();
@@ -98,11 +98,11 @@ const Header = ({ friend, friendIdentity, onOpenProfile, friendId, messages = []
           <div className="app-online-status" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <div style={{
               width: '7px', height: '7px', borderRadius: '50%',
-              background: connected ? '#4CAF50' : '#FFA0A0',
+              background: connected ? '#4CAF50' : relayMode ? '#D8DDE2' : '#FFA0A0',
               flexShrink: 0
             }} />
             <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>
-              {onlineUsers.length} online
+              {relayMode && !connected ? 'Updates via sync' : `${onlineUsers.length} online`}
             </span>
           </div>
           {(friend || friendId === 'user_ai_lyra') && (

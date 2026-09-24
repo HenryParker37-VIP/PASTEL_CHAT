@@ -53,6 +53,16 @@ export const NotificationsProvider = ({ children }) => {
   useEffect(() => { refresh(); }, [refresh]);
 
   useEffect(() => {
+    if (!user) return undefined;
+    const timer = window.setInterval(refresh, 15000);
+    if (socket) socket.on('connect', refresh);
+    return () => {
+      window.clearInterval(timer);
+      if (socket) socket.off('connect', refresh);
+    };
+  }, [refresh, socket, user]);
+
+  useEffect(() => {
     if (!socket || !user) return undefined;
     const handleNotification = (payload) => {
       const copy = notificationCopy(payload, t);

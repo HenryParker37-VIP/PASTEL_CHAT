@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { realtimeEndpoint } from '../utils/realtimePolicy';
 
 const SocketContext = createContext(null);
 
@@ -23,9 +24,15 @@ export const SocketProvider = ({ children }) => {
     const token = getToken();
     if (!token || !user) return;
 
-    let rawSocketUrl = (process.env.REACT_APP_SIGNALING_URL || process.env.REACT_APP_BACKEND_URL || '').trim();
-    if (rawSocketUrl.includes('onrender.com')) rawSocketUrl = '';
-    const SIGNALING_URL = rawSocketUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    // An explicit relay URL enables the hybrid architecture. REST always stays
+    // on the Vercel origin; no automatic Render fallback changes API routing.
+    const relayUrl = (process.env.REACT_APP_REALTIME_RELAY_URL || '').trim();
+    const SIGNALING_URL = realtimeEndpoint({
+      relayUrl,
+      signalingUrl: process.env.REACT_APP_SIGNALING_URL || '',
+      backendUrl: process.env.REACT_APP_BACKEND_URL || '',
+      origin: typeof window !== 'undefined' ? window.location.origin : ''
+    });
     console.log('[Socket] Connecting to:', SIGNALING_URL || '(current origin)');
 
     const newSocket = io(
@@ -33,9 +40,8 @@ export const SocketProvider = ({ children }) => {
       {
         auth: { token },
         transports: ['websocket', 'polling'],
-        reconnectionAttempts: 10,
         reconnectionDelay: 2000,
-        reconnectionDelayMax: 10000,
+        reconnectionDelayMax: 30000,
         timeout: 8000
       }
     );
@@ -55,7 +61,7 @@ export const SocketProvider = ({ children }) => {
       }
     });
     newSocket.on('connect_error', (err) => {
-      console.warn('[Socket] Realtime socket unavailable (using serverless sync):', err?.message || err);
+      console.info('[Socket] Optional realtime relay unavailable; REST sync remains active:', err?.message || err);
     });
 
     socketRef.current = newSocket;
@@ -88,7 +94,7 @@ export const SocketProvider = ({ children }) => {
   }, [user?._id]);
 
   return (
-    <SocketContext.Provider value={{ socket, onlineUsers, connected, lyraAvatar, setLyraAvatar }}>
+    <SocketContext.Provider value={{ socket, onlineUsers, connected, relayMode: Boolean(process.env.REACT_APP_REALTIME_RELAY_URL), lyraAvatar, setLyraAvatar }}>
       {children}
     </SocketContext.Provider>
   );

@@ -40,7 +40,7 @@ const productionOrigins = [
   'https://pastel-chat.vercel.app',
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
 ].filter(Boolean);
-const allowedOrigins = (process.env.CLIENT_URL || '')
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.CLIENT_URL || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -50,12 +50,13 @@ for (const origin of productionOrigins) {
 
 function corsOrigin(origin, callback) {
   // Allow requests with no origin (like mobile apps, curl, serverless same-origin) or matching allowlist
-  if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.endsWith('.vercel.app'))) return callback(null, true);
+  if (!origin || allowedOrigins.includes(origin) || (process.env.REALTIME_RELAY !== 'true' && origin.endsWith('.vercel.app'))) return callback(null, true);
   callback(new Error('CORS origin not allowed'));
 }
 
 const io = new Server(server, {
   cors: { origin: corsOrigin, methods: ['GET', 'POST'], credentials: true },
+  allowRequest: (req, callback) => corsOrigin(req.headers.origin, error => callback(error?.message || null, !error)),
   // Shared media is transported through the existing authenticated socket flow.
   // Route-level limits still cap images at 5 MB and videos at 8 MB.
   maxHttpBufferSize: 12 * 1024 * 1024
@@ -66,6 +67,9 @@ app.use(securityHeaders);
 app.use(express.json({ limit: '10mb', parameterLimit: 1000 }));
 app.set('io', io);
 app.use((req, res, next) => {
+  if (process.env.REALTIME_RELAY === 'true' && !['/health', '/api/version'].includes(req.path)) {
+    return res.status(503).json({ status: 'relay_only', message: 'Use the primary API' });
+  }
   if (process.env.WRITE_MODE !== 'read-only' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || req.path === '/internal/rehydrate') return next();
   return res.status(503).json({ status: 'read_only', message: 'Application writes are temporarily disabled' });
 });
@@ -118,6 +122,10 @@ app.get('/health', (_, res) => {
   res.status(unavailable ? 503 : 200).json({
     status: unavailable ? 'unavailable' : 'ok',
     storage: durable ? 'mongodb' : (unavailable ? 'durable-storage-required' : 'local-ephemeral'),
+    realtime: 'socket.io',
+    writeMode: process.env.WRITE_MODE === 'read-only' ? 'read-only' : 'write',
+    singleWriterConfigured: process.env.WRITE_MODE === 'read-only' || process.env.PERSISTENT_SERVICE === 'true',
+    relayOnly: process.env.REALTIME_RELAY === 'true',
     timestamp: new Date()
   });
 });
@@ -297,8 +305,8 @@ const startTelegramPolling = () => {
   };
 
   // Clean up on process exit so nodemon restarts don't leave zombies
-  // Start polling only if explicitly enabled or in standalone non-serverless node process
-  if (process.env.TELEGRAM_POLLING === 'true' || (!process.env.VERCEL && process.env.NODE_ENV !== 'test')) {
+  // Only an explicitly enabled process may consume Telegram updates.
+  if (process.env.TELEGRAM_POLLING === 'true') {
     console.log('[Telegram] ✅ Bot polling started (@PastelChat_Notification_bot)');
     poll();
   }
@@ -307,6 +315,10 @@ const startTelegramPolling = () => {
 const PORT = process.env.PORT || 5001;
 if (!process.env.VERCEL) {
   storeDb.ready.then(() => {
+    if (process.env.REALTIME_RELAY === 'true') {
+      return require('./services/realtimeRelay').startRealtimeRelay(io);
+    }
+  }).then(() => {
     server.listen(PORT, () => {
       console.log(`[PastelChat] Running on port ${PORT} — created by Nguyen Manh Tuan Hung (Henry Parker)`);
     });
