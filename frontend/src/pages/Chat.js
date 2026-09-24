@@ -568,9 +568,9 @@ const Chat = () => {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Adaptive real-time synchronization loop for Vercel Serverless & WebSocket fallback
+  // Socket.IO delivers primary updates; fast polling is recovery while disconnected.
   useEffect(() => {
-    if (!friendId || !user?._id) return;
+    if (!friendId || !user?._id || connected) return;
 
     let syncTimer = null;
     let isDisposed = false;
@@ -605,7 +605,7 @@ const Chat = () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [fetchMessages, friendId, user?._id]);
+  }, [fetchMessages, friendId, user?._id, connected]);
 
   useEffect(() => {
     if (friendId === 'user_ai_lyra' || friend?.isAI) {

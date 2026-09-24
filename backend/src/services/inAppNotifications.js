@@ -10,9 +10,9 @@ const notifyInApp = (io, userId, payload, { title, body, data = {} } = {}) => {
       from: payload?.from,
       data: { ...data, ...payload }
     });
-    if (io && typeof io.emit === 'function') {
+    if (io && typeof io.to === 'function') {
       try {
-        io.emit(`notify:${userId}`, { ...payload, notificationId: notification?._id });
+        io.to(`user:${String(userId)}`).emit(`notify:${userId}`, { ...payload, notificationId: notification?._id });
       } catch (ioErr) {
         console.warn('[InAppNotifications] io.emit warning:', ioErr.message);
       }
