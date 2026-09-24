@@ -2092,7 +2092,7 @@ ready.then(() => {
 
 module.exports = {
   store, persist, flushPersist, flushMessageWrites, refreshDurableMessages, getDurableMessageById, allocateAITurnSequence, registerAITurn, isCurrentAITurn, getCurrentAITurnMessageId, commitAIBubble,
-  hydrateFromDurableStore, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite || pendingMessageWrites.size || inFlightMessageFlush), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
+  hydrateFromDurableStore, getDurableDatabase, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite || pendingMessageWrites.size || inFlightMessageFlush), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,

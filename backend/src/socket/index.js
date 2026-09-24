@@ -27,14 +27,19 @@ const {
 const { notifyInApp } = require('../services/inAppNotifications');
 const { invalidateConversation } = require('../ai/conversationDirector');
 const { joinAuthenticatedRooms, emitToUser: emitUser, emitToUsers } = require('../services/userSocket');
+const storeDb = require('../db/store');
 
 const setupSocket = (io) => {
+  const relayMode = process.env.REALTIME_RELAY === 'true';
   const emitToUser = (userId, event, payload) => emitUser(io, userId, event, payload);
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token;
       if (!token) return next(new Error('Auth: no token'));
-      const result = authenticateToken(token);
+      // A relay must validate against the authoritative Atlas session, not
+      // manufacture an in-memory session from claims in a signed token.
+      if (relayMode && process.env.MONGODB_URI) await storeDb.hydrateFromDurableStore();
+      const result = authenticateToken(token, { requireStoredSession: relayMode });
       if (!result) return next(new Error('Auth: invalid session'));
       socket.user = result.user;
       next();
@@ -47,7 +52,9 @@ const setupSocket = (io) => {
 
   // Send each connected user only the online status of their own friends
   const broadcastOnlineFriends = () => {
-    const allOnline = getOnlineUsers();
+    const allOnline = relayMode
+      ? [...new Map([...io.sockets.sockets.values()].filter(s => s.user).map(s => [String(s.user._id), s.user])).values()]
+      : getOnlineUsers();
     const onlineIds = new Set(allOnline.map(u => u._id));
     io.sockets.sockets.forEach((s) => {
       if (!s.user) return;
@@ -62,20 +69,17 @@ const setupSocket = (io) => {
     joinAuthenticatedRooms(socket, user._id);
     console.log(`[Socket] Connected: ${user.name}`);
 
-    // Standby sockets may authenticate and receive events, but cannot mutate
-    // application or Atlas state through any socket handler.
-    if (process.env.WRITE_MODE === 'read-only') return;
-
-    updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
+    if (!relayMode && process.env.WRITE_MODE === 'read-only') return;
+    if (!relayMode) updateUser(user._id, { isOnline: true, lastSeen: new Date().toISOString() });
     broadcastOnlineFriends();
 
     // Active chat tracking for suppressing unnecessary push notifications
     socket.on('chat:active', ({ friendId }) => {
-      if (friendId && canContact(user._id, friendId)) setActiveChat(user._id, friendId);
+      if (!relayMode && friendId && canContact(user._id, friendId)) setActiveChat(user._id, friendId);
     });
 
     socket.on('chat:inactive', ({ friendId }) => {
-      clearActiveChat(user._id, friendId);
+      if (!relayMode) clearActiveChat(user._id, friendId);
     });
 
     // Typing: targeted to a specific peer
@@ -98,6 +102,7 @@ const setupSocket = (io) => {
     });
 
     const acknowledgeMessage = (messageId, markReceipt, status) => {
+      if (relayMode) return; // The browser sends receipts to Vercel REST.
       const message = findMessage(messageId);
       if (!message || String(message.senderId) === String(user._id)) return;
       if (message.groupId) {
@@ -127,6 +132,7 @@ const setupSocket = (io) => {
 
     // Send private message via socket
     socket.on('send_private_message', async ({ to, content, replyTo, media }) => {
+      if (relayMode || process.env.WRITE_MODE === 'read-only') return socket.emit('message_error', { message: 'Send messages through the primary API' });
       if (!to || !canContact(user._id, to) || ((!content || !content.trim()) && !media)) return;
       if (replyTo) {
         const original = require('../db/store').findMessage(replyTo);
@@ -203,7 +209,7 @@ const setupSocket = (io) => {
         callType: type
       });
       // Send push notification
-      sendPushToUser(to, {
+      if (!relayMode) sendPushToUser(to, {
         type:        'incoming_call',
         callType:    type,
         callerId:    user._id,
@@ -247,6 +253,7 @@ const setupSocket = (io) => {
 
     // Group message via socket
     socket.on('send_group_message', async ({ groupId, content, media }) => {
+      if (relayMode || process.env.WRITE_MODE === 'read-only') return socket.emit('message_error', { message: 'Send messages through the primary API' });
       const group = findGroup(groupId);
       if (!group || !group.members.includes(user._id)) return;
       if ((!content || !content.trim()) && !media) return;
@@ -292,6 +299,7 @@ const setupSocket = (io) => {
     // Shared media is stored with a server-calculated expiry and sent only to friends.
     socket.on('share_photo', ({ dataUrl, caption, expiration = 'never', durationMs }, acknowledge = () => {}) => {
       const respond = typeof acknowledge === 'function' ? acknowledge : () => {};
+      if (relayMode || process.env.WRITE_MODE === 'read-only') return respond({ ok: false, error: 'Use the primary API for media' });
       const mediaType = dataUrl?.startsWith('data:video/') ? 'video' : dataUrl?.startsWith('data:image/') ? 'image' : null;
       if (!mediaType) return respond({ ok: false, error: 'Unsupported media type' });
       const sizeBytes = Math.round((dataUrl.length * 3) / 4);
@@ -335,9 +343,9 @@ const setupSocket = (io) => {
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Disconnected: ${user.name}`);
-      clearActiveChat(user._id);
+      if (!relayMode) clearActiveChat(user._id);
       Object.values(typingTimeouts).forEach(clearTimeout);
-      updateUser(user._id, { isOnline: false, lastSeen: new Date().toISOString() });
+      if (!relayMode) updateUser(user._id, { isOnline: false, lastSeen: new Date().toISOString() });
       broadcastOnlineFriends();
     });
   });

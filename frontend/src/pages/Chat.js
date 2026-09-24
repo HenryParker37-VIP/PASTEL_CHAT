@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { useCall } from '../contexts/CallContext';
 import api from '../services/api';
+import { reconciliationDelay } from '../utils/realtimePolicy';
 import Header from '../components/Header';
 import OnlineUsers from '../components/OnlineUsers';
 import MessageList from '../components/MessageList';
@@ -38,7 +39,7 @@ const DELIVERY_RANK = { sending: 0, sent: 1, delivered: 2, read: 3, failed: -1 }
 const Chat = () => {
   const { friendId } = useParams();
   const { user, updateProfile } = useAuth();
-  const { socket, connected, setLyraAvatar } = useSocket();
+  const { socket, connected, relayMode, setLyraAvatar } = useSocket();
   const { startCall, activeCall } = useCall();
   const { push } = useToast();
   const navigate = useNavigate();
@@ -592,7 +593,7 @@ const Chat = () => {
         await fetchMessages(true);
       } catch {}
       if (!isDisposed) {
-        const interval = document.visibilityState === 'visible' ? 1500 : 15000;
+        const interval = reconciliationDelay({ relayMode, connected, visible: document.visibilityState === 'visible' });
         syncTimer = setTimeout(performSync, interval);
       }
     };
@@ -616,7 +617,7 @@ const Chat = () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [fetchMessages, friendId, user?._id]);
+  }, [connected, fetchMessages, friendId, relayMode, user?._id]);
 
   useEffect(() => {
     if (friendId === 'user_ai_lyra' || friend?.isAI) {
@@ -764,7 +765,8 @@ const Chat = () => {
       if (senderId !== user._id && document.visibilityState === 'visible') {
         if (!deliveredAckRef.current.has(msg._id)) {
           deliveredAckRef.current.add(msg._id);
-          socket.emit('message:delivered', { messageId: msg._id });
+          if (relayMode) api.post(`/messages/${msg._id}/delivered`).catch(() => {});
+          else socket.emit('message:delivered', { messageId: msg._id });
         }
       }
     };
@@ -869,7 +871,7 @@ const Chat = () => {
       socket.off('user_updated', onUserUpdated);
       socket.off('connect', fetchMessages);
     };
-  }, [socket, friendId, user, fetchMessages, friend]);
+  }, [socket, friendId, user, fetchMessages, friend, relayMode]);
 
   // A fetched message has reached this client even if it arrived while the
   // recipient was offline. Delivery is acknowledged once per message.
@@ -879,13 +881,13 @@ const Chat = () => {
       const senderId = message.senderId?._id || message.senderId;
       if (senderId === user._id || deliveredAckRef.current.has(message._id)) return;
       deliveredAckRef.current.add(message._id);
-      if (socket && socket.connected) {
+      if (socket && socket.connected && !relayMode) {
         socket.emit('message:delivered', { messageId: message._id });
       } else {
         api.post(`/messages/${message._id}/delivered`).catch(() => {});
       }
     });
-  }, [messages, socket, user]);
+  }, [messages, relayMode, socket, user]);
 
   // Collapse sidebar on resize to mobile
   useEffect(() => {
@@ -995,12 +997,12 @@ const Chat = () => {
     const senderId = message.senderId?._id || message.senderId;
     if (!user || senderId === user._id || document.visibilityState !== 'visible' || readAckRef.current.has(message._id)) return;
     readAckRef.current.add(message._id);
-    if (socket && socket.connected) {
+    if (socket && socket.connected && !relayMode) {
       socket.emit('message:read', { messageId: message._id });
     } else {
       api.post(`/messages/${message._id}/read`).catch(() => {});
     }
-  }, [socket, user]);
+  }, [relayMode, socket, user]);
 
   const handleRecall = (messageId) => {
     setMessages((prev) =>

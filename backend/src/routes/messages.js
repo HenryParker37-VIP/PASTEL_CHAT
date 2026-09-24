@@ -19,6 +19,7 @@ const {
   toggleReaction,
   findUserById,
   findFriendship,
+  findGroup,
   flushMessageWrites,
   allocateAITurnSequence,
   registerAITurn
@@ -245,24 +246,31 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
 // Recipient acknowledgements are authenticated and persisted server-side.
 router.post('/:id/delivered', authMiddleware, (req, res) => {
   const message = findMessage(req.params.id);
-  if (!message || String(message.receiverId) !== String(req.user._id)) return res.status(404).json({ message: 'Message not found' });
+  if (!message || (message.groupId
+    ? !findGroup(message.groupId)?.members.includes(req.user._id)
+    : String(message.receiverId) !== String(req.user._id))) return res.status(404).json({ message: 'Message not found' });
   const updated = markMessageDelivered(message._id, req.user._id);
   const io = req.app.get('io');
-  const payload = { messageId: message._id, clientMessageId: message.clientMessageId, status: 'delivered', deliveredAt: updated.deliveredAt };
+  const deliveredAt = message.groupId ? updated.deliveryReceipts?.[req.user._id]?.deliveredAt : updated.deliveredAt;
+  const payload = { messageId: message._id, clientMessageId: message.clientMessageId, status: 'delivered', deliveredAt };
   emitToUser(io, message.senderId, 'message_status', payload);
   emitToUser(io, message.senderId, `message_status:${message.senderId}`, payload);
-  res.json({ success: true, messageId: message._id, status: 'delivered', deliveredAt: updated.deliveredAt });
+  res.json({ success: true, messageId: message._id, status: 'delivered', deliveredAt });
 });
 
 router.post('/:id/read', authMiddleware, (req, res) => {
   const message = findMessage(req.params.id);
-  if (!message || String(message.receiverId) !== String(req.user._id)) return res.status(404).json({ message: 'Message not found' });
+  if (!message || (message.groupId
+    ? !findGroup(message.groupId)?.members.includes(req.user._id)
+    : String(message.receiverId) !== String(req.user._id))) return res.status(404).json({ message: 'Message not found' });
   const updated = markMessageRead(message._id, req.user._id);
   const io = req.app.get('io');
-  const payload = { messageId: message._id, clientMessageId: message.clientMessageId, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt };
+  const readAt = message.groupId ? updated.deliveryReceipts?.[req.user._id]?.readAt : updated.readAt;
+  const deliveredAt = message.groupId ? updated.deliveryReceipts?.[req.user._id]?.deliveredAt : updated.deliveredAt;
+  const payload = { messageId: message._id, clientMessageId: message.clientMessageId, status: 'read', readAt, deliveredAt };
   emitToUser(io, message.senderId, 'message_status', payload);
   emitToUser(io, message.senderId, `message_status:${message.senderId}`, payload);
-  res.json({ success: true, messageId: message._id, status: 'read', readAt: updated.readAt, deliveredAt: updated.deliveredAt });
+  res.json({ success: true, messageId: message._id, status: 'read', readAt, deliveredAt });
 });
 
 // DELETE /messages/:id - Recall
