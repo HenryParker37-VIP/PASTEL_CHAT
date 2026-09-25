@@ -26,7 +26,7 @@ const MessageList = ({
   const initialPositionedRef = useRef(false);
   const previousMessageCountRef = useRef(0);
   const nearBottomRef = useRef(true);
-  const safeMessages = (Array.isArray(messages) ? messages : []).filter((m) => !m.isSuperseded);
+  const safeMessages = (Array.isArray(messages) ? messages : []).filter((m) => !m.isSuperseded && !m.isArchived);
 
   const isNearBottom = (container) => (
     container.scrollHeight - container.scrollTop - container.clientHeight < 80

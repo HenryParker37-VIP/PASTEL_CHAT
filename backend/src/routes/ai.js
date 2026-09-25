@@ -428,7 +428,8 @@ router.get('/conversation/session', authMiddleware, async (req, res) => {
 router.post('/conversation/refresh', authMiddleware, async (req, res) => {
   try {
     const characterId = 'char_lyra';
-    const result = await storeDb.refreshAISession(req.user._id, characterId);
+    const mode = req.body?.mode === 'clear' ? 'clear' : 'keep';
+    const result = await storeDb.refreshAISession(req.user._id, characterId, { mode });
     const io = req.app.get('io');
     const { emitToUser } = require('../services/userSocket');
 
@@ -437,11 +438,18 @@ router.post('/conversation/refresh', authMiddleware, async (req, res) => {
       characterId,
       sessionId: result.activeSessionId,
       activeSessionId: result.activeSessionId,
-      sessionRevision: result.sessionRevision
+      sessionRevision: result.sessionRevision,
+      mode
     });
 
-    // Also emit the session boundary divider message
-    if (result.boundaryMessage) {
+    if (mode === 'clear') {
+      emitToUser(io, req.user._id, 'ai_chat_cleared', {
+        characterId,
+        sessionId: result.activeSessionId,
+        activeSessionId: result.activeSessionId
+      });
+    } else if (result.boundaryMessage) {
+      // Also emit the session boundary divider message for keep mode
       const populated = storeDb.populateMessage(result.boundaryMessage, req.user._id);
       emitToUser(io, req.user._id, `msg:${storeDb.AI_USER_ID}:${req.user._id}`, populated);
       emitToUser(io, req.user._id, `msg:${req.user._id}:${storeDb.AI_USER_ID}`, populated);
@@ -452,6 +460,7 @@ router.post('/conversation/refresh', authMiddleware, async (req, res) => {
       sessionId: result.activeSessionId,
       activeSessionId: result.activeSessionId,
       sessionRevision: result.sessionRevision,
+      mode,
       boundaryMessage: result.boundaryMessage ? storeDb.populateMessage(result.boundaryMessage, req.user._id) : null
     });
   } catch (err) {

@@ -369,10 +369,17 @@ const en = {
   regenerateReply: 'Regenerate reply',
   regeneratingReply: 'Regenerating...',
   refreshChat: 'Refresh Chat',
+  refreshChatModalTitle: 'Refresh Chat',
+  refreshChatModalMessage: 'Wanna clear this chat and start a new one, or keep this current chat?',
+  refreshChatBtnClear: 'Clear & Start New',
+  refreshChatBtnKeep: 'Keep & Start New',
+  refreshChatBtnCancel: 'Cancel',
   refreshChatConfirmTitle: 'Refresh Chat',
   refreshChatConfirmMessage: 'Refresh this chat? Your messages and Lyra’s memories won’t be deleted. This only starts a fresh conversation context.',
   refreshChatConfirmAction: 'Refresh Chat',
   refreshChatSuccess: 'Started a fresh conversation context 🌱',
+  refreshChatSuccessClear: 'Cleared chat and started fresh with Lyra',
+  refreshChatSuccessKeep: 'Started a fresh conversation context 🌱',
   newConversationDivider: 'New conversation'
 };
 

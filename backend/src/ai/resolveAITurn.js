@@ -18,6 +18,7 @@ async function resolveAITurn(storeDb, { userId, characterUser, messageId }) {
     ...history.filter(message =>
       !message.isSessionBoundary &&
       !message.isSuperseded &&
+      !message.isArchived &&
       (!exactMessage.conversationSessionId || message.conversationSessionId === exactMessage.conversationSessionId) &&
       String(message._id) !== String(messageId)
     ),

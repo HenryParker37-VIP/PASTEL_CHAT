@@ -165,11 +165,21 @@ async function startRealtimeRelay(io) {
   watch('pastelchat_ai_sessions', async change => {
     const session = change.fullDocument;
     if (!session?._id || !session.userId) return;
+    const mode = session.mode || 'keep';
     emitToUser(io, session.userId, 'ai_session_refreshed', {
       characterId: session.characterId || 'char_lyra',
+      sessionId: session.activeSessionId,
       activeSessionId: session.activeSessionId,
-      sessionRevision: session.sessionRevision
+      sessionRevision: session.sessionRevision,
+      mode
     });
+    if (mode === 'clear') {
+      emitToUser(io, session.userId, 'ai_chat_cleared', {
+        characterId: session.characterId || 'char_lyra',
+        sessionId: session.activeSessionId,
+        activeSessionId: session.activeSessionId
+      });
+    }
   });
   console.log('[Relay] Change streams attached');
   return () => {

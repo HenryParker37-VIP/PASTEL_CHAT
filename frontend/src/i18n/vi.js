@@ -369,10 +369,17 @@ const vi = {
   regenerateReply: 'Tạo lại câu trả lời',
   regeneratingReply: 'Đang tạo lại...',
   refreshChat: 'Làm mới cuộc trò chuyện',
+  refreshChatModalTitle: 'Làm mới cuộc trò chuyện',
+  refreshChatModalMessage: 'Bạn muốn xoá cuộc trò chuyện này và bắt đầu cuộc trò chuyện mới, hay giữ lại cuộc trò chuyện hiện tại?',
+  refreshChatBtnClear: 'Xoá & Bắt đầu mới',
+  refreshChatBtnKeep: 'Giữ lại & Bắt đầu mới',
+  refreshChatBtnCancel: 'Huỷ',
   refreshChatConfirmTitle: 'Làm mới trò chuyện',
   refreshChatConfirmMessage: 'Làm mới cuộc trò chuyện này? Tin nhắn và ký ức của Lyra sẽ không bị xóa. Thao tác này chỉ bắt đầu một ngữ cảnh trò chuyện mới.',
   refreshChatConfirmAction: 'Làm mới',
   refreshChatSuccess: 'Đã bắt đầu ngữ cảnh trò chuyện mới 🌱',
+  refreshChatSuccessClear: 'Đã xoá trò chuyện và bắt đầu mới với Lyra',
+  refreshChatSuccessKeep: 'Đã bắt đầu ngữ cảnh trò chuyện mới 🌱',
   newConversationDivider: 'Cuộc trò chuyện mới'
 };
 
