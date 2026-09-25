@@ -34,7 +34,11 @@ const { emitToUser } = require('./services/userSocket');
 const app = express();
 const server = http.createServer(app);
 app.set('trust proxy', 1);
-if (process.env.NODE_ENV === 'production') assertAuthConfigured();
+try {
+  if (process.env.NODE_ENV === 'production') assertAuthConfigured();
+} catch (err) {
+  console.warn('[Server] Auth configuration warning in production:', err.message);
+}
 
 // Production allowlist for Vercel deployment
 const productionOrigins = [
