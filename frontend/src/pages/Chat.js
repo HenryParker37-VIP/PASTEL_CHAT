@@ -1004,7 +1004,7 @@ const Chat = () => {
       socket.off(`ai_chat_cleared:${roomKey}`, onAiChatCleared);
       socket.off('connect', fetchMessages);
     };
-  }, [socket, friendId, user, fetchMessages, friend, relayMode]);
+  }, [socket, friendId, user, fetchMessages, friend, relayMode, cancelActiveAiTurn]);
 
   // A fetched message has reached this client even if it arrived while the
   // recipient was offline. Delivery is acknowledged once per message.
