@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { useSocket } from '../contexts/SocketContext';
+import { uploadSharedPhoto } from '../services/sharedPhotos';
 import PastelIcon from './PastelIcon';
 import { useToast } from './Toast';
 import { useLang } from '../i18n';
 
 const PhotoUpload = ({ isGoogleUser, onPhotoShared, expiration = 'never' }) => {
-  const { socket } = useSocket();
   const { push } = useToast();
   const { t } = useLang();
   const fileRef = useRef(null);
@@ -22,35 +21,23 @@ const PhotoUpload = ({ isGoogleUser, onPhotoShared, expiration = 'never' }) => {
     e.target.value = '';
   };
 
-  const handleShare = () => {
-    if (!preview || !socket || uploading) return;
+  const handleShare = async () => {
+    if (!preview || uploading) return;
     const sizeBytes = Math.round((preview.length * 3) / 4);
     if (sizeBytes > 5 * 1024 * 1024) {
       push({ icon: 'alert', title: t('feedbackPhotoTooLarge'), tone: 'warning' });
       return;
     }
     setUploading(true);
-    let settled = false;
-    const uploadTimeout = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      setUploading(false);
-      push({ icon: 'alert', title: t('feedbackSomethingWrong'), tone: 'error' });
-    }, 12000);
-    socket.emit('share_photo', { dataUrl: preview, caption, expiration }, (response) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(uploadTimeout);
-      setUploading(false);
-      if (!response?.ok) {
-        push({ icon: 'alert', title: response?.error || t('feedbackSomethingWrong'), tone: 'error' });
-        return;
-      }
+    try {
+      const photo = await uploadSharedPhoto(preview, { caption, expiration });
       setPreview(null);
       setCaption('');
-      onPhotoShared?.(response.photo);
+      onPhotoShared?.({ ...photo, dataUrl: preview });
       push({ icon: 'check', title: t('feedbackPhotoUploaded'), tone: 'success' });
-    });
+    } catch (error) {
+      push({ icon: 'alert', title: error.response?.data?.error || error.message || t('feedbackSomethingWrong'), tone: 'error' });
+    } finally { setUploading(false); }
   };
 
   const handleCancel = () => {

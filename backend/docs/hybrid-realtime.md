@@ -9,7 +9,8 @@ remains to recover missed change-stream events. Existing message IDs and
 `clientMessageId` values are merged so socket delivery and REST history do not
 duplicate a bubble.
 
-Render reads Atlas `pastelchat_messages` and `pastelchat_state` change streams,
+Render reads Atlas `pastelchat_messages`, `pastelchat_state`, and
+`pastelchat_shared_photos` change streams,
 then emits only to authenticated user rooms. Typing and WebRTC signaling are
 transient socket-only events. They cannot be guaranteed while Render sleeps.
 The relay does not send push notifications or perform durable mutations.
@@ -18,6 +19,18 @@ read-only rights, including change-stream reads. At startup the relay inspects
 its Atlas privileges and refuses to serve if the credential has write actions.
 The relay also fails to start if `WRITE_MODE` is not `read-only` or
 `MONGODB_URI` is absent.
+
+Shared-photo upload also uses authenticated Vercel REST. The client opens an
+upload session, sends bounded 1 MiB chunks, and commits one photo document in
+`pastelchat_shared_photos`. Its upload chunks are temporary documents in
+`pastelchat_shared_photo_chunks`; the committed media document holds bytes
+outside `pastelchat_state`. Feed and Socket.IO events carry metadata only.
+Authorized clients retrieve media in bounded chunks through Vercel REST, so
+Render never serves or stores the media and Vercel's 4.5 MB function payload
+limit is respected. A sleeping relay only delays the event; the shared-photo
+feed polls Vercel and deduplicates by photo ID. Legacy snapshot photos remain
+readable and are not destructively migrated. Expired new media is hidden from
+feeds and retrieval, though physical collection cleanup remains future work.
 
 Render service configuration:
 
