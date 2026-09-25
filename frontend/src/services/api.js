@@ -11,10 +11,14 @@ const api = axios.create({
   timeout: 15000
 });
 
-// Attach JWT from localStorage on every request
+// Attach JWT from localStorage and browser timezone on every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) config.headers['x-user-timezone'] = tz;
+  } catch {}
   return config;
 });
 

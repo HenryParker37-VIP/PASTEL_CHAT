@@ -31,6 +31,10 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
   const [thoughtProcess, setThoughtProcess] = useState('');
   const [relationship, setRelationship] = useState('');
   const [lore, setLore] = useState('');
+  const [shouldRules, setShouldRules] = useState('');
+  const [shouldNotRules, setShouldNotRules] = useState('');
+  const [location, setLocation] = useState('');
+  const [timezone, setTimezone] = useState('');
   const [examples, setExamples] = useState([]);
 
   // Preview Mode
@@ -54,6 +58,10 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
         setThoughtProcess(c.thoughtProcess || '');
         setRelationship(c.relationship || '');
         setLore(c.lore || '');
+        setShouldRules(c.shouldRules || '');
+        setShouldNotRules(c.shouldNotRules || '');
+        setLocation(c.location || '');
+        setTimezone(c.timezone || '');
         setExamples(Array.isArray(c.examples) ? c.examples : []);
       })
       .catch((err) => {
@@ -82,6 +90,10 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
     thoughtProcess: thoughtProcess.trim(),
     relationship: relationship.trim(),
     lore: lore.trim(),
+    shouldRules: shouldRules.trim(),
+    shouldNotRules: shouldNotRules.trim(),
+    location: location.trim(),
+    timezone: timezone.trim(),
     examples: examples.filter(ex => ex && (ex.user?.trim() || ex.lyra?.trim()))
   });
 
@@ -156,6 +168,10 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
       setThoughtProcess('');
       setRelationship('');
       setLore('');
+      setShouldRules('');
+      setShouldNotRules('');
+      setLocation('');
+      setTimezone('');
       setExamples([]);
       setPreviewMessages([]);
       push({ icon: 'check', title: t('customizationReset') || 'Lyra reset to default persona.', tone: 'success' });
@@ -181,7 +197,8 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
       const { data } = await api.post('/ai/character/preview', {
         userMessage: text,
         history: nextMessages.slice(-8),
-        customConfig: currentConfigPayload()
+        customConfig: currentConfigPayload(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
       const bubbles = Array.isArray(data?.bubbles) ? data.bubbles : [String(data?.bubbles || '...')];
@@ -202,6 +219,7 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
     { id: 'personality', label: t('tabPersonality') || 'Personality', icon: 'sparkles' },
     { id: 'speech', label: t('tabSpeech') || 'How She Talks', icon: 'chat' },
     { id: 'mind', label: t('tabMind') || 'How She Thinks', icon: 'idea' },
+    { id: 'rules', label: t('tabRules') || 'Should & Should Not', icon: 'check' },
     { id: 'relationship', label: t('tabRelationship') || 'Relationship', icon: 'heart' },
     { id: 'lore', label: t('tabLore') || 'Lore & Facts', icon: 'file' },
     { id: 'examples', label: t('tabExamples') || 'Examples', icon: 'notes' },
@@ -398,6 +416,62 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
                   <div style={{ textAlign: 'right', fontSize: 11, color: '#A592A9', marginTop: 4 }}>
                     {about.length} / 2000
                   </div>
+
+                  <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px dashed #E8D6EA' }}>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: 13.5, color: '#4A3B4E', marginBottom: 3 }}>
+                        {t('studioLocationTitle') || 'Location & Timezone (Optional)'}
+                      </label>
+                      <p style={{ margin: 0, fontSize: 11.5, color: '#7E6B82', lineHeight: 1.45 }}>
+                        {t('studioLocationDesc') || 'Give Lyra her own remote city or timezone. When asked "what time is it there?", she will answer using her local clock. If left blank, she shares your local time.'}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#5C4A60', marginBottom: 4 }}>
+                          {t('studioLocation') || "Lyra's Location"}
+                        </label>
+                        <input
+                          type="text"
+                          value={location}
+                          onChange={e => setLocation(e.target.value.slice(0, 100))}
+                          placeholder={t('studioLocationPlaceholder') || 'e.g. London, United Kingdom'}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            borderRadius: 12,
+                            border: '1.5px solid #EAD8EC',
+                            padding: '9px 12px',
+                            fontSize: 13,
+                            color: '#4A3B4E',
+                            background: 'rgba(255, 255, 255, 0.85)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#5C4A60', marginBottom: 4 }}>
+                          {t('studioTimezone') || "Lyra's Timezone"}
+                        </label>
+                        <input
+                          type="text"
+                          value={timezone}
+                          onChange={e => setTimezone(e.target.value.slice(0, 64))}
+                          placeholder={t('studioTimezonePlaceholder') || 'e.g. Europe/London, Asia/Tokyo'}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            borderRadius: 12,
+                            border: '1.5px solid #EAD8EC',
+                            padding: '9px 12px',
+                            fontSize: 13,
+                            color: '#4A3B4E',
+                            background: 'rgba(255, 255, 255, 0.85)'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -579,7 +653,89 @@ const CharacterStudioModal = ({ open, onClose, friend, friendId, onSaved }) => {
                 </div>
               )}
 
-              {/* TAB 5: RELATIONSHIP WITH ME */}
+              {/* TAB 5: RULES (LYRA SHOULD / LYRA SHOULD NOT) */}
+              {activeTab === 'rules' && (
+                <div className="tab-pane">
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: 14, color: '#4A3B4E', marginBottom: 4 }}>
+                      {t('studioRulesTitle') || 'Behavioral Rules & Boundaries'}
+                    </label>
+                    <p style={{ margin: 0, fontSize: 12, color: '#7E6B82', lineHeight: 1.5 }}>
+                      {t('studioRulesSubtitle') || 'Define what your personal Lyra should and should not do. These explicit rules guide her behavior without overriding factual integrity or safety.'}
+                    </p>
+                  </div>
+
+                  {/* Section: Lyra Should */}
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, color: '#4CAF50', fontWeight: 'bold' }}>✓</span>
+                      <label style={{ fontWeight: 700, fontSize: 13.5, color: '#2E7D32' }}>
+                        {t('studioLyraShould') || 'Lyra Should'}
+                      </label>
+                    </div>
+                    <p style={{ margin: '0 0 6px', fontSize: 11.5, color: '#6A586E' }}>
+                      {t('studioLyraShouldDesc') || 'Habits, behaviors, and natural reactions you want her to adopt.'}
+                    </p>
+                    <textarea
+                      rows={5}
+                      value={shouldRules}
+                      onChange={e => setShouldRules(e.target.value.slice(0, 2000))}
+                      placeholder={t('studioLyraShouldPlaceholder') || 'e.g.\n• Match my language naturally\n• Tease me lightly when appropriate\n• Keep casual conversations concise\n• Acknowledge corrections directly\n• Respond naturally instead of sounding like an assistant'}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        borderRadius: 14,
+                        border: '1.5px solid #C8E6C9',
+                        padding: 14,
+                        fontSize: 13,
+                        color: '#4A3B4E',
+                        lineHeight: 1.55,
+                        background: 'rgba(255, 255, 255, 0.9)',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <div style={{ textAlign: 'right', fontSize: 11, color: '#A592A9', marginTop: 3 }}>
+                      {shouldRules.length} / 2000
+                    </div>
+                  </div>
+
+                  {/* Section: Lyra Should Not */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, color: '#E53935', fontWeight: 'bold' }}>✕</span>
+                      <label style={{ fontWeight: 700, fontSize: 13.5, color: '#C62828' }}>
+                        {t('studioLyraShouldNot') || 'Lyra Should Not'}
+                      </label>
+                    </div>
+                    <p style={{ margin: '0 0 6px', fontSize: 11.5, color: '#6A586E' }}>
+                      {t('studioLyraShouldNotDesc') || 'Habits, behaviors, and boundaries you want her to strictly avoid.'}
+                    </p>
+                    <textarea
+                      rows={5}
+                      value={shouldNotRules}
+                      onChange={e => setShouldNotRules(e.target.value.slice(0, 2000))}
+                      placeholder={t('studioLyraShouldNotPlaceholder') || 'e.g.\n• Sound like a generic AI assistant\n• Overuse emojis\n• Ask a follow-up question after every message\n• Invent memories or personal facts\n• Repeatedly mention being an AI unless context genuinely requires it'}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        borderRadius: 14,
+                        border: '1.5px solid #FFCDD2',
+                        padding: 14,
+                        fontSize: 13,
+                        color: '#4A3B4E',
+                        lineHeight: 1.55,
+                        background: 'rgba(255, 255, 255, 0.9)',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <div style={{ textAlign: 'right', fontSize: 11, color: '#A592A9', marginTop: 3 }}>
+                      {shouldNotRules.length} / 2000
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: RELATIONSHIP WITH ME */}
               {activeTab === 'relationship' && (
                 <div className="tab-pane">
                   <div style={{ marginBottom: 14 }}>

@@ -102,7 +102,7 @@ describe('CharacterStudioModal Component', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  test('loads and displays character config with 8 tabs when open=true', async () => {
+  test('loads and displays character config with all 9 tabs including Should/Should Not and Location/Timezone', async () => {
     api.get.mockResolvedValueOnce({
       data: {
         success: true,
@@ -114,6 +114,10 @@ describe('CharacterStudioModal Component', () => {
           wordsUsed: 'darling, sweetheart',
           wordsAvoided: 'bro, dude',
           thoughtProcess: 'Values honest moments',
+          shouldRules: 'Match my language naturally\nKeep replies concise',
+          shouldNotRules: 'Sound like an assistant\nOveruse emojis',
+          location: 'London, United Kingdom',
+          timezone: 'Europe/London',
           relationship: 'Close confidante',
           lore: 'Met under the cherry blossoms',
           examples: [
@@ -131,52 +135,64 @@ describe('CharacterStudioModal Component', () => {
     expect(container.textContent).toContain('characterStudioTitle');
     expect(container.textContent).toContain('characterStudioSubtitle');
 
-    // Check all 8 tabs are rendered
+    // Check all 9 tabs are rendered
     expect(container.textContent).toContain('tabIdentity');
     expect(container.textContent).toContain('tabPersonality');
     expect(container.textContent).toContain('tabSpeech');
     expect(container.textContent).toContain('tabMind');
+    expect(container.textContent).toContain('tabRules');
     expect(container.textContent).toContain('tabRelationship');
     expect(container.textContent).toContain('tabLore');
     expect(container.textContent).toContain('tabExamples');
     expect(container.textContent).toContain('tabPreview');
 
     // In the identity tab, the about input should have the loaded value
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    expect(textarea.value).toBe('My custom Lyra description');
+    const textareas = container.querySelectorAll('textarea');
+    expect(textareas[0].value).toBe('My custom Lyra description');
+
+    // Location and timezone inputs should have loaded values
+    const inputs = container.querySelectorAll('input');
+    const locInput = Array.from(inputs).find(i => i.value === 'London, United Kingdom');
+    const tzInput = Array.from(inputs).find(i => i.value === 'Europe/London');
+    expect(locInput).toBeDefined();
+    expect(tzInput).toBeDefined();
   });
 
-  test('switches tabs smoothly when clicking tab buttons', async () => {
+  test('switches to rules tab and displays Lyra Should / Lyra Should Not fields', async () => {
     api.get.mockResolvedValueOnce({
       data: {
         success: true,
         customConfig: {
-          about: 'Initial about',
-          speakingStyle: 'Loves using exclamation marks'
+          shouldRules: 'Tease me lightly when appropriate',
+          shouldNotRules: 'Never use generic AI canned responses'
         }
       }
     });
 
     await renderModal();
 
-    // Click speech tab button
-    const speechTabBtn = Array.from(container.querySelectorAll('button')).find(
-      (b) => b.textContent.includes('tabSpeech')
+    // Click rules tab button
+    const rulesTabBtn = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent.includes('tabRules')
     );
-    expect(speechTabBtn).toBeDefined();
+    expect(rulesTabBtn).toBeDefined();
 
     await act(async () => {
-      speechTabBtn.click();
+      rulesTabBtn.click();
     });
 
-    // Now speech tab fields should be visible
-    expect(container.textContent).toContain('Texting & Speaking Style');
-    expect(container.textContent).toContain('Favorite Words / Phrases');
-    expect(container.textContent).toContain('Words / Phrases to Avoid');
+    // Verify rules tab content
+    expect(container.textContent).toContain('studioRulesTitle');
+    expect(container.textContent).toContain('studioLyraShould');
+    expect(container.textContent).toContain('studioLyraShouldNot');
+
+    const textareas = container.querySelectorAll('textarea');
+    expect(textareas.length).toBe(2);
+    expect(textareas[0].value).toBe('Tease me lightly when appropriate');
+    expect(textareas[1].value).toBe('Never use generic AI canned responses');
   });
 
-  test('saves customized configuration on save click', async () => {
+  test('saves customized configuration including Should/Should Not and Location/Timezone', async () => {
     api.get.mockResolvedValueOnce({
       data: {
         success: true,
@@ -186,16 +202,30 @@ describe('CharacterStudioModal Component', () => {
       }
     });
     api.put.mockResolvedValueOnce({
-      data: { success: true, customConfig: { about: 'Updated about text' } }
+      data: {
+        success: true,
+        customConfig: {
+          about: 'Updated about text',
+          location: 'Kyoto, Japan',
+          timezone: 'Asia/Tokyo'
+        }
+      }
     });
 
     const onSavedMock = jest.fn();
     await renderModal({ onSaved: onSavedMock });
 
-    // Edit the about textarea using synthetic input setter
+    // Edit about
     const textarea = container.querySelector('textarea');
     await act(async () => {
       setNativeValue(textarea, 'Updated about text');
+    });
+
+    // Edit location and timezone in Identity tab
+    const inputs = container.querySelectorAll('input');
+    await act(async () => {
+      setNativeValue(inputs[0], 'Kyoto, Japan');
+      setNativeValue(inputs[1], 'Asia/Tokyo');
     });
 
     // Click save button
@@ -213,7 +243,9 @@ describe('CharacterStudioModal Component', () => {
       '/ai/character/config',
       expect.objectContaining({
         customConfig: expect.objectContaining({
-          about: 'Updated about text'
+          about: 'Updated about text',
+          location: 'Kyoto, Japan',
+          timezone: 'Asia/Tokyo'
         })
       })
     );
@@ -228,7 +260,9 @@ describe('CharacterStudioModal Component', () => {
       data: {
         success: true,
         customConfig: {
-          about: 'Custom about that will be cleared'
+          about: 'Custom about that will be cleared',
+          location: 'Paris, France',
+          timezone: 'Europe/Paris'
         }
       }
     });
@@ -259,19 +293,21 @@ describe('CharacterStudioModal Component', () => {
     expect(onSavedMock).toHaveBeenCalled();
   });
 
-  test('isolated preview tab allows sending test messages without modifying chat state', async () => {
+  test('isolated preview tab allows sending test messages with unsaved rules and timezone without modifying chat state', async () => {
     api.get.mockResolvedValueOnce({
       data: {
         success: true,
         customConfig: {
-          about: 'Playful companion'
+          about: 'Playful companion',
+          shouldRules: 'Be witty and direct',
+          timezone: 'Europe/London'
         }
       }
     });
     api.post.mockResolvedValueOnce({
       data: {
         success: true,
-        bubbles: ['Hey there! This is test Lyra speaking. ✨']
+        bubbles: ['Right on cue! What time is it for you over there? ✨']
       }
     });
 
@@ -295,7 +331,7 @@ describe('CharacterStudioModal Component', () => {
     expect(previewInput).toBeDefined();
 
     await act(async () => {
-      setNativeValue(previewInput, 'Hello from preview!');
+      setNativeValue(previewInput, 'What time is it there?');
     });
 
     // Submit form
@@ -310,12 +346,16 @@ describe('CharacterStudioModal Component', () => {
     expect(api.post).toHaveBeenCalledWith(
       '/ai/character/preview',
       expect.objectContaining({
-        userMessage: 'Hello from preview!',
-        customConfig: expect.any(Object)
+        userMessage: 'What time is it there?',
+        customConfig: expect.objectContaining({
+          shouldRules: 'Be witty and direct',
+          timezone: 'Europe/London'
+        }),
+        timeZone: expect.any(String)
       })
     );
 
     // Verify response bubble is displayed
-    expect(container.textContent).toContain('Hey there! This is test Lyra speaking. ✨');
+    expect(container.textContent).toContain('Right on cue! What time is it for you over there? ✨');
   });
 });

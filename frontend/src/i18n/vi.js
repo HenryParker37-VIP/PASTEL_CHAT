@@ -340,6 +340,7 @@ const vi = {
   tabPersonality: 'Tính cách',
   tabSpeech: 'Cách nói chuyện',
   tabMind: 'Cách suy nghĩ',
+  tabRules: 'Nên & Không nên',
   tabRelationship: 'Mối quan hệ',
   tabLore: 'Kiến thức & Bối cảnh',
   tabExamples: 'Hội thoại mẫu',
@@ -348,7 +349,21 @@ const vi = {
   resetCustomizationConfirm: 'Đặt lại tùy chỉnh Lyra về mặc định? Ký ức, lịch sử trò chuyện và ảnh đại diện của bạn sẽ không bị ảnh hưởng.',
   saveCustomization: 'Lưu thay đổi',
   customizationSaved: 'Đã lưu tùy chỉnh Lyra của bạn!',
-  customizationReset: 'Đã khôi phục Lyra về mặc định.'
+  customizationReset: 'Đã khôi phục Lyra về mặc định.',
+  studioRulesTitle: 'Quy tắc hành vi & Giới hạn',
+  studioRulesSubtitle: 'Xác định rõ những điều Lyra của bạn nên và không nên làm. Các quy tắc này định hướng phản hồi mà không vi phạm sự an toàn hay tính chính xác.',
+  studioLyraShould: 'Lyra nên làm',
+  studioLyraShouldDesc: 'Thói quen, phản ứng tự nhiên và phong cách bạn muốn Lyra thực hiện.',
+  studioLyraShouldPlaceholder: 'Ví dụ:\n• Nói chuyện tự nhiên, ngắn gọn\n• Thỉnh thoảng trêu đùa nhẹ nhàng khi phù hợp\n• Nhận sai thẳng thắn khi được sửa\n• Phản hồi tự nhiên thay vì trả lời như trợ lý ảo',
+  studioLyraShouldNot: 'Lyra không nên làm',
+  studioLyraShouldNotDesc: 'Thói quen, hành vi và giới hạn bạn muốn Lyra tuyệt đối tránh.',
+  studioLyraShouldNotPlaceholder: 'Ví dụ:\n• Không trả lời như một trợ lý ảo chung chung\n• Không dùng quá nhiều emoji\n• Không đặt câu hỏi liên tục sau mỗi tin nhắn\n• Không tự bịa đặt kỷ niệm cá nhân\n• Không liên tục nhắc mình là AI',
+  studioLocationTitle: 'Địa điểm & Múi giờ (Tùy chọn)',
+  studioLocationDesc: 'Thiết lập thành phố hoặc múi giờ riêng cho Lyra. Khi bạn hỏi "chỗ cậu mấy giờ rồi?", Lyra sẽ dùng múi giờ này. Nếu để trống, Lyra sẽ chia sẻ múi giờ của bạn.',
+  studioLocation: 'Vị trí của Lyra',
+  studioLocationPlaceholder: 'Ví dụ: London, Vương quốc Anh hoặc Tokyo, Nhật Bản',
+  studioTimezone: 'Múi giờ của Lyra',
+  studioTimezonePlaceholder: 'Ví dụ: Europe/London, Asia/Tokyo, America/New_York'
 };
 
 export default vi;

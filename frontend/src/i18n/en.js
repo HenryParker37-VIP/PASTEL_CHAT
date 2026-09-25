@@ -340,6 +340,7 @@ const en = {
   tabPersonality: 'Personality',
   tabSpeech: 'How She Talks',
   tabMind: 'How She Thinks',
+  tabRules: 'Should & Should Not',
   tabRelationship: 'Relationship',
   tabLore: 'Lore & Facts',
   tabExamples: 'Examples',
@@ -348,7 +349,21 @@ const en = {
   resetCustomizationConfirm: 'Reset your Lyra customization to default? Your memories, conversation history, and avatars will not be affected.',
   saveCustomization: 'Save changes',
   customizationSaved: 'Your Lyra customization has been saved!',
-  customizationReset: 'Lyra reset to default persona.'
+  customizationReset: 'Lyra reset to default persona.',
+  studioRulesTitle: 'Behavioral Rules & Boundaries',
+  studioRulesSubtitle: 'Define what your personal Lyra should and should not do. These explicit rules guide her behavior without overriding factual integrity or safety.',
+  studioLyraShould: 'Lyra Should',
+  studioLyraShouldDesc: 'Habits, behaviors, and natural reactions you want her to adopt.',
+  studioLyraShouldPlaceholder: 'e.g.\n• Match my language naturally\n• Tease me lightly when appropriate\n• Keep casual conversations concise\n• Acknowledge corrections directly\n• Respond naturally instead of sounding like an assistant',
+  studioLyraShouldNot: 'Lyra Should Not',
+  studioLyraShouldNotDesc: 'Habits, behaviors, and boundaries you want her to strictly avoid.',
+  studioLyraShouldNotPlaceholder: 'e.g.\n• Sound like a generic AI assistant\n• Overuse emojis\n• Ask a follow-up question after every message\n• Invent memories or personal facts\n• Repeatedly mention being an AI unless context genuinely requires it',
+  studioLocationTitle: 'Location & Timezone (Optional)',
+  studioLocationDesc: 'Give Lyra her own remote city or timezone. When asked "what time is it there?", she will answer using her local clock. If left blank, she shares your local time.',
+  studioLocation: 'Lyra\'s Location',
+  studioLocationPlaceholder: 'e.g. London, United Kingdom or Kyoto, Japan',
+  studioTimezone: 'Lyra\'s Timezone',
+  studioTimezonePlaceholder: 'e.g. Europe/London, Asia/Tokyo, America/New_York'
 };
 
 export default en;

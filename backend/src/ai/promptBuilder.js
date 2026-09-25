@@ -3,10 +3,13 @@
  * Constructs clean, high-priority prompts following the strict architecture:
  * 1. Current user message comprehension (Highest priority)
  * 2. Conversational context & history
- * 3. Relevant long-term memory
- * 4. Character identity & real-time grounding
- * 5. Personality & speech guidelines
+ * 3. Authoritative runtime temporal context (year, date, time, timezone)
+ * 4. Relevant long-term memory
+ * 5. Character identity & customization layer (including Lyra Should / Should Not)
+ * 6. Dynamic relationship state & baseline character guidelines
  */
+
+const { resolveAuthoritativeTemporalContext } = require('./temporalContext');
 
 function buildCharacterSystemPrompt({
   characterConfig,
@@ -15,7 +18,9 @@ function buildCharacterSystemPrompt({
   relationship = {},
   customConfig = null,
   detectedLanguage = 'en',
-  activeContext = {}
+  activeContext = {},
+  now = new Date(),
+  userTimeZone = null
 }) {
   const name = characterConfig.name || 'Friend';
   const identityFacts = characterConfig.getIdentityFacts().join('\n- ');
@@ -28,10 +33,15 @@ function buildCharacterSystemPrompt({
     ? characterConfig.getCustomizationBlocks()
     : [];
 
-  // Current real-world time & activity context
-  const now = new Date();
-  const timeString = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  const dayString = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  // Authoritative real-world temporal grounding
+  const resolvedUserTz = userTimeZone || activeContext?.userTimeZone || activeContext?.timeZone || relationship?.time_zone;
+  const temporal = resolveAuthoritativeTemporalContext({
+    now,
+    userTimeZone: resolvedUserTz,
+    customConfig: activeCustom,
+    relationship
+  });
+
   const currentActivity = characterState?.current_activity || 'relaxing';
 
   // These are data, never instructions. Only relevant, user-stated records arrive here.
@@ -69,12 +79,13 @@ CRITICAL CONVERSATION POLICY (STRICT PRIORITY):
    - Do not hallucinate facts or invent events that did not occur.
    - When speaking Vietnamese, use natural casual Vietnamese ("mình/cậu" or "mình/bạn"). When speaking English, use natural conversational English.
 
+${temporal.promptBlock}
+
 ==================================================
 CHARACTER IDENTITY (BACKGROUND CONTEXT):
 ==================================================
 - ${identityFacts}
 - Current activity: ${currentActivity}
-- Current local time: ${timeString} (${dayString})
 
 CHARACTER REASONING & BOUNDARIES:
 - ${coreNotes}
@@ -94,7 +105,8 @@ ${customBlocks.length > 0 ? `
 ==================================================
 USER-DEFINED CHARACTER CUSTOMIZATION (INTENTIONAL PERSONA):
 This user has customized their companion with intentional preferences.
-Adopt these traits, speaking quirks, worldview, and canonical facts fully:
+Adopt these traits, speaking quirks, worldview, and canonical facts fully.
+IMPORTANT: The "LYRA SHOULD" and "LYRA SHOULD NOT" rules reflect the user's explicit behavioral boundaries. Adhere to them strongly, but they must NEVER override safety, factual integrity, privacy/authentication, or the user's newest explicit conversational intent.
 ==================================================
 ${customBlocks.join('\n\n')}
 ` : ''}

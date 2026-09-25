@@ -68,6 +68,8 @@ router.get('/relationship', authMiddleware, async (req, res) => {
   }
 });
 
+const { validTimeZone } = require('../ai/temporalContext');
+
 function sanitizeCustomConfig(input = {}) {
   if (!input || typeof input !== 'object') return null;
   const cleanStr = (val, max = 2000) => {
@@ -86,6 +88,11 @@ function sanitizeCustomConfig(input = {}) {
   const thoughtProcess = cleanStr(input.thoughtProcess, 2000);
   const relationship = cleanStr(input.relationship, 2000);
   const lore = cleanStr(input.lore, 3000);
+  const shouldRules = cleanStr(input.shouldRules, 2000);
+  const shouldNotRules = cleanStr(input.shouldNotRules, 2000);
+  const location = cleanStr(input.location, 100);
+  const rawTimezone = cleanStr(input.timezone, 64);
+  const timezone = rawTimezone ? (validTimeZone(rawTimezone) || '') : '';
   const examples = Array.isArray(input.examples)
     ? input.examples.map((ex, i) => ({
         id: String(ex.id || `ex_${i}_${Date.now()}`),
@@ -96,7 +103,8 @@ function sanitizeCustomConfig(input = {}) {
 
   const hasContent = Boolean(
     about || personality || personalityTags.length || speakingStyle ||
-    wordsUsed || wordsAvoided || thoughtProcess || relationship || lore || examples.length
+    wordsUsed || wordsAvoided || thoughtProcess || relationship || lore ||
+    shouldRules || shouldNotRules || location || timezone || examples.length
   );
 
   if (!hasContent) return null;
@@ -111,7 +119,11 @@ function sanitizeCustomConfig(input = {}) {
     thoughtProcess,
     relationship,
     lore,
-    examples
+    examples,
+    shouldRules,
+    shouldNotRules,
+    location,
+    timezone
   };
 }
 
@@ -200,13 +212,15 @@ router.post('/character/preview', authMiddleware, async (req, res) => {
     const characterState = syncCharacterRhythm(storeDb, characterId);
 
     const { buildCharacterSystemPrompt } = require('../ai/promptBuilder');
+    const userTimeZone = req.body?.timeZone || req.headers['x-user-timezone'] || req.user?.timezone;
     const systemPrompt = buildCharacterSystemPrompt({
       characterConfig,
       characterState,
       customConfig: validatedConfig,
       memories: relevantMemories,
       relationship,
-      detectedLanguage: relationship?.active_language || 'auto'
+      detectedLanguage: relationship?.active_language || 'auto',
+      userTimeZone
     });
 
     const cleanHistory = (Array.isArray(history) ? history : []).slice(-10).map(item => ({
