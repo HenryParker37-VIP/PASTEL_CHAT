@@ -363,7 +363,17 @@ const en = {
   studioLocation: 'Lyra\'s Location',
   studioLocationPlaceholder: 'e.g. London, United Kingdom or Kyoto, Japan',
   studioTimezone: 'Lyra\'s Timezone',
-  studioTimezonePlaceholder: 'e.g. Europe/London, Asia/Tokyo, America/New_York'
+  studioTimezonePlaceholder: 'e.g. Europe/London, Asia/Tokyo, America/New_York',
+
+  // Regenerate & Refresh Chat
+  regenerateReply: 'Regenerate reply',
+  regeneratingReply: 'Regenerating...',
+  refreshChat: 'Refresh Chat',
+  refreshChatConfirmTitle: 'Refresh Chat',
+  refreshChatConfirmMessage: 'Refresh this chat? Your messages and Lyra’s memories won’t be deleted. This only starts a fresh conversation context.',
+  refreshChatConfirmAction: 'Refresh Chat',
+  refreshChatSuccess: 'Started a fresh conversation context 🌱',
+  newConversationDivider: 'New conversation'
 };
 
 export default en;

@@ -407,4 +407,57 @@ router.get('/avatar/media/:version', async (req, res) => {
   }
 });
 
+// GET /ai/conversation/session - Get active session info for authenticated user and AI
+router.get('/conversation/session', authMiddleware, async (req, res) => {
+  try {
+    const characterId = 'char_lyra';
+    const session = await storeDb.getActiveAISession(req.user._id, characterId);
+    res.json({
+      success: true,
+      sessionId: session?.activeSessionId,
+      activeSessionId: session?.activeSessionId,
+      sessionRevision: session?.sessionRevision
+    });
+  } catch (err) {
+    console.error('[AI Routes] Get session error:', err.message);
+    res.status(500).json({ message: 'Failed to retrieve conversation session' });
+  }
+});
+
+// POST /ai/conversation/refresh - Start a fresh conversation context for authenticated user and AI
+router.post('/conversation/refresh', authMiddleware, async (req, res) => {
+  try {
+    const characterId = 'char_lyra';
+    const result = await storeDb.refreshAISession(req.user._id, characterId);
+    const io = req.app.get('io');
+    const { emitToUser } = require('../services/userSocket');
+
+    // Emit session refreshed event to user
+    emitToUser(io, req.user._id, 'ai_session_refreshed', {
+      characterId,
+      sessionId: result.activeSessionId,
+      activeSessionId: result.activeSessionId,
+      sessionRevision: result.sessionRevision
+    });
+
+    // Also emit the session boundary divider message
+    if (result.boundaryMessage) {
+      const populated = storeDb.populateMessage(result.boundaryMessage, req.user._id);
+      emitToUser(io, req.user._id, `msg:${storeDb.AI_USER_ID}:${req.user._id}`, populated);
+      emitToUser(io, req.user._id, `msg:${req.user._id}:${storeDb.AI_USER_ID}`, populated);
+    }
+
+    res.json({
+      success: true,
+      sessionId: result.activeSessionId,
+      activeSessionId: result.activeSessionId,
+      sessionRevision: result.sessionRevision,
+      boundaryMessage: result.boundaryMessage ? storeDb.populateMessage(result.boundaryMessage, req.user._id) : null
+    });
+  } catch (err) {
+    console.error('[AI Routes] Refresh session error:', err.message);
+    res.status(500).json({ message: 'Failed to refresh conversation session', error: err.message });
+  }
+});
+
 module.exports = router;

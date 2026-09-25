@@ -12,7 +12,7 @@ import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
 import AIDebugModal from '../components/AIDebugModal';
 import CharacterStudioModal from '../components/CharacterStudioModal';
-import { useToast } from '../components/Toast';
+import { useToast, useConfirm } from '../components/Toast';
 import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
@@ -44,8 +44,13 @@ const Chat = () => {
   const { socket, connected, relayMode, setLyraAvatar } = useSocket();
   const { startCall, activeCall } = useCall();
   const { push } = useToast();
+  const confirm = useConfirm();
   const { t } = useLang();
   const navigate = useNavigate();
+
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const activeSessionIdRef = useRef(null);
 
   const initialCache = getCachedConversation(user?._id, friendId);
   const [messages, setMessages] = useState(() => initialCache?.messages || []);
@@ -125,6 +130,26 @@ const Chat = () => {
 
   const friendIdentity = getPastelColor(chatColor) || getPastelColor(friend?.chatColor) || getPastelIdentity(friendId);
 
+  // Synchronize active AI conversation session
+  useEffect(() => {
+    const isAi = friendId === 'user_ai_lyra' || friendRef.current?.isAI;
+    if (!isAi || !user?._id) {
+      setActiveSessionId(null);
+      activeSessionIdRef.current = null;
+      return;
+    }
+    api.get('/ai/conversation/session')
+      .then(({ data }) => {
+        if (data?.sessionId) {
+          setActiveSessionId(data.sessionId);
+          activeSessionIdRef.current = data.sessionId;
+        }
+      })
+      .catch((err) => {
+        console.warn('[Chat] Failed to fetch active AI session:', err.message);
+      });
+  }, [friendId, user?._id]);
+
   // Fetch message history — depends on user so it re-runs if auth reloads
   const fetchMessages = useCallback(async (isBackgroundSync = false) => {
     if (!friendId || !user?._id) return;
@@ -142,9 +167,18 @@ const Chat = () => {
       const pending = loadPendingMessages(user._id).filter((m) => m.receiverId === friendId);
 
       setMessages((current) => {
-        const merged = mergeMessages(current, serverMsgs, pending);
-        setCachedConversation(user._id, friendId, { messages: merged });
-        return merged;
+        const serverIdSet = new Set(serverMsgs.map((m) => String(m._id)));
+        const validCurrent = (current || []).filter((m) => {
+          if (m.isSuperseded) return false;
+          if (m._id && serverMsgs.length > 0 && !m.clientMessageId) {
+            return serverIdSet.has(String(m._id));
+          }
+          return true;
+        });
+        const merged = mergeMessages(validCurrent, serverMsgs, pending);
+        const cleanMerged = merged.filter((m) => !m.isSuperseded);
+        setCachedConversation(user._id, friendId, { messages: cleanMerged });
+        return cleanMerged;
       });
     } catch (err) {
       if (!isBackgroundSync) {
@@ -674,7 +708,8 @@ const Chat = () => {
         media: pending.media,
         replyTo: pending.replyToId || null,
         clientMessageId: pending.clientMessageId,
-        generateAiReply: false
+        generateAiReply: false,
+        conversationSessionId: isAiFriend ? (activeSessionIdRef.current || undefined) : undefined
       });
       if (isAiFriend && activeAiTurnRef.current?.generationId === generationId) {
         activeAiTurnRef.current.messageId = data._id;
@@ -693,6 +728,43 @@ const Chat = () => {
       setTimeout(() => fetchMessages(true), 1200);
       setTimeout(() => fetchMessages(true), 2500);
     } catch (err) {
+      if (err.response?.status === 409 && err.response?.data?.code === 'SESSION_MISMATCH') {
+        const newSessionId = err.response.data.activeSessionId;
+        if (newSessionId) {
+          activeSessionIdRef.current = newSessionId;
+          setActiveSessionId(newSessionId);
+        }
+        await fetchMessages(true);
+        try {
+          const { data } = await api.post('/messages', {
+            receiverId: friendId,
+            content: pending.content,
+            media: pending.media,
+            replyTo: pending.replyToId || null,
+            clientMessageId: pending.clientMessageId,
+            generateAiReply: false,
+            conversationSessionId: newSessionId
+          });
+          if (isAiFriend && activeAiTurnRef.current?.generationId === generationId) {
+            activeAiTurnRef.current.messageId = data._id;
+            if (microTurnTimerRef.current) clearTimeout(microTurnTimerRef.current);
+            microTurnTimerRef.current = setTimeout(() => {
+              if (!isUserTypingRef.current) commitTurnGenerationRef.current?.(generationId, turnRevision);
+            }, Math.max(0, TURN_CONFIG.MICRO_TURN_WINDOW_MS - (Date.now() - activeAiTurnRef.current.startTime)));
+          }
+          setMessages((current) => current.map((message) => (
+            message.clientMessageId === pending.clientMessageId
+              ? { ...data, deliveryStatus: data.deliveryStatus || 'sent' }
+              : message
+          )));
+          removePendingMessage(user?._id, pending.clientMessageId);
+          setTimeout(() => fetchMessages(true), 400);
+          return;
+        } catch (retryErr) {
+          console.error('[Chat] Session mismatch retry failed:', retryErr.message);
+        }
+      }
+
       console.error('Send failed:', err.message);
       savePendingMessage(user?._id, { ...pending, deliveryStatus: 'failed' });
       setMessages((current) => current.map((message) => (
@@ -837,6 +909,25 @@ const Chat = () => {
       }
     };
 
+    const onMsgSuperseded = ({ messageIds, supersededIds }) => {
+      const ids = messageIds || supersededIds || [];
+      if (!Array.isArray(ids) || ids.length === 0) return;
+      const set = new Set(ids.map(String));
+      setMessages((prev) => {
+        const next = (prev || []).filter((m) => !set.has(String(m._id)));
+        if (user?._id) setCachedConversation(user._id, friendId, { messages: next });
+        return next;
+      });
+    };
+
+    const onAiSessionRefreshed = (data) => {
+      if (data?.sessionId) {
+        setActiveSessionId(data.sessionId);
+        activeSessionIdRef.current = data.sessionId;
+      }
+      fetchMessages(true);
+    };
+
     socket.on(`msg:${roomKey}`, onMessage);
     socket.on(`msg:${reverseKey}`, onMessage);
     socket.on(`msg_recall:${roomKey}`, onRecall);
@@ -846,6 +937,11 @@ const Chat = () => {
     socket.on(`typing:${user._id}`, onTyping);
     socket.on('message_status', onMessageStatus);
     socket.on('user_updated', onUserUpdated);
+    socket.on('msg_superseded', onMsgSuperseded);
+    socket.on(`msg_superseded:${roomKey}`, onMsgSuperseded);
+    socket.on(`msg_superseded:${reverseKey}`, onMsgSuperseded);
+    socket.on('ai_session_refreshed', onAiSessionRefreshed);
+    socket.on(`ai_session_refreshed:${roomKey}`, onAiSessionRefreshed);
     // Re-fetch on socket reconnect to catch messages missed while disconnected
     socket.on('connect', fetchMessages);
 
@@ -873,6 +969,11 @@ const Chat = () => {
       socket.off(`typing:${user._id}`, onTyping);
       socket.off('message_status', onMessageStatus);
       socket.off('user_updated', onUserUpdated);
+      socket.off('msg_superseded', onMsgSuperseded);
+      socket.off(`msg_superseded:${roomKey}`, onMsgSuperseded);
+      socket.off(`msg_superseded:${reverseKey}`, onMsgSuperseded);
+      socket.off('ai_session_refreshed', onAiSessionRefreshed);
+      socket.off(`ai_session_refreshed:${roomKey}`, onAiSessionRefreshed);
       socket.off('connect', fetchMessages);
     };
   }, [socket, friendId, user, fetchMessages, friend, relayMode]);
@@ -1104,6 +1205,110 @@ const Chat = () => {
     }
   };
 
+  const handleRegenerate = useCallback(async (userMessageId) => {
+    if (isRegenerating || !userMessageId) return;
+    setIsRegenerating(true);
+    cancelActiveAiTurn('regenerate');
+    aiBubbleIdsInFlightRef.current.clear();
+
+    try {
+      const { data } = await api.post('/messages/regenerate', {
+        receiverId: friendId,
+        messageId: userMessageId,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
+
+      if (data?.supersededIds && data.supersededIds.length > 0) {
+        const set = new Set(data.supersededIds.map(String));
+        setMessages((prev) => {
+          const next = (prev || []).filter((m) => !set.has(String(m._id)));
+          if (user?._id) setCachedConversation(user._id, friendId, { messages: next });
+          return next;
+        });
+      }
+
+      if (Array.isArray(data?.aiReplies) && data.aiReplies.length > 0) {
+        if (data.deliveryMode === 'client-paced') {
+          const turnRevision = ++conversationRevisionRef.current;
+          const generationId = `gen-regen-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          data.aiReplies.forEach((b) => aiBubbleIdsInFlightRef.current.add(b._id));
+          const newTurn = {
+            generationId,
+            revision: turnRevision,
+            clientMessageId: `regen-${userMessageId}`,
+            messageId: userMessageId,
+            deliveryState: TURN_STATE.DELIVERING,
+            startTime: Date.now(),
+            pendingBubbles: [...data.aiReplies],
+            deliveredBubbles: [],
+            scheduledDeliveryTime: null,
+            remainingTypingDelay: 0
+          };
+          activeAiTurnRef.current = newTurn;
+          deliverNextAiBubble(generationId, turnRevision, null, false);
+        } else {
+          setMessages((prev) => {
+            const next = mergeMessages(prev, data.aiReplies).filter((m) => !m.isSuperseded);
+            if (user?._id) setCachedConversation(user._id, friendId, { messages: next });
+            return next;
+          });
+        }
+      }
+
+      setTimeout(() => fetchMessages(true), 400);
+      setTimeout(() => fetchMessages(true), 1200);
+    } catch (err) {
+      console.error('[Chat] Regenerate failed:', err.message);
+      const msg = err.response?.data?.message || err.message || 'Failed to regenerate';
+      push({ title: msg, tone: 'danger', icon: 'alert' });
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friendId, isRegenerating, push, user?._id]);
+
+  const handleRefreshChat = useCallback(async () => {
+    const ok = await confirm({
+      title: t('refreshChatConfirmTitle') || 'Refresh this chat?',
+      message: t('refreshChatConfirmMessage') || "Your messages and Lyra's memories won't be deleted. This only starts a fresh conversation context.",
+      confirmLabel: t('refreshChatConfirmAction') || 'Refresh Chat',
+      cancelLabel: t('cancel') || 'Cancel',
+      tone: 'default',
+      icon: 'refresh'
+    });
+    if (!ok) return;
+
+    try {
+      const { data } = await api.post('/ai/conversation/refresh', {
+        characterId: friend?.aiCharacterId || 'char_lyra'
+      });
+      if (data?.sessionId) {
+        setActiveSessionId(data.sessionId);
+        activeSessionIdRef.current = data.sessionId;
+      }
+      if (data?.boundaryMessage) {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === data.boundaryMessage._id)) return prev;
+          const next = [...prev, data.boundaryMessage];
+          if (user?._id) setCachedConversation(user._id, friendId, { messages: next });
+          return next;
+        });
+      }
+      push({
+        title: t('refreshChatSuccess') || 'Started a new conversation with Lyra',
+        tone: 'ok',
+        icon: 'check'
+      });
+      setTimeout(() => fetchMessages(true), 400);
+    } catch (err) {
+      console.error('[Chat] Refresh chat failed:', err.message);
+      push({
+        title: err.response?.data?.message || err.message || 'Failed to refresh chat',
+        tone: 'danger',
+        icon: 'alert'
+      });
+    }
+  }, [confirm, fetchMessages, friend?.aiCharacterId, friendId, push, t, user?._id]);
+
   const formatSearchTime = (ts) =>
     new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
     new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1316,26 +1521,55 @@ const Chat = () => {
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
                   ><PastelIcon name="palette" size={17} /></button>
 
-                  {(friend._id === 'user_ai_lyra' || friend.isAI) && (
-                    <button
-                      type="button"
-                      onClick={() => setShowCharacterStudio(true)}
-                      title={t('customizeLyra') || 'Customize Lyra'}
-                      aria-label="Customize Lyra"
-                      style={{
-                        width: 34, height: 34, borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #FFF0F5, #FFE4E1)',
-                        color: friendIdentity.accent,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: `1.5px solid ${friendIdentity.accent}`, cursor: 'pointer',
-                        boxShadow: `0 2px 6px ${friendIdentity.accent}33`,
-                        transition: 'transform 0.15s'
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
-                      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                    >
-                      <PastelIcon name="sparkles" size={17} style={{ color: friendIdentity.accent }} />
-                    </button>
+                  {(friend?._id === 'user_ai_lyra' || friend?.isAI || friendId === 'user_ai_lyra') && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleRefreshChat}
+                        title={t('refreshChat') || 'Refresh Chat'}
+                        aria-label="Refresh Chat"
+                        style={{
+                          width: 34, height: 34, borderRadius: '50%',
+                          background: '#F7F0FA',
+                          color: 'var(--subtext)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid var(--border)', cursor: 'pointer',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                          transition: 'transform 0.15s, color 0.15s, border-color 0.15s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.color = friendIdentity.accent;
+                          e.currentTarget.style.borderColor = friendIdentity.accent;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.color = 'var(--subtext)';
+                          e.currentTarget.style.borderColor = 'var(--border)';
+                        }}
+                      >
+                        <PastelIcon name="refresh" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCharacterStudio(true)}
+                        title={t('customizeLyra') || 'Customize Lyra'}
+                        aria-label="Customize Lyra"
+                        style={{
+                          width: 34, height: 34, borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #FFF0F5, #FFE4E1)',
+                          color: friendIdentity.accent,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: `1.5px solid ${friendIdentity.accent}`, cursor: 'pointer',
+                          boxShadow: `0 2px 6px ${friendIdentity.accent}33`,
+                          transition: 'transform 0.15s'
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
+                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                      >
+                        <PastelIcon name="sparkles" size={17} style={{ color: friendIdentity.accent }} />
+                      </button>
+                    </>
                   )}
 
                   {colorPickerOpen && (
@@ -1440,7 +1674,7 @@ const Chat = () => {
                   <><PastelIcon name={friend.isOnline ? 'online' : 'offline'} size={10} /> {friend.isOnline ? 'Online now' : 'Offline'}</>
                 </div>
                 {(friend._id === 'user_ai_lyra' || friend.isAI) && (
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={() => setShowCharacterStudio(true)}
@@ -1462,6 +1696,36 @@ const Chat = () => {
                     >
                       <PastelIcon name="sparkles" size={13} style={{ color: friendIdentity.accent }} />
                       {t('customizeLyra') || 'Customize Lyra'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRefreshChat}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 14px',
+                        borderRadius: 16,
+                        border: '1.5px solid var(--border)',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        color: 'var(--subtext)',
+                        fontWeight: 600,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.color = friendIdentity.accent;
+                        e.currentTarget.style.borderColor = friendIdentity.accent;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.color = 'var(--subtext)';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                      }}
+                    >
+                      <PastelIcon name="refresh" size={13} />
+                      {t('refreshChat') || 'Refresh Chat'}
                     </button>
                   </div>
                 )}
@@ -1588,6 +1852,9 @@ const Chat = () => {
             highlightId={highlightId}
             conversationIdentity={friendIdentity}
             onMessageVisible={handleMessageVisible}
+            onRegenerate={handleRegenerate}
+            isRegenerating={isRegenerating}
+            activeSessionId={activeSessionId}
           />
 
           <MessageInput

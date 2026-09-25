@@ -47,7 +47,8 @@ const store = {
   aiRelationshipState: [],
   aiMemories: [],
   aiLifeEvents: [],
-  aiUserCharacterConfigs: []
+  aiUserCharacterConfigs: [],
+  aiSessions: []
 };
 let legacyAiMemories = [];
 let legacyAiRelationships = [];
@@ -716,6 +717,136 @@ async function hydrateUserCharacterConfig(userId, characterId = AI_CHARACTER_ID)
   }
 }
 
+function aiSessionId(userId, characterId = AI_CHARACTER_ID) {
+  return JSON.stringify([String(userId), String(characterId || AI_CHARACTER_ID)]);
+}
+
+async function getActiveAISession(userId, characterId = AI_CHARACTER_ID) {
+  if (!userId) return null;
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  if (!Array.isArray(store.aiSessions)) store.aiSessions = [];
+
+  if (MONGODB_URI) {
+    const db = await getDurableDatabase();
+    if (db) {
+      const _id = aiSessionId(uid, cid);
+      let doc = await db.collection('pastelchat_ai_sessions').findOne({ _id });
+      if (!doc) {
+        const initialSession = {
+          _id,
+          userId: uid,
+          characterId: cid,
+          activeSessionId: `sess_${Date.now()}_${genId().slice(0, 6)}`,
+          sessionRevision: 1,
+          startedAt: new Date(),
+          updatedAt: new Date()
+        };
+        try {
+          await db.collection('pastelchat_ai_sessions').updateOne(
+            { _id },
+            { $setOnInsert: initialSession },
+            { upsert: true, writeConcern: { w: 'majority' } }
+          );
+          doc = await db.collection('pastelchat_ai_sessions').findOne({ _id }) || initialSession;
+        } catch (e) {
+          doc = await db.collection('pastelchat_ai_sessions').findOne({ _id }) || initialSession;
+        }
+      }
+      const idx = store.aiSessions.findIndex(s => String(s.userId) === uid && String(s.characterId) === cid);
+      const sessionObj = {
+        userId: uid,
+        characterId: cid,
+        activeSessionId: doc.activeSessionId,
+        sessionRevision: Number(doc.sessionRevision || 1),
+        startedAt: doc.startedAt ? new Date(doc.startedAt).toISOString() : new Date().toISOString()
+      };
+      if (idx !== -1) store.aiSessions[idx] = sessionObj;
+      else store.aiSessions.push(sessionObj);
+      return sessionObj;
+    }
+  }
+
+  let session = store.aiSessions.find(s => String(s.userId) === uid && String(s.characterId) === cid);
+  if (!session) {
+    session = {
+      userId: uid,
+      characterId: cid,
+      activeSessionId: `sess_${Date.now()}_${genId().slice(0, 6)}`,
+      sessionRevision: 1,
+      startedAt: new Date().toISOString()
+    };
+    store.aiSessions.push(session);
+    persist();
+  }
+  return session;
+}
+
+async function refreshAISession(userId, characterId = AI_CHARACTER_ID) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('Session writes are disabled in read-only mode');
+  if (!userId) throw new Error('User ID is required');
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  const newSessionId = `sess_${Date.now()}_${genId().slice(0, 6)}`;
+  const now = new Date();
+  let sessionRevision = 1;
+
+  if (MONGODB_URI) {
+    const db = await getDurableDatabase();
+    if (db) {
+      const _id = aiSessionId(uid, cid);
+      const doc = await db.collection('pastelchat_ai_sessions').findOneAndUpdate(
+        { _id },
+        {
+          $inc: { sessionRevision: 1 },
+          $set: { activeSessionId: newSessionId, startedAt: now, updatedAt: now },
+          $setOnInsert: { userId: uid, characterId: cid }
+        },
+        { upsert: true, returnDocument: 'after', writeConcern: { w: 'majority' } }
+      );
+      sessionRevision = Number(doc?.sessionRevision || 1);
+    }
+  }
+
+  if (!Array.isArray(store.aiSessions)) store.aiSessions = [];
+  const idx = store.aiSessions.findIndex(s => String(s.userId) === uid && String(s.characterId) === cid);
+  if (idx !== -1) {
+    if (!MONGODB_URI) sessionRevision = (store.aiSessions[idx].sessionRevision || 1) + 1;
+    store.aiSessions[idx] = {
+      userId: uid,
+      characterId: cid,
+      activeSessionId: newSessionId,
+      sessionRevision,
+      startedAt: now.toISOString()
+    };
+  } else {
+    store.aiSessions.push({
+      userId: uid,
+      characterId: cid,
+      activeSessionId: newSessionId,
+      sessionRevision,
+      startedAt: now.toISOString()
+    });
+  }
+  if (!MONGODB_URI) persist();
+
+  // Create divider message
+  const boundaryMessage = createMessage({
+    senderId: AI_USER_ID,
+    receiverId: uid,
+    content: 'New conversation',
+    isSessionBoundary: true,
+    conversationSessionId: newSessionId
+  });
+  await flushMessageWrites();
+
+  return {
+    activeSessionId: newSessionId,
+    sessionRevision,
+    boundaryMessage
+  };
+}
+
 async function getDurableCollection() {
   const db = await getDurableDatabase();
   return db ? db.collection('pastelchat_state') : null;
@@ -797,6 +928,9 @@ async function allocateAITurnSequence(userId, characterId) {
 }
 async function registerAITurn(userId, characterId, message) {
   if (process.env.WRITE_MODE === 'read-only') return false;
+  if (!store.aiTurnRevisions) store.aiTurnRevisions = new Map();
+  const revKey = aiTurnId(userId, characterId);
+  store.aiTurnRevisions.set(revKey, (store.aiTurnRevisions.get(revKey) || 0) + 1);
   if (!MONGODB_URI) return true;
   await flushMessageWrites();
   const db = await getDurableDatabase();
@@ -811,8 +945,17 @@ async function registerAITurn(userId, characterId, message) {
       hasSequence
         ? { _id, $or: [{ latestSequence: { $lt: sequence } }, { latestSequence: { $exists: false } }] }
         : { _id, latestSequence: { $exists: false }, $or: [{ latestAt: { $lte: messageAt } }, { latestAt: { $exists: false } }] },
-      { $set: { userId: String(userId), characterId: String(characterId), latestMessageId: String(message._id), latestAt: messageAt,
-        ...(hasSequence ? { latestSequence: sequence } : {}), updatedAt: new Date() } },
+      {
+        $set: {
+          userId: String(userId),
+          characterId: String(characterId),
+          latestMessageId: String(message._id),
+          latestAt: messageAt,
+          ...(hasSequence ? { latestSequence: sequence } : {}),
+          updatedAt: new Date()
+        },
+        $inc: { generationRevision: 1 }
+      },
       { upsert: true, writeConcern: { w: 'majority' } }
     );
   } catch (error) {
@@ -830,8 +973,82 @@ async function isCurrentAITurn(userId, characterId, messageId) {
 async function getCurrentAITurnMessageId(userId, characterId) {
   if (!MONGODB_URI) return null;
   const db = await getDurableDatabase();
-  const doc = await db.collection('pastelchat_ai_turns').findOne({ _id: aiTurnId(userId, characterId) }, { projection: { latestMessageId: 1 } });
+  const doc = await db.collection('pastelchat_ai_turns').findOne({ _id: aiTurnId(userId, characterId), latestMessageId: 1 });
   return doc?.latestMessageId || null;
+}
+
+async function getCurrentAITurnRevision(userId, characterId) {
+  if (!MONGODB_URI) {
+    return store.aiTurnRevisions?.get(aiTurnId(userId, characterId)) || 1;
+  }
+  const db = await getDurableDatabase();
+  const doc = await db.collection('pastelchat_ai_turns').findOne({ _id: aiTurnId(userId, characterId) }, { projection: { generationRevision: 1 } });
+  return Number(doc?.generationRevision || 1);
+}
+
+async function registerAIRegenerate(userId, characterId, userMessageId) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('AI turn writes are disabled');
+  if (!store.aiTurnRevisions) store.aiTurnRevisions = new Map();
+  const revKey = aiTurnId(userId, characterId);
+  const inMemoryRev = (store.aiTurnRevisions.get(revKey) || 1) + 1;
+  store.aiTurnRevisions.set(revKey, inMemoryRev);
+  if (!MONGODB_URI) return inMemoryRev;
+  await flushMessageWrites();
+  const db = await getDurableDatabase();
+  const _id = aiTurnId(userId, characterId);
+  const doc = await db.collection('pastelchat_ai_turns').findOneAndUpdate(
+    { _id, latestMessageId: String(userMessageId) },
+    { $inc: { generationRevision: 1 }, $set: { updatedAt: new Date() } },
+    { returnDocument: 'after', writeConcern: { w: 'majority' } }
+  );
+  return Number(doc?.generationRevision || inMemoryRev);
+}
+
+async function supersedeAIMessages(userId, characterId = AI_CHARACTER_ID, userMessageId) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('Writes are disabled in read-only mode');
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  const umid = String(userMessageId);
+
+  // 1. Identify existing AI bubbles responding to this userMessageId
+  const rel = getAIRelationship(uid, cid, false);
+  const histEntry = rel?.shared_history?.find(e => String(e.userMessageId) === umid);
+  const histAiIds = new Set((histEntry?.aiMessageIds || []).map(String));
+
+  const matchingMessages = (store.messages || []).filter(m => {
+    if (m.isSuperseded) return false;
+    const isAiSender = String(m.senderId?._id || m.senderId) === AI_USER_ID;
+    const isToUser = String(m.receiverId?._id || m.receiverId) === uid;
+    if (!isAiSender || !isToUser) return false;
+    if (m.triggerMessageId && String(m.triggerMessageId) === umid) return true;
+    if (histAiIds.has(String(m._id))) return true;
+    return false;
+  });
+
+  const now = new Date().toISOString();
+  const supersededIds = [];
+  const rejectedTexts = [];
+
+  for (const msg of matchingMessages) {
+    msg.isSuperseded = true;
+    msg.supersededAt = now;
+    supersededIds.push(String(msg._id));
+    if (msg.content) rejectedTexts.push(msg.content);
+    queueMessageWrite(msg, { isSuperseded: true, supersededAt: now });
+  }
+
+  if (MONGODB_URI && supersededIds.length > 0) {
+    const db = await getDurableDatabase();
+    if (db) {
+      await db.collection('pastelchat_messages').updateMany(
+        { _id: { $in: supersededIds } },
+        { $set: { 'data.isSuperseded': true, 'data.supersededAt': now } },
+        { writeConcern: { w: 'majority' } }
+      );
+    }
+  }
+
+  return { supersededIds, rejectedTexts };
 }
 
 function makeMessage(doc) {
@@ -839,19 +1056,38 @@ function makeMessage(doc) {
     reactions: {}, clientMessageId: null, deliveredAt: null, readAt: null, deliveryReceipts: {}, media: null, ...doc };
 }
 
-async function commitAIBubble(userId, characterId, userMessageId, doc) {
+async function commitAIBubble(userId, characterId, userMessageId, doc, expectedRevision = null) {
   if (process.env.WRITE_MODE === 'read-only') return null;
-  if (!MONGODB_URI) return createMessage(doc);
+  const bubbleDoc = {
+    ...doc,
+    triggerMessageId: String(userMessageId)
+  };
+  if (!MONGODB_URI) {
+    if (expectedRevision !== undefined && expectedRevision !== null) {
+      const currentRev = store.aiTurnRevisions?.get(aiTurnId(userId, characterId));
+      if (currentRev !== undefined && currentRev !== expectedRevision) {
+        return null;
+      }
+    }
+    return createMessage(bubbleDoc);
+  }
   const db = await getDurableDatabase();
   if (!cachedClient?.startSession) throw new Error('MongoDB transaction support is required for AI delivery');
-  const message = makeMessage(doc);
+  const message = makeMessage(bubbleDoc);
   const session = cachedClient.startSession();
   let committed = false;
   try {
     await session.withTransaction(async () => {
       committed = false;
+      const claimFilter = {
+        _id: aiTurnId(userId, characterId),
+        latestMessageId: String(userMessageId)
+      };
+      if (expectedRevision !== undefined && expectedRevision !== null) {
+        claimFilter.generationRevision = expectedRevision;
+      }
       const claim = await db.collection('pastelchat_ai_turns').updateOne(
-        { _id: aiTurnId(userId, characterId), latestMessageId: String(userMessageId) },
+        claimFilter,
         { $inc: { deliveryRevision: 1 } }, { session }
       );
       if (!claim.matchedCount) return;
@@ -1701,6 +1937,7 @@ function getConversation(userA, userB, { limit = 100, before = null, since = nul
   const uidA = String(userA || '');
   const uidB = String(userB || '');
   let msgs = store.messages.filter((m) => {
+    if (m.isSuperseded) return false;
     const sId = String(m.senderId?._id || m.senderId || '');
     const rId = String(m.receiverId?._id || m.receiverId || '');
     return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
@@ -1722,7 +1959,7 @@ function getPinnedMessages(userA, userB) {
   const uidB = String(userB || '');
   return store.messages
     .filter((m) => {
-      if (!m.isPinned || m.isRecalled) return false;
+      if (m.isSuperseded || !m.isPinned || m.isRecalled) return false;
       const sId = String(m.senderId?._id || m.senderId || '');
       const rId = String(m.receiverId?._id || m.receiverId || '');
       return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
@@ -1736,7 +1973,7 @@ function searchMessages(userA, userB, query) {
   const uidB = String(userB || '');
   return store.messages
     .filter((m) => {
-      if (m.isRecalled || !m.content || !m.content.toLowerCase().includes(q)) return false;
+      if (m.isSuperseded || m.isRecalled || !m.content || !m.content.toLowerCase().includes(q)) return false;
       const sId = String(m.senderId?._id || m.senderId || '');
       const rId = String(m.receiverId?._id || m.receiverId || '');
       return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
@@ -2219,5 +2456,6 @@ module.exports = {
   getAIRelationship, updateAIRelationship,
   getAIMemories, addAIMemory, deleteAIMemory, hydrateAIPersonalLayer, hydrateAllAIPersonalLayers, flushAIPersonalLayer, getAILifeEvents, claimAIProactiveWindow, isAIUser, updateAIAvatar,
   storeAIAvatarMedia, getAIAvatarMedia,
-  getUserCharacterConfig, setUserCharacterConfig, resetUserCharacterConfig, hydrateUserCharacterConfig
+  getUserCharacterConfig, setUserCharacterConfig, resetUserCharacterConfig, hydrateUserCharacterConfig,
+  getActiveAISession, refreshAISession, supersedeAIMessages, registerAIRegenerate, getCurrentAITurnRevision
 };

@@ -29,7 +29,21 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRetry, highlight, conversationIdentity }) => {
+const MessageItem = ({
+  message,
+  peer,
+  onReply,
+  onRecall,
+  onPin,
+  onReaction,
+  onRetry,
+  highlight,
+  conversationIdentity,
+  canRegenerate = false,
+  isLastOfAiTurn = false,
+  isRegenerating = false,
+  onRegenerate
+}) => {
   const { user } = useAuth();
   const { lyraAvatar } = useSocket();
   const { t } = useLang();
@@ -262,6 +276,15 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
                   style={{ color: '#e57373' }}
                 ><PastelIcon name="trash" size={16} title="Recall" /></button>
               )}
+              {canRegenerate && (
+                <button
+                  type="button"
+                  title={t('regenerateReply')}
+                  onClick={() => onRegenerate?.()}
+                  disabled={isRegenerating}
+                  style={{ color: '#666' }}
+                ><PastelIcon name="refresh" size={15} title={t('regenerateReply')} className={isRegenerating ? 'spin-icon' : ''} /></button>
+              )}
 
               {/* Reaction picker popup */}
               {showReactionPicker && (
@@ -282,6 +305,50 @@ const MessageItem = ({ message, peer, onReply, onRecall, onPin, onReaction, onRe
             </div>
           )}
         </div>
+
+        {/* Subtle Regenerate action under last bubble of response group */}
+        {isLastOfAiTurn && canRegenerate && !emojiOnly && !message.isRecalled && (
+          <div style={{ marginTop: 4, marginLeft: 2, display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => onRegenerate?.()}
+              disabled={isRegenerating}
+              title={t('regenerateReply')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '3px 9px',
+                borderRadius: 12,
+                border: '1px solid rgba(0,0,0,0.08)',
+                background: 'rgba(255, 255, 255, 0.75)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                fontSize: 11,
+                fontWeight: 500,
+                color: '#666',
+                cursor: isRegenerating ? 'wait' : 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                if (!isRegenerating) {
+                  e.currentTarget.style.color = 'var(--text, #333)';
+                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isRegenerating) {
+                  e.currentTarget.style.color = '#666';
+                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
+                }
+              }}
+            >
+              <PastelIcon name="refresh" size={12} className={isRegenerating ? 'spin-icon' : ''} />
+              <span>{isRegenerating ? t('regeneratingReply') : t('regenerateReply')}</span>
+            </button>
+          </div>
+        )}
 
         {/* Reaction pills */}
         {hasReactions && (

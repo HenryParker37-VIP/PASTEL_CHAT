@@ -22,7 +22,14 @@ const {
   findGroup,
   flushMessageWrites,
   allocateAITurnSequence,
-  registerAITurn
+  registerAITurn,
+  refreshDurableMessages,
+  getDurableMessageById,
+  getActiveAISession,
+  registerAIRegenerate,
+  supersedeAIMessages,
+  getCurrentAITurnMessageId,
+  getCurrentAITurnRevision
 } = require('../db/store');
 const { resolveAITurn } = require('../ai/resolveAITurn');
 
@@ -135,6 +142,20 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
 
+    let activeAiSession = null;
+    if (receiver.isAI) {
+      const characterId = receiver.aiCharacterId || 'char_lyra';
+      activeAiSession = await getActiveAISession(req.user._id, characterId);
+      if (req.body.conversationSessionId && req.body.conversationSessionId !== activeAiSession.activeSessionId) {
+        return res.status(409).json({
+          code: 'SESSION_MISMATCH',
+          message: 'Conversation session has been refreshed',
+          activeSessionId: activeAiSession.activeSessionId,
+          sessionRevision: activeAiSession.sessionRevision
+        });
+      }
+    }
+
     const aiTurnSequence = receiver.isAI ? await allocateAITurnSequence(req.user._id, receiver.aiCharacterId || 'char_lyra') : null;
     const msg = createMessage({
       senderId: req.user._id,
@@ -143,7 +164,8 @@ router.post('/', authMiddleware, async (req, res) => {
       content: (content || '').trim().slice(0, 2000),
       replyTo: replyTo || null,
       media: validMedia,
-      ...(aiTurnSequence ? { aiTurnSequence } : {})
+      ...(aiTurnSequence ? { aiTurnSequence } : {}),
+      ...(receiver.isAI && activeAiSession ? { conversationSessionId: activeAiSession.activeSessionId } : {})
     });
     await flushMessageWrites();
     if (receiver.isAI) {
@@ -194,7 +216,8 @@ router.post('/', authMiddleware, async (req, res) => {
           recentHistory,
           fastMode: process.env.PERSISTENT_SERVICE !== 'true',
           characterUserId: receiver._id,
-          timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone
+          timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone,
+          conversationSessionId: activeAiSession?.activeSessionId || null
         });
       } catch (e) {
         console.error('[AI] Pipeline execution error:', e.message);
@@ -221,6 +244,7 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
     const { handleUserMessageToAI } = require('../ai/conversationDirector');
     const storeDb = require('../db/store');
     const { exactMessage, recentHistory } = await resolveAITurn(storeDb, { userId: req.user._id, characterUser: receiver, messageId });
+    const generationRevision = await storeDb.getCurrentAITurnRevision?.(req.user._id, receiver.aiCharacterId || 'char_lyra');
 
     const io = req.app.get('io');
     const populated = populateMessage(exactMessage, req.user._id);
@@ -232,7 +256,9 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
       recentHistory,
       fastMode: process.env.PERSISTENT_SERVICE !== 'true',
       characterUserId: receiver._id,
-      timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone
+      timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone,
+      generationRevision,
+      conversationSessionId: exactMessage.conversationSessionId
     });
 
     res.json({ aiReplies: aiReplies || [], deliveryMode: process.env.PERSISTENT_SERVICE === 'true' ? 'server-paced' : 'client-paced' });
@@ -240,6 +266,83 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
     console.error('[AI Reply Endpoint] Error:', err.message);
     if (err.status) return res.status(err.status).json({ message: err.message });
     res.status(500).json({ message: 'Failed to generate AI reply', error: err.message });
+  }
+});
+
+// POST /messages/regenerate - Regenerate AI response for the latest user message
+router.post('/regenerate', authMiddleware, async (req, res) => {
+  try {
+    const { receiverId, messageId } = req.body || {};
+    const receiver = findUserById(receiverId || 'user_ai_lyra');
+    if (!receiver || !receiver.isAI) {
+      return res.status(400).json({ message: 'Target is not an AI contact' });
+    }
+    const characterId = receiver.aiCharacterId || 'char_lyra';
+
+    await refreshDurableMessages?.();
+    const exactMessage = await getDurableMessageById(messageId);
+    if (!exactMessage || String(exactMessage.senderId) !== String(req.user._id) || String(exactMessage.receiverId) !== String(receiver._id)) {
+      return res.status(404).json({ message: 'Triggering user message not found' });
+    }
+
+    const currentTurnMessageId = await getCurrentAITurnMessageId(req.user._id, characterId);
+    if (currentTurnMessageId && String(currentTurnMessageId) !== String(messageId)) {
+      return res.status(409).json({ message: 'A newer message has already superseded this turn' });
+    }
+
+    // Register regenerate revision (invalidates older in-flight generation)
+    const generationRevision = await registerAIRegenerate(req.user._id, characterId, messageId);
+
+    // Supersede previous AI response bubbles for this message
+    const { supersededIds, rejectedTexts } = await supersedeAIMessages(req.user._id, characterId, messageId);
+
+    const io = req.app.get('io');
+    if (supersededIds.length > 0) {
+      const payload = {
+        messageIds: supersededIds,
+        userMessageId: messageId,
+        supersededAt: new Date().toISOString()
+      };
+      emitToUser(io, req.user._id, 'msg_superseded', payload);
+      emitToUser(io, req.user._id, `msg_superseded:${req.user._id}:${receiver._id}`, payload);
+    }
+
+    // History excluding superseded bubbles and respecting session
+    const fullHistory = getConversation(req.user._id, receiver._id, { limit: 10 });
+    const recentHistory = fullHistory.filter(m =>
+      !m.isSessionBoundary &&
+      !m.isSuperseded &&
+      (!exactMessage.conversationSessionId || m.conversationSessionId === exactMessage.conversationSessionId) &&
+      String(m._id) !== String(messageId)
+    );
+
+    const { handleUserMessageToAI } = require('../ai/conversationDirector');
+    const populated = populateMessage(exactMessage, req.user._id);
+
+    const aiReplies = await handleUserMessageToAI({
+      storeDb: require('../db/store'),
+      io,
+      user: req.user,
+      userMessage: populated,
+      recentHistory: [...recentHistory, populated],
+      fastMode: process.env.PERSISTENT_SERVICE !== 'true',
+      characterUserId: receiver._id,
+      timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone,
+      isRegenerate: true,
+      rejectedResponses: rejectedTexts,
+      generationRevision,
+      conversationSessionId: exactMessage.conversationSessionId
+    });
+
+    res.json({
+      success: true,
+      supersededIds,
+      aiReplies: aiReplies || [],
+      deliveryMode: process.env.PERSISTENT_SERVICE === 'true' ? 'server-paced' : 'client-paced'
+    });
+  } catch (err) {
+    console.error('[Messages] Regenerate error:', err.message);
+    res.status(500).json({ message: 'Failed to regenerate reply', error: err.message });
   }
 });
 
