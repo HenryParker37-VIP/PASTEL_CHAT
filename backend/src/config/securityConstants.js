@@ -32,7 +32,10 @@ const COMPROMISED_LOGIN_CODES = new Set([
   'S2EX-9Q5E',
   'YTGR-MV8R',
   'P4TC-R6YY',
-  'KJ7T-FU7U'
+  'KJ7T-FU7U',
+  'LYRA-AI24',
+  'SYNT-ALIC',
+  'SYNT-BOB1'
 ]);
 
 module.exports = {

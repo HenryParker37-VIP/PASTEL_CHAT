@@ -53,11 +53,13 @@ router.post('/register', rateLimit({ name: 'auth-register', max: 60 }), (req, re
     if (trimmed.length > 30) return res.status(400).json({ message: 'Name too long (max 30)' });
     if (isNameTaken(trimmed)) return res.status(409).json({ message: 'Name already used' });
 
+    const isQA = /^qa_|^test_qa_/i.test(trimmed);
     const loginCode = generateLoginCode();
     const user = createUser({
       name: trimmed,
       loginCode,
-      avatar: defaultAvatar(trimmed)
+      avatar: defaultAvatar(trimmed),
+      isQA
     });
 
     res.json({ token: issueToken(user), user: authUserView(user) });
@@ -99,6 +101,10 @@ router.post('/login', rateLimit({ name: 'auth-login', max: 60 }), (req, res) => 
       accessCodeId = demoCode._id;
     } else {
       user = findUser({ loginCode: code });
+    }
+    // Lyra / AI / service accounts must NEVER be interactively login-able.
+    if (user && (user.isAI || user.isService || user.aiCharacterId || user._id === 'user_ai_lyra')) {
+      return res.status(401).json({ message: 'Invalid login code' });
     }
     if (!user || (user.isAdmin && !adminRole)) return res.status(401).json({ message: 'Invalid login code' });
     if (user.isSuspended) return res.status(403).json({ message: 'This account is suspended' });

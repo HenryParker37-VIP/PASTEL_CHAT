@@ -211,15 +211,27 @@ router.post('/qa/cleanup', requireOwner, adminWriteLimit, async (req, res) => {
     const safePrefix = typeof prefix === 'string' ? prefix.trim().toLowerCase() : 'qa_';
 
     let candidates = [];
+    const rejectedIds = [];
     if (Array.isArray(userIds) && userIds.length > 0) {
       const idSet = new Set(userIds.map(String));
-      candidates = store.users.filter((u) => idSet.has(String(u._id)) && !u.isAdmin && !u.isAI && u._id !== 'user_ai_lyra');
+      candidates = store.users.filter((u) => {
+        if (!idSet.has(String(u._id))) return false;
+        // SECURITY: Caller-supplied arbitrary userIds must NEVER make a normal account eligible for deletion.
+        if (u.isQA !== true || u.isAdmin || u.isAI || u._id === 'user_ai_lyra') {
+          rejectedIds.push(String(u._id));
+          return false;
+        }
+        return true;
+      });
+      if (rejectedIds.length > 0) {
+        console.warn('[Admin QA Cleanup] Rejected deletion of non-QA or protected accounts:', rejectedIds);
+      }
     } else {
       candidates = store.users.filter((u) => {
-        if (u.isAdmin || u.isAI || u._id === 'user_ai_lyra') return false;
+        // SECURITY: Only accounts explicitly marked as QA accounts are eligible for cleanup
+        if (u.isQA !== true || u.isAdmin || u.isAI || u._id === 'user_ai_lyra') return false;
         const name = (u.name || '').toLowerCase();
-        const code = (u.loginCode || '').toLowerCase();
-        return name.startsWith(safePrefix) || code.startsWith(safePrefix) || name.includes('disposable_test') || name.startsWith('test_qa');
+        return name.startsWith(safePrefix) || name.startsWith('test_qa_') || name.startsWith('qa_') || name.includes('disposable_test');
       });
     }
 

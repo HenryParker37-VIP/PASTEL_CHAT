@@ -11,6 +11,9 @@ function authenticateToken(token, { requireStoredSession = false } = {}) {
 
   let user = findUserById(decoded.userId);
   if (!user && decoded.name && !requireStoredSession) {
+    if (decoded.userId === 'user_ai_lyra' || decoded.userId?.startsWith('user_ai_') || decoded.isAI) {
+      return null;
+    }
     user = createUser({
       _id: decoded.userId,
       name: decoded.name,
@@ -20,7 +23,8 @@ function authenticateToken(token, { requireStoredSession = false } = {}) {
       loginMethod: decoded.loginMethod || 'code'
     });
   }
-  if (!user || user.isSuspended) return null;
+  // SECURITY: Lyra/AI/service accounts must never be interactively authenticated
+  if (!user || user.isSuspended || user.isAI || user.isService || user.aiCharacterId || user._id === 'user_ai_lyra') return null;
   if (Number(user.authVersion || 0) !== Number(decoded.ver || 0)) return null;
 
   const sid = decoded.sid || `sess-${decoded.userId}`;

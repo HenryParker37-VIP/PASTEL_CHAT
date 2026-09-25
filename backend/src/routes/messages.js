@@ -34,11 +34,13 @@ const {
 const { resolveAITurn } = require('../ai/resolveAITurn');
 
 function canAccessConversation(userId, friendId) {
-  const target = findUserById(friendId);
-  if (target && target.isAI) return true;
+  if (!userId || !friendId || String(userId) === String(friendId)) return false;
   const me = findUserById(userId);
-  if (me && me.isAI) return true;
-  return userId !== friendId && Boolean(findFriendship(userId, friendId) || findFriendship(friendId, userId));
+  if (!me || me.isAI || me.isService) return false;
+  const target = findUserById(friendId);
+  if (!target) return false;
+  if (target.isAI) return true; // legitimate user chatting with AI character
+  return Boolean(findFriendship(userId, friendId) || findFriendship(friendId, userId));
 }
 
 // GET /messages/with/:friendId - Fetch 1-on-1 conversation
