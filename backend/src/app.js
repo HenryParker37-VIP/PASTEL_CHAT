@@ -22,6 +22,7 @@ const stickerRoutes = require('./routes/stickers');
 const gifRoutes = require('./routes/gifs');
 const webrtcRoutes = require('./routes/webrtc');
 const aiRoutes = require('./routes/ai');
+const telegramRoutes = require('./routes/telegram');
 const setupSocket = require('./socket');
 const securityHeaders = require('./middleware/security');
 const rateLimit = require('./middleware/rateLimit');
@@ -50,7 +51,8 @@ for (const origin of productionOrigins) {
 
 function corsOrigin(origin, callback) {
   // Allow requests with no origin (like mobile apps, curl, serverless same-origin) or matching allowlist
-  if (!origin || allowedOrigins.includes(origin) || (process.env.REALTIME_RELAY !== 'true' && origin.endsWith('.vercel.app'))) return callback(null, true);
+  const isPastelVercel = typeof origin === 'string' && /^https:\/\/pastel-chat(-[a-z0-9-]+)?\.vercel\.app$/i.test(origin);
+  if (!origin || allowedOrigins.includes(origin) || (process.env.REALTIME_RELAY !== 'true' && isPastelVercel)) return callback(null, true);
   callback(new Error('CORS origin not allowed'));
 }
 
@@ -115,6 +117,8 @@ app.use('/api/gifs', rateLimit({ name: 'gifs', windowMs: 60_000, max: 60 }), gif
 app.use('/api/webrtc', webrtcRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/ai', aiRoutes);
+app.use('/telegram', telegramRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 app.get('/health', (_, res) => {
   const durable = storeDb.isDurableStorageEnabled();

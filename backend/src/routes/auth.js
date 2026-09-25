@@ -23,6 +23,8 @@ const { createUserToken } = require('../services/sessionAuth');
 const GOOGLE_CLIENT_ID = '803433790062-2dmhg2du471q65q2biheuli604b31vgv.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+const { COMPROMISED_LOGIN_CODES } = require('../config/securityConstants');
+
 function defaultAvatar(seed) {
   const safe = encodeURIComponent((seed || 'guest').toLowerCase().trim());
   return `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${safe}&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50`;
@@ -30,7 +32,7 @@ function defaultAvatar(seed) {
 function issueToken(user) { return createUserToken(user); }
 
 function authUserView(user, adminRole = null) {
-  const view = { ...userPublic(user) };
+  const view = { ...userPublic(user), chatColors: user.chatColors || {} };
   if (user.isAdmin === true) return { ...view, isAdmin: true, adminRole: adminRole || 'OWNER' };
   return { ...view, loginCode: user.loginCode, isAdmin: false };
 }
@@ -78,12 +80,17 @@ router.post('/login', rateLimit({ name: 'auth-login', max: 60 }), (req, res) => 
 
     if (!code) return res.status(400).json({ message: 'Login code is required' });
 
-    const ownerCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE || 'ADMN-0307');
+    // Reject any historically compromised / exposed login codes
+    if (COMPROMISED_LOGIN_CODES.has(code)) {
+      return res.status(401).json({ message: 'Invalid login code' });
+    }
+
+    const ownerCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
     const demoCode = findAccessCodeByCode(code);
     let user = null;
     let adminRole = null;
     let accessCodeId = null;
-    if (ownerCode && sameSecret(code, ownerCode)) {
+    if (ownerCode && !COMPROMISED_LOGIN_CODES.has(ownerCode) && sameSecret(code, ownerCode)) {
       user = findUser({ isAdmin: true });
       adminRole = 'OWNER';
     } else if (demoCode) {

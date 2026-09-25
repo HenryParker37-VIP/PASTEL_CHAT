@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { avatarBytes } = require('../services/aiAvatarMedia');
+const { COMPROMISED_LOGIN_CODES } = require('../config/securityConstants');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 let rawMongo = (process.env.MONGODB_URI || '').trim();
@@ -460,6 +461,8 @@ function load() {
     }
     
     ensureConfiguredAdmin();
+    revokeCompromisedAdminSessions();
+    rotateExposedCredentials();
   } catch (e) {
     console.error('[DB] Failed to load, starting fresh:', e.message);
   }
@@ -1268,7 +1271,17 @@ async function writeDurableSnapshot() {
 }
 
 async function flushPersist() {
-  if (!mongoConnected) return;
+  if (!mongoConnected) {
+    if (isDirty) {
+      try {
+        fs.writeFileSync(DB_PATH, JSON.stringify(store, null, 2));
+        isDirty = false;
+      } catch (e) {
+        console.error('[DB] Failed to save in flushPersist:', e.message);
+      }
+    }
+    return;
+  }
   await flushMessageWrites();
   if (pendingDurableWrite) {
     await pendingDurableWrite;
@@ -1371,6 +1384,9 @@ async function hydrateFromDurableStore() {
         lastHydratedUpdatedAt = snapshot.updatedAt ? new Date(snapshot.updatedAt).getTime() : Date.now();
         isDirty = false;
         ensureAICharacter();
+        ensureConfiguredAdmin();
+        revokeCompromisedAdminSessions();
+        rotateExposedCredentials();
         console.log(`[DB] Hydrated durable MongoDB state (${store.users.length} users, ${store.messages.length} messages)`);
 
         if (isBloated && process.env.WRITE_MODE !== 'read-only') {
@@ -1409,8 +1425,12 @@ function normalizeAccessCode(value) {
   return code;
 }
 function accessCodeHash(value) {
-  const secret = String(process.env.JWT_SECRET || 'pastel-chat-development-secret');
-  return crypto.createHmac('sha256', secret).update(normalizeAccessCode(value)).digest('hex');
+  const secret = (process.env.JWT_SECRET || '').trim();
+  if (process.env.NODE_ENV === 'production' && !secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  const safeSecret = secret || 'pastel-chat-development-secret';
+  return crypto.createHmac('sha256', safeSecret).update(normalizeAccessCode(value)).digest('hex');
 }
 function maskedAccessCode(record) {
   return `DEMO••••${record.codeSuffix || ''}`;
@@ -1483,28 +1503,66 @@ function revokeAccessCodeSessions(accessCodeId) {
   if (count) persist();
   return count;
 }
-function ensureConfiguredAdmin() {
-  const configuredAdminCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE || 'ADMN-0307');
-  const configuredAdmin = store.users.find((user) => user.isAdmin === true);
-  if (configuredAdminCode && configuredAdmin) {
-    if (configuredAdmin.loginCode !== null || configuredAdmin.adminRole !== 'OWNER') {
-      configuredAdmin.loginCode = null;
-      configuredAdmin.adminRole = 'OWNER';
-      persist();
+function revokeCompromisedAdminSessions() {
+  const adminUsers = store.users.filter((user) => user.isAdmin === true);
+  let updated = 0;
+  for (const admin of adminUsers) {
+    if (!admin.authVersion || admin.authVersion === 0) {
+      admin.authVersion = 1;
+      updated++;
     }
-  } else if (configuredAdminCode && !configuredAdmin) {
-    store.users.push({
-      _id: genId(), name: 'Admin', loginCode: null, isAdmin: true, adminRole: 'OWNER', authVersion: 0,
-      isOnline: false, createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(),
-      avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50', chatBackground: 'default', chatColor: null
-    });
-    persist();
-    console.log('[DB] Bootstrapped configured Admin user');
+  }
+  const adminUserIds = new Set(adminUsers.map((u) => String(u._id)));
+  const now = new Date().toISOString();
+  for (const session of (store.sessions || [])) {
+    if ((session.adminRole || adminUserIds.has(String(session.userId))) && !session.revokedAt) {
+      session.revokedAt = now;
+      updated++;
+    }
+  }
+  if (updated) persist();
+  return updated;
+}
+function rotateExposedCredentials() {
+  let rotated = 0;
+  for (const user of (store.users || [])) {
+    if (user.loginCode && COMPROMISED_LOGIN_CODES.has(user.loginCode)) {
+      if (user.isAdmin) {
+        user.loginCode = null;
+      } else {
+        user.loginCode = generateLoginCode();
+      }
+      user.authVersion = Number(user.authVersion || 0) + 1;
+      rotated++;
+    }
+  }
+  if (rotated) persist();
+  return rotated;
+}
+function ensureConfiguredAdmin() {
+  const configuredAdminCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
+  const configuredAdmin = store.users.find((user) => user.isAdmin === true);
+  if (configuredAdminCode && !COMPROMISED_LOGIN_CODES.has(configuredAdminCode)) {
+    if (configuredAdmin) {
+      if (configuredAdmin.loginCode !== null || configuredAdmin.adminRole !== 'OWNER') {
+        configuredAdmin.loginCode = null;
+        configuredAdmin.adminRole = 'OWNER';
+        persist();
+      }
+    } else {
+      store.users.push({
+        _id: genId(), name: 'Admin', loginCode: null, isAdmin: true, adminRole: 'OWNER', authVersion: 1,
+        isOnline: false, createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(),
+        avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=admin&backgroundColor=add8e6&radius=50', chatBackground: 'default', chatColor: null
+      });
+      persist();
+      console.log('[DB] Bootstrapped configured Admin user');
+    }
   } else if (!configuredAdmin) {
     console.warn('[DB] ADMIN_LOGIN_CODE is not configured; admin login is disabled.');
   }
   const configuredDemoCode = normalizeAccessCode(process.env.DEMO_LOGIN_CODE);
-  if (configuredDemoCode && !findAccessCodeByHash(accessCodeHash(configuredDemoCode))) {
+  if (configuredDemoCode && !COMPROMISED_LOGIN_CODES.has(configuredDemoCode) && !findAccessCodeByHash(accessCodeHash(configuredDemoCode))) {
     createAccessCode({ code: configuredDemoCode, label: 'Initial demo access', createdBy: 'system' });
     console.log('[DB] Bootstrapped configured demo access code');
   }
@@ -1514,6 +1572,8 @@ function seedFromSnapshot() {
   if (seedData) {
     applySnapshot(seedData);
     ensureConfiguredAdmin();
+    revokeCompromisedAdminSessions();
+    rotateExposedCredentials();
     persist();
   }
   return {
@@ -1529,12 +1589,12 @@ function genId() { return crypto.randomBytes(12).toString('hex'); }
 // Readable login code: 8 chars, no ambiguous letters (0/O/1/I/L)
 const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 function generateLoginCode() {
-  for (let attempt = 0; attempt < 50; attempt++) {
+  for (let attempt = 0; attempt < 100; attempt++) {
     const bytes = crypto.randomBytes(8);
     let code = '';
     for (let i = 0; i < 8; i++) code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
     const formatted = code.slice(0, 4) + '-' + code.slice(4);
-    if (!store.users.find((u) => u.loginCode === formatted)) return formatted;
+    if (!COMPROMISED_LOGIN_CODES.has(formatted) && !store.users.find((u) => u.loginCode === formatted)) return formatted;
   }
   throw new Error('Could not generate unique code');
 }
@@ -1727,7 +1787,7 @@ function userPublic(u) {
   if (!u) return null;
   return {
     _id: u._id, name: u.name, avatar: u.avatar,
-    chatBackground: u.chatBackground, chatColor: u.chatColor || null, chatColors: u.chatColors || {}, isOnline: !!u.isOnline,
+    chatBackground: u.chatBackground, chatColor: u.chatColor || null, isOnline: !!u.isOnline,
     bio: u.bio || '', status: u.status || '',
     loginMethod: u.loginMethod || 'code',
     isGoogleVerified: !!u.isGoogleVerified,
@@ -2469,6 +2529,44 @@ function createFeedback(userId, type, message) {
   return fb;
 }
 
+function deleteDisposableUser(userId) {
+  const uid = String(userId || '');
+  if (!uid) return false;
+  const user = store.users.find((u) => String(u._id) === uid);
+  // SECURITY: Never delete admin or AI character accounts
+  if (!user || user.isAdmin || user.isAI || uid === 'user_ai_lyra') {
+    return false;
+  }
+  store.users = store.users.filter((u) => String(u._id) !== uid);
+  store.sessions = store.sessions.filter((s) => String(s.userId) !== uid);
+  store.friendships = store.friendships.filter((f) => String(f.userId) !== uid && String(f.friendId) !== uid);
+  store.friendRequests = store.friendRequests.filter((r) => String(r.fromId) !== uid && String(r.toId) !== uid);
+  store.messages = store.messages.filter((m) => String(m.senderId) !== uid && String(m.receiverId) !== uid);
+  store.pushSubscriptions = store.pushSubscriptions.filter((p) => String(p.userId) !== uid);
+  store.notes = store.notes.filter((n) => String(n.userId) !== uid);
+  store.reminders = store.reminders.filter((r) => String(r.userId) !== uid);
+  store.feedback = store.feedback.filter((fb) => String(fb.userId) !== uid);
+  persist();
+  return true;
+}
+
+async function deleteDurableUser(userId) {
+  const localDeleted = deleteDisposableUser(userId);
+  if (!localDeleted) return false;
+  const db = await getDurableDatabase();
+  if (db) {
+    const uid = String(userId);
+    await Promise.allSettled([
+      db.collection('pastelchat_messages').deleteMany({ $or: [{ senderId: uid }, { receiverId: uid }] }),
+      db.collection('pastelchat_personal_layers').deleteMany({ userId: uid }),
+      db.collection('pastelchat_character_configs').deleteMany({ userId: uid }),
+      db.collection('pastelchat_ai_sessions').deleteMany({ userId: uid }),
+      db.collection('pastelchat_ai_turns').deleteMany({ userId: uid })
+    ]);
+  }
+  return true;
+}
+
 load();
 const ready = hydrateFromDurableStore();
 ready.then(() => {
@@ -2482,6 +2580,7 @@ ready.then(() => {
 module.exports = {
   store, persist, flushPersist, flushMessageWrites, refreshDurableMessages, getDurableMessageById, allocateAITurnSequence, registerAITurn, isCurrentAITurn, getCurrentAITurnMessageId, commitAIBubble,
   hydrateFromDurableStore, getDurableDatabase, ready, isDirty: () => Boolean(isDirty || pendingDurableWrite || pendingMessageWrites.size || inFlightMessageFlush), isDurableStorageEnabled: () => mongoConnected, isDurableStorageRequired: () => durableStorageRequired, genId, generateLoginCode,
+  deleteDisposableUser, deleteDurableUser,
   normalizeAccessCode, createAccessCode, generateDemoAccessCode, findAccessCodeByCode, findAccessCodeById, accessCodeView,
   markAccessCodeUsed, revokeAccessCode, revokeAccessCodeSessions,
   findUser, findUserById, findUserByName, findUserByVerificationCode, isNameTaken,

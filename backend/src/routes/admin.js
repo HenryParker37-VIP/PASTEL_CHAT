@@ -9,7 +9,7 @@ const {
   store, findUserById, getActiveSessionCount, updateUser, revokeUserSessions,
   createAuditLog, updateReport, createAnnouncement, createNotification, getStorageStatus,
   getReleases, createAccessCode, generateDemoAccessCode, accessCodeView, revokeAccessCode, revokeAccessCodeSessions,
-  seedFromSnapshot
+  seedFromSnapshot, deleteDisposableUser, deleteDurableUser
 } = require('../db/store');
 const { sendPushToUser, getPushLanguage } = require('../services/pushService');
 const { appVersion, buildId } = require('../version');
@@ -202,6 +202,51 @@ router.post('/users/:id/force-logout', requireOwner, adminWriteLimit, (req, res)
   updateUser(user._id, { authVersion: Number(user.authVersion || 0) + 1 });
   createAuditLog({ adminId: req.user._id, action: 'force_logout', targetType: 'user', targetId: user._id, metadata: { sessionsRevoked: revoked } });
   return res.json({ user: adminUserView(user), sessionsRevoked: revoked });
+});
+
+// POST /admin/qa/cleanup - Clean up disposable test/QA accounts (Owner only)
+router.post('/qa/cleanup', requireOwner, adminWriteLimit, async (req, res) => {
+  try {
+    const { userIds, prefix } = req.body || {};
+    const safePrefix = typeof prefix === 'string' ? prefix.trim().toLowerCase() : 'qa_';
+
+    let candidates = [];
+    if (Array.isArray(userIds) && userIds.length > 0) {
+      const idSet = new Set(userIds.map(String));
+      candidates = store.users.filter((u) => idSet.has(String(u._id)) && !u.isAdmin && !u.isAI && u._id !== 'user_ai_lyra');
+    } else {
+      candidates = store.users.filter((u) => {
+        if (u.isAdmin || u.isAI || u._id === 'user_ai_lyra') return false;
+        const name = (u.name || '').toLowerCase();
+        const code = (u.loginCode || '').toLowerCase();
+        return name.startsWith(safePrefix) || code.startsWith(safePrefix) || name.includes('disposable_test') || name.startsWith('test_qa');
+      });
+    }
+
+    const deletedIds = [];
+    for (const user of candidates) {
+      await deleteDurableUser(user._id);
+      deletedIds.push(user._id);
+    }
+
+    createAuditLog({
+      adminId: req.user._id,
+      action: 'disposable_qa_cleanup',
+      targetType: 'users',
+      targetId: 'batch',
+      metadata: { deletedCount: deletedIds.length, deletedIds }
+    });
+
+    return res.json({
+      success: true,
+      message: `Cleaned up ${deletedIds.length} disposable account(s)`,
+      deletedCount: deletedIds.length,
+      deletedIds
+    });
+  } catch (err) {
+    console.error('[Admin] QA cleanup error:', err.message);
+    return res.status(500).json({ message: 'Failed to clean up QA accounts' });
+  }
 });
 
 router.patch('/tickets/:id', requireOwner, adminWriteLimit, (req, res) => {

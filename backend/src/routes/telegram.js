@@ -21,12 +21,19 @@ function generateVerificationCode() {
 
 // Helper: Validate webhook signature
 function validateWebhookSignature(body, signature) {
-  if (!process.env.TELEGRAM_WEBHOOK_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET === 'secret') return true; // Skip if not strictly set
+  const secret = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+  if (process.env.NODE_ENV === 'production') {
+    if (!secret || secret === 'secret') return false; // Fail closed in production
+  } else if (!secret || secret === 'secret') {
+    return true; // Allow dev test without secret
+  }
   const hash = crypto
-    .createHmac('sha256', process.env.TELEGRAM_WEBHOOK_SECRET)
+    .createHmac('sha256', secret)
     .update(JSON.stringify(body))
     .digest('hex');
-  return hash === signature;
+  const a = Buffer.from(String(hash));
+  const b = Buffer.from(String(signature || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 async function handleTelegramVerification(code, chatId) {
