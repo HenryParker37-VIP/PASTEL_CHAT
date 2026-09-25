@@ -12,7 +12,8 @@ import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
 import AIDebugModal from '../components/AIDebugModal';
 import CharacterStudioModal from '../components/CharacterStudioModal';
-import { useToast, useConfirm } from '../components/Toast';
+import RefreshChatModal from '../components/RefreshChatModal';
+import { useToast } from '../components/Toast';
 import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
@@ -44,13 +45,14 @@ const Chat = () => {
   const { socket, connected, relayMode, setLyraAvatar } = useSocket();
   const { startCall, activeCall } = useCall();
   const { push } = useToast();
-  const confirm = useConfirm();
   const { t } = useLang();
   const navigate = useNavigate();
 
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const activeSessionIdRef = useRef(null);
+  const [refreshModalOpen, setRefreshModalOpen] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
 
   const initialCache = getCachedConversation(user?._id, friendId);
   const [messages, setMessages] = useState(() => initialCache?.messages || []);
@@ -169,14 +171,20 @@ const Chat = () => {
       setMessages((current) => {
         const serverIdSet = new Set(serverMsgs.map((m) => String(m._id)));
         const validCurrent = (current || []).filter((m) => {
-          if (m.isSuperseded) return false;
-          if (m._id && serverMsgs.length > 0 && !m.clientMessageId) {
-            return serverIdSet.has(String(m._id));
+          if (m.isSuperseded || m.isArchived) return false;
+          // If server returned a complete list (< 80 messages), any persisted server message not in serverIdSet has been archived/superseded/deleted
+          if (m._id && !m.clientMessageId) {
+            if (serverMsgs.length < 80) {
+              return serverIdSet.has(String(m._id));
+            }
+            if (serverIdSet.size > 0 && serverIdSet.has(String(m._id))) {
+              return true;
+            }
           }
           return true;
         });
         const merged = mergeMessages(validCurrent, serverMsgs, pending);
-        const cleanMerged = merged.filter((m) => !m.isSuperseded);
+        const cleanMerged = merged.filter((m) => !m.isSuperseded && !m.isArchived);
         setCachedConversation(user._id, friendId, { messages: cleanMerged });
         return cleanMerged;
       });
@@ -925,7 +933,23 @@ const Chat = () => {
         setActiveSessionId(data.sessionId);
         activeSessionIdRef.current = data.sessionId;
       }
+      if (data?.mode === 'clear') {
+        cancelActiveAiTurn('session_cleared');
+        aiBubbleIdsInFlightRef.current.clear();
+        setMessages([]);
+        if (user?._id) setCachedConversation(user._id, friendId, { messages: [] });
+      }
       fetchMessages(true);
+    };
+
+    const onAiChatCleared = (data) => {
+      if (friendId === 'user_ai_lyra' || friend?.isAI || data?.characterId === friend?.aiCharacterId) {
+        cancelActiveAiTurn('session_cleared');
+        aiBubbleIdsInFlightRef.current.clear();
+        setMessages([]);
+        if (user?._id) setCachedConversation(user._id, friendId, { messages: [] });
+        fetchMessages(true);
+      }
     };
 
     socket.on(`msg:${roomKey}`, onMessage);
@@ -942,6 +966,8 @@ const Chat = () => {
     socket.on(`msg_superseded:${reverseKey}`, onMsgSuperseded);
     socket.on('ai_session_refreshed', onAiSessionRefreshed);
     socket.on(`ai_session_refreshed:${roomKey}`, onAiSessionRefreshed);
+    socket.on('ai_chat_cleared', onAiChatCleared);
+    socket.on(`ai_chat_cleared:${roomKey}`, onAiChatCleared);
     // Re-fetch on socket reconnect to catch messages missed while disconnected
     socket.on('connect', fetchMessages);
 
@@ -974,6 +1000,8 @@ const Chat = () => {
       socket.off(`msg_superseded:${reverseKey}`, onMsgSuperseded);
       socket.off('ai_session_refreshed', onAiSessionRefreshed);
       socket.off(`ai_session_refreshed:${roomKey}`, onAiSessionRefreshed);
+      socket.off('ai_chat_cleared', onAiChatCleared);
+      socket.off(`ai_chat_cleared:${roomKey}`, onAiChatCleared);
       socket.off('connect', fetchMessages);
     };
   }, [socket, friendId, user, fetchMessages, friend, relayMode]);
@@ -1266,20 +1294,54 @@ const Chat = () => {
     }
   }, [cancelActiveAiTurn, deliverNextAiBubble, fetchMessages, friendId, isRegenerating, push, user?._id]);
 
-  const handleRefreshChat = useCallback(async () => {
-    const ok = await confirm({
-      title: t('refreshChatConfirmTitle') || 'Refresh this chat?',
-      message: t('refreshChatConfirmMessage') || "Your messages and Lyra's memories won't be deleted. This only starts a fresh conversation context.",
-      confirmLabel: t('refreshChatConfirmAction') || 'Refresh Chat',
-      cancelLabel: t('cancel') || 'Cancel',
-      tone: 'default',
-      icon: 'refresh'
-    });
-    if (!ok) return;
+  const handleRefreshChat = useCallback(() => {
+    setRefreshModalOpen(true);
+  }, []);
+
+  const handleRefreshClear = useCallback(async () => {
+    setRefreshLoading(true);
+    cancelActiveAiTurn('refresh_clear');
+    aiBubbleIdsInFlightRef.current.clear();
 
     try {
       const { data } = await api.post('/ai/conversation/refresh', {
-        characterId: friend?.aiCharacterId || 'char_lyra'
+        characterId: friend?.aiCharacterId || 'char_lyra',
+        mode: 'clear'
+      });
+      if (data?.sessionId) {
+        setActiveSessionId(data.sessionId);
+        activeSessionIdRef.current = data.sessionId;
+      }
+      setMessages([]);
+      if (user?._id) setCachedConversation(user._id, friendId, { messages: [] });
+      setRefreshModalOpen(false);
+      push({
+        title: t('refreshChatSuccessClear') || 'Cleared chat and started fresh with Lyra',
+        tone: 'ok',
+        icon: 'check'
+      });
+      setTimeout(() => fetchMessages(true), 400);
+    } catch (err) {
+      console.error('[Chat] Refresh clear failed:', err.message);
+      push({
+        title: err.response?.data?.message || err.message || 'Failed to refresh chat',
+        tone: 'danger',
+        icon: 'alert'
+      });
+    } finally {
+      setRefreshLoading(false);
+    }
+  }, [cancelActiveAiTurn, fetchMessages, friend?.aiCharacterId, friendId, push, t, user?._id]);
+
+  const handleRefreshKeep = useCallback(async () => {
+    setRefreshLoading(true);
+    cancelActiveAiTurn('refresh_keep');
+    aiBubbleIdsInFlightRef.current.clear();
+
+    try {
+      const { data } = await api.post('/ai/conversation/refresh', {
+        characterId: friend?.aiCharacterId || 'char_lyra',
+        mode: 'keep'
       });
       if (data?.sessionId) {
         setActiveSessionId(data.sessionId);
@@ -1293,21 +1355,24 @@ const Chat = () => {
           return next;
         });
       }
+      setRefreshModalOpen(false);
       push({
-        title: t('refreshChatSuccess') || 'Started a new conversation with Lyra',
+        title: t('refreshChatSuccessKeep') || t('refreshChatSuccess') || 'Started a fresh conversation context 🌱',
         tone: 'ok',
         icon: 'check'
       });
       setTimeout(() => fetchMessages(true), 400);
     } catch (err) {
-      console.error('[Chat] Refresh chat failed:', err.message);
+      console.error('[Chat] Refresh keep failed:', err.message);
       push({
         title: err.response?.data?.message || err.message || 'Failed to refresh chat',
         tone: 'danger',
         icon: 'alert'
       });
+    } finally {
+      setRefreshLoading(false);
     }
-  }, [confirm, fetchMessages, friend?.aiCharacterId, friendId, push, t, user?._id]);
+  }, [cancelActiveAiTurn, fetchMessages, friend?.aiCharacterId, friendId, push, t, user?._id]);
 
   const formatSearchTime = (ts) =>
     new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
@@ -1881,6 +1946,13 @@ const Chat = () => {
           }}
         />
       )}
+      <RefreshChatModal
+        open={refreshModalOpen}
+        onClose={() => !refreshLoading && setRefreshModalOpen(false)}
+        onClear={handleRefreshClear}
+        onKeep={handleRefreshKeep}
+        loading={refreshLoading}
+      />
     </div>
   );
 };

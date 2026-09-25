@@ -782,11 +782,57 @@ async function getActiveAISession(userId, characterId = AI_CHARACTER_ID) {
   return session;
 }
 
-async function refreshAISession(userId, characterId = AI_CHARACTER_ID) {
+async function archiveAIMessages(userId, characterId = AI_CHARACTER_ID) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('Message archival is disabled in read-only mode');
+  if (!userId) return { archivedCount: 0, archivedIds: [] };
+
+  const uid = String(userId);
+  const now = new Date().toISOString();
+  const archivedIds = [];
+
+  for (const m of store.messages) {
+    const sId = String(m.senderId?._id || m.senderId || '');
+    const rId = String(m.receiverId?._id || m.receiverId || '');
+    const isAiChat = (sId === uid && rId === AI_USER_ID) || (sId === AI_USER_ID && rId === uid);
+    if (isAiChat && !m.isArchived) {
+      m.isArchived = true;
+      m.archivedAt = now;
+      archivedIds.push(String(m._id));
+      queueMessageWrite(m, { isArchived: true, archivedAt: now });
+    }
+  }
+
+  if (MONGODB_URI) {
+    const db = await getDurableDatabase();
+    if (db) {
+      await db.collection('pastelchat_messages').updateMany(
+        {
+          $or: [
+            { 'data.senderId': uid, 'data.receiverId': AI_USER_ID },
+            { 'data.senderId': AI_USER_ID, 'data.receiverId': uid },
+            { 'data.senderId._id': uid, 'data.receiverId._id': AI_USER_ID },
+            { 'data.senderId._id': AI_USER_ID, 'data.receiverId._id': uid },
+            ...(archivedIds.length ? [{ _id: { $in: archivedIds } }] : [])
+          ]
+        },
+        { $set: { 'data.isArchived': true, 'data.archivedAt': now } },
+        { writeConcern: { w: 'majority' } }
+      );
+    }
+  }
+
+  await flushMessageWrites();
+  if (!MONGODB_URI) persist();
+
+  return { archivedCount: archivedIds.length, archivedIds };
+}
+
+async function refreshAISession(userId, characterId = AI_CHARACTER_ID, { mode = 'keep' } = {}) {
   if (process.env.WRITE_MODE === 'read-only') throw new Error('Session writes are disabled in read-only mode');
   if (!userId) throw new Error('User ID is required');
   const uid = String(userId);
   const cid = String(characterId || AI_CHARACTER_ID);
+  const refreshMode = mode === 'clear' ? 'clear' : 'keep';
   const newSessionId = `sess_${Date.now()}_${genId().slice(0, 6)}`;
   const now = new Date();
   let sessionRevision = 1;
@@ -799,7 +845,7 @@ async function refreshAISession(userId, characterId = AI_CHARACTER_ID) {
         { _id },
         {
           $inc: { sessionRevision: 1 },
-          $set: { activeSessionId: newSessionId, startedAt: now, updatedAt: now },
+          $set: { activeSessionId: newSessionId, mode: refreshMode, startedAt: now, updatedAt: now },
           $setOnInsert: { userId: uid, characterId: cid }
         },
         { upsert: true, returnDocument: 'after', writeConcern: { w: 'majority' } }
@@ -817,6 +863,7 @@ async function refreshAISession(userId, characterId = AI_CHARACTER_ID) {
       characterId: cid,
       activeSessionId: newSessionId,
       sessionRevision,
+      mode: refreshMode,
       startedAt: now.toISOString()
     };
   } else {
@@ -825,25 +872,32 @@ async function refreshAISession(userId, characterId = AI_CHARACTER_ID) {
       characterId: cid,
       activeSessionId: newSessionId,
       sessionRevision,
+      mode: refreshMode,
       startedAt: now.toISOString()
     });
   }
   if (!MONGODB_URI) persist();
 
-  // Create divider message
-  const boundaryMessage = createMessage({
-    senderId: AI_USER_ID,
-    receiverId: uid,
-    content: 'New conversation',
-    isSessionBoundary: true,
-    conversationSessionId: newSessionId
-  });
-  await flushMessageWrites();
+  let boundaryMessage = null;
+  if (refreshMode === 'clear') {
+    await archiveAIMessages(uid, cid);
+  } else {
+    // Create divider message for keep mode
+    boundaryMessage = createMessage({
+      senderId: AI_USER_ID,
+      receiverId: uid,
+      content: 'New conversation',
+      isSessionBoundary: true,
+      conversationSessionId: newSessionId
+    });
+    await flushMessageWrites();
+  }
 
   return {
     activeSessionId: newSessionId,
     sessionRevision,
-    boundaryMessage
+    boundaryMessage,
+    mode: refreshMode
   };
 }
 
@@ -1937,7 +1991,7 @@ function getConversation(userA, userB, { limit = 100, before = null, since = nul
   const uidA = String(userA || '');
   const uidB = String(userB || '');
   let msgs = store.messages.filter((m) => {
-    if (m.isSuperseded) return false;
+    if (m.isSuperseded || m.isArchived) return false;
     const sId = String(m.senderId?._id || m.senderId || '');
     const rId = String(m.receiverId?._id || m.receiverId || '');
     return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
@@ -1959,7 +2013,7 @@ function getPinnedMessages(userA, userB) {
   const uidB = String(userB || '');
   return store.messages
     .filter((m) => {
-      if (m.isSuperseded || !m.isPinned || m.isRecalled) return false;
+      if (m.isSuperseded || m.isArchived || !m.isPinned || m.isRecalled) return false;
       const sId = String(m.senderId?._id || m.senderId || '');
       const rId = String(m.receiverId?._id || m.receiverId || '');
       return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
@@ -1973,7 +2027,7 @@ function searchMessages(userA, userB, query) {
   const uidB = String(userB || '');
   return store.messages
     .filter((m) => {
-      if (m.isSuperseded || m.isRecalled || !m.content || !m.content.toLowerCase().includes(q)) return false;
+      if (m.isSuperseded || m.isArchived || m.isRecalled || !m.content || !m.content.toLowerCase().includes(q)) return false;
       const sId = String(m.senderId?._id || m.senderId || '');
       const rId = String(m.receiverId?._id || m.receiverId || '');
       return (sId === uidA && rId === uidB) || (sId === uidB && rId === uidA);
@@ -2457,5 +2511,5 @@ module.exports = {
   getAIMemories, addAIMemory, deleteAIMemory, hydrateAIPersonalLayer, hydrateAllAIPersonalLayers, flushAIPersonalLayer, getAILifeEvents, claimAIProactiveWindow, isAIUser, updateAIAvatar,
   storeAIAvatarMedia, getAIAvatarMedia,
   getUserCharacterConfig, setUserCharacterConfig, resetUserCharacterConfig, hydrateUserCharacterConfig,
-  getActiveAISession, refreshAISession, supersedeAIMessages, registerAIRegenerate, getCurrentAITurnRevision
+  getActiveAISession, refreshAISession, archiveAIMessages, supersedeAIMessages, registerAIRegenerate, getCurrentAITurnRevision
 };

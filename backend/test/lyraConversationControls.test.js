@@ -205,6 +205,100 @@ async function runTests() {
     assert.strictEqual(boundaryInTurn.length, 0, 'Session boundary markers must not be fed to model as dialogue');
     console.log('  ✅ Recent conversation context strictly isolated to current active session');
 
+    console.log('\n9. Testing "Clear & Start New" Refresh Chat mode...');
+    // Seed durable memory and character config to verify preservation
+    storeDb.addAIMemory({
+      userId: testUser._id,
+      characterId: 'char_lyra',
+      key: 'favorite_tea',
+      value: 'Jasmine green tea with honey',
+      category: 'preference'
+    });
+    storeDb.setUserCharacterConfig(testUser._id, 'char_lyra', {
+      about: 'My custom Lyra',
+      shouldRules: 'Be poetic and concise',
+      shouldNotRules: 'Do not use emojis'
+    });
+
+    // Pin the newMsg
+    const pinRes = await fetch(`${baseUrl}/messages/${newMsg._id}/pin`, {
+      method: 'POST',
+      headers: authHeaders
+    });
+    assert.strictEqual(pinRes.status, 200);
+
+    // Call Refresh Chat with mode: 'clear'
+    const refreshClearRes = await fetch(`${baseUrl}/ai/conversation/refresh`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        characterId: 'char_lyra',
+        mode: 'clear'
+      })
+    });
+    const refreshClearData = await refreshClearRes.json();
+    assert.strictEqual(refreshClearRes.status, 200);
+    assert.strictEqual(refreshClearData.success, true);
+    assert.strictEqual(refreshClearData.mode, 'clear');
+    assert.strictEqual(refreshClearData.boundaryMessage, null, 'Clear mode must not create a boundary divider message');
+    assert(refreshClearData.sessionId, 'Must generate new activeSessionId');
+    assert.notStrictEqual(refreshClearData.sessionId, newSessionId, 'SessionId must be refreshed');
+    const clearedSessionId = refreshClearData.sessionId;
+
+    // Verify getConversation returns an empty list for the active view
+    const convAfterClear = storeDb.getConversation(testUser._id, 'user_ai_lyra');
+    assert.strictEqual(convAfterClear.length, 0, 'Active conversation must be empty after Clear & Start New');
+    console.log('  ✅ getConversation query returns 0 messages after clear');
+
+    // Verify pinned messages query returns empty list
+    const pinnedAfterClear = storeDb.getPinnedMessages(testUser._id, 'user_ai_lyra');
+    assert.strictEqual(pinnedAfterClear.length, 0, 'Pinned messages must exclude archived messages');
+    console.log('  ✅ getPinnedMessages excludes archived messages');
+
+    // Verify searchMessages returns empty list
+    const searchAfterClear = storeDb.searchMessages(testUser._id, 'user_ai_lyra', 'favorite');
+    assert.strictEqual(searchAfterClear.length, 0, 'Search must exclude archived messages');
+    console.log('  ✅ searchMessages excludes archived messages');
+
+    // Verify durable personal memories are preserved
+    const memories = storeDb.getAIMemories(testUser._id, 'char_lyra');
+    assert(memories.length > 0, 'Personal memories must be preserved');
+    assert(memories.some(m => m.key === 'favorite_tea'), 'Specific personal memory must remain intact');
+    console.log('  ✅ Personal memories preserved completely');
+
+    // Verify Character Studio configuration is preserved
+    const charConfig = storeDb.getUserCharacterConfig(testUser._id, 'char_lyra');
+    assert(charConfig, 'Character config must be preserved');
+    assert.strictEqual(charConfig.about, 'My custom Lyra');
+    assert.strictEqual(charConfig.shouldRules, 'Be poetic and concise');
+    console.log('  ✅ Character Studio config (Should / Should Not) preserved completely');
+
+    // Verify subsequent prompt context in new session
+    const postClearMsgRes = await fetch(`${baseUrl}/messages`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        receiverId: 'user_ai_lyra',
+        content: 'Brand new start after clear!',
+        clientMessageId: `post-clear-${Date.now()}`,
+        generateAiReply: false,
+        conversationSessionId: clearedSessionId
+      })
+    });
+    const postClearMsg = await postClearMsgRes.json();
+    assert.strictEqual(postClearMsgRes.status, 201);
+
+    const postClearResolvedTurn = await resolveAITurn(storeDb, {
+      userId: testUser._id,
+      characterUser: lyra,
+      messageId: postClearMsg._id
+    });
+    assert(postClearResolvedTurn, 'Turn must resolve');
+    const postClearHistory = postClearResolvedTurn.recentHistory || [];
+    assert.strictEqual(postClearHistory.length, 1, 'Only the new message must exist in recentHistory after clear');
+    assert.strictEqual(String(postClearHistory[0]._id), String(postClearMsg._id));
+    console.log('  ✅ Subsequent prompt context contains only new session message with zero archived messages');
+
     console.log('\n🎉 ALL LYRA CONVERSATION CONTROLS TESTS PASSED!\n');
   } finally {
     server.close();
