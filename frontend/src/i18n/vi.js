@@ -363,7 +363,17 @@ const vi = {
   studioLocation: 'Vị trí của Lyra',
   studioLocationPlaceholder: 'Ví dụ: London, Vương quốc Anh hoặc Tokyo, Nhật Bản',
   studioTimezone: 'Múi giờ của Lyra',
-  studioTimezonePlaceholder: 'Ví dụ: Europe/London, Asia/Tokyo, America/New_York'
+  studioTimezonePlaceholder: 'Ví dụ: Europe/London, Asia/Tokyo, America/New_York',
+
+  // Regenerate & Refresh Chat
+  regenerateReply: 'Tạo lại câu trả lời',
+  regeneratingReply: 'Đang tạo lại...',
+  refreshChat: 'Làm mới cuộc trò chuyện',
+  refreshChatConfirmTitle: 'Làm mới trò chuyện',
+  refreshChatConfirmMessage: 'Làm mới cuộc trò chuyện này? Tin nhắn và ký ức của Lyra sẽ không bị xóa. Thao tác này chỉ bắt đầu một ngữ cảnh trò chuyện mới.',
+  refreshChatConfirmAction: 'Làm mới',
+  refreshChatSuccess: 'Đã bắt đầu ngữ cảnh trò chuyện mới 🌱',
+  newConversationDivider: 'Cuộc trò chuyện mới'
 };
 
 export default vi;

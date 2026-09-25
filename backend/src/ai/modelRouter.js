@@ -326,10 +326,29 @@ class AIModelRouter {
     history = [],
     systemPrompt,
     conversationKey = 'default',
-    memoryCount = 0
+    memoryCount = 0,
+    rejectedResponses = []
   }) {
     const startTime = Date.now();
     const recentOutputs = this.getRecentOutputs(conversationKey);
+
+    let effectiveSystemPrompt = systemPrompt;
+    if (Array.isArray(rejectedResponses) && rejectedResponses.length > 0) {
+      const rejectedClean = rejectedResponses.map(r => String(r || '').trim()).filter(Boolean);
+      if (rejectedClean.length > 0) {
+        effectiveSystemPrompt = `${systemPrompt}\n\n[REGENERATION DIRECTIVE - CRITICAL]: The user requested a new response and rejected your previous answer: "${rejectedClean.join(' ')}". Generate a GENUINELY DIFFERENT response with a fresh angle, tone, or perspective. Do NOT merely rephrase or paraphrase the rejected answer.`;
+      }
+    }
+
+    const isRepetitiveWithRejected = (bubbles) => {
+      if (!Array.isArray(rejectedResponses) || rejectedResponses.length === 0) return false;
+      const generatedText = bubbles.join(' ');
+      for (const rej of rejectedResponses) {
+        if (!rej) continue;
+        if (calculateWordOverlap(generatedText, rej) > 0.5) return true;
+      }
+      return false;
+    };
 
     // List of providers ordered by priority (OpenRouter is fastest at ~1.3s for serverless execution)
     const providerCandidates = [
@@ -369,13 +388,14 @@ class AIModelRouter {
       for (const model of candidate.models) {
         try {
           console.log(`[AI Router] Attempting ${candidate.provider} (${model})...`);
-          let result = await candidate.call(model, systemPrompt);
+          let result = await candidate.call(model, effectiveSystemPrompt);
 
-          // Check for repetitive response against recent assistant bubbles or echoing user
-          if (this.isRepetitiveOrEcho(result.bubbles, recentOutputs, userMessage)) {
-            console.log(`[AI Router] Repetition or echo detected for ${candidate.provider}. Retrying once with anti-repetition instruction.`);
+          // Check for repetitive response against recent assistant bubbles, echoing user, or rejected response
+          const needsRepetitionRetry = this.isRepetitiveOrEcho(result.bubbles, recentOutputs, userMessage) || isRepetitiveWithRejected(result.bubbles);
+          if (needsRepetitionRetry) {
+            console.log(`[AI Router] Repetition, echo, or rejected similarity detected for ${candidate.provider}. Retrying once with anti-repetition instruction.`);
             repetitionRetries += 1;
-            const steeringPrompt = `${systemPrompt}\n\nNOTE: Avoid repeating phrases or echoing the user's message like: "${result.bubbles.join(' ')}". Give a fresh, direct reaction to the user.`;
+            const steeringPrompt = `${effectiveSystemPrompt}\n\nNOTE: Avoid repeating phrases, echoing the user's message, or duplicating the rejected reply: "${result.bubbles.join(' ')}". Give a completely fresh, distinct reaction.`;
             try {
               const retryResult = await candidate.call(model, steeringPrompt);
               if (retryResult && retryResult.bubbles?.length > 0) {

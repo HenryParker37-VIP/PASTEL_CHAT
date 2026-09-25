@@ -3,13 +3,30 @@ import MessageItem from './MessageItem';
 import LoadingAnimation from './LoadingAnimation';
 import TypingIndicator from './TypingIndicator';
 import PastelIcon from './PastelIcon';
+import { useLang } from '../i18n';
 
-const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null, friend = null, onReply, onRecall, onReaction, onRetry, highlightId, conversationIdentity, onMessageVisible }) => {
+const MessageList = ({
+  messages = [],
+  loading,
+  typingUsers = [],
+  aiTyping = null,
+  friend = null,
+  onReply,
+  onRecall,
+  onReaction,
+  onRetry,
+  highlightId,
+  conversationIdentity,
+  onMessageVisible,
+  onRegenerate,
+  isRegenerating = false
+}) => {
+  const { t } = useLang();
   const containerRef = useRef(null);
   const initialPositionedRef = useRef(false);
   const previousMessageCountRef = useRef(0);
   const nearBottomRef = useRef(true);
-  const safeMessages = Array.isArray(messages) ? messages : [];
+  const safeMessages = (Array.isArray(messages) ? messages : []).filter((m) => !m.isSuperseded);
 
   const isNearBottom = (container) => (
     container.scrollHeight - container.scrollTop - container.clientHeight < 80
@@ -131,6 +148,34 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
     return groups;
   };
 
+  const isAiFriend = Boolean(friend && (friend.isAI || friend._id === 'user_ai_lyra'));
+
+  // Identify latest AI response group when communicating with Lyra
+  let latestAiBubbleIds = new Set();
+  let lastAiBubbleId = null;
+  let triggeringUserMessageId = null;
+
+  if (isAiFriend && safeMessages.length > 0) {
+    const reversed = [...safeMessages].map((m, i) => ({ m, i })).reverse();
+    const lastUserEntry = reversed.find(({ m }) => {
+      const sId = m.senderId?._id || m.senderId;
+      return sId !== 'user_ai_lyra' && !m.isSessionBoundary && !m.isSuperseded;
+    });
+
+    if (lastUserEntry) {
+      triggeringUserMessageId = lastUserEntry.m._id;
+      const subsequentAiMsgs = safeMessages.slice(lastUserEntry.i + 1).filter(m => {
+        const sId = m.senderId?._id || m.senderId;
+        return (sId === 'user_ai_lyra' || (friend && friend.isAI)) && !m.isSessionBoundary && !m.isSuperseded;
+      });
+
+      if (subsequentAiMsgs.length > 0) {
+        latestAiBubbleIds = new Set(subsequentAiMsgs.map(m => m._id));
+        lastAiBubbleId = subsequentAiMsgs[subsequentAiMsgs.length - 1]._id;
+      }
+    }
+  }
+
   const items = groupByDate(safeMessages);
 
   return (
@@ -177,6 +222,39 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
             </div>
           );
         }
+
+        if (item.data.isSessionBoundary) {
+          return (
+            <div key={item.id} className="session-divider-pill" style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '16px 0',
+              userSelect: 'none'
+            }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 14px',
+                borderRadius: '16px',
+                background: 'rgba(181, 234, 215, 0.35)',
+                border: '1px solid rgba(181, 234, 215, 0.65)',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                color: '#3d6352',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
+              }}>
+                <span>🌱 {t ? t('newConversationDivider') : 'New conversation'}</span>
+              </div>
+            </div>
+          );
+        }
+
+        const isLatestAiGroup = latestAiBubbleIds.has(item.data._id);
+        const isLastOfAiTurn = item.data._id === lastAiBubbleId;
+        const canRegenerate = isAiFriend && isLatestAiGroup && !aiTyping?.isTyping;
+
         return (
           <MessageItem
             key={item.id}
@@ -188,6 +266,10 @@ const MessageList = ({ messages = [], loading, typingUsers = [], aiTyping = null
             onRetry={onRetry}
             highlight={highlightId === item.id}
             conversationIdentity={conversationIdentity}
+            canRegenerate={canRegenerate}
+            isLastOfAiTurn={isLastOfAiTurn}
+            isRegenerating={isRegenerating}
+            onRegenerate={() => onRegenerate?.(triggeringUserMessageId)}
           />
         );
       })}

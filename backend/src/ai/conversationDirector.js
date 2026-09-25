@@ -76,7 +76,11 @@ async function executeLatestUserMessage({
   characterUserId = 'user_ai_lyra',
   router = modelRouter,
   delay = sleep,
-  timeZone = null
+  timeZone = null,
+  isRegenerate = false,
+  rejectedResponses = [],
+  generationRevision = null,
+  conversationSessionId = null
 }) {
   if (process.env.WRITE_MODE === 'read-only') return [];
   const aiUser = storeDb.findUserById(characterUserId);
@@ -100,7 +104,7 @@ async function executeLatestUserMessage({
   await storeDb.hydrateAIPersonalLayer?.(user._id, characterId);
   await storeDb.hydrateUserCharacterConfig?.(user._id, characterId);
   if (!await isCurrentTurn()) return [];
-  if (storeDb.getAIRelationship(user._id, characterId, false)?.shared_history?.some(entry => entry.userMessageId === String(userMessage._id))) return [];
+  if (!isRegenerate && storeDb.getAIRelationship(user._id, characterId, false)?.shared_history?.some(entry => entry.userMessageId === String(userMessage._id))) return [];
 
   const rawCharacter = storeDb.getAICharacter(characterId) || {
     name: aiUser.name || 'Lyra',
@@ -111,16 +115,20 @@ async function executeLatestUserMessage({
   const customConfig = storeDb.getUserCharacterConfig?.(user._id, characterId);
   const characterConfig = new CharacterConfig(rawCharacter, customConfig);
   const characterState = syncCharacterRhythm(storeDb, characterId);
-  // Only the current authenticated user turn may produce new durable facts.
-  const candidates = extractExplicitMemoryCandidates(userMessage.content);
-  processMemoryUpdates(storeDb, user._id, characterId, candidates, userMessage._id, userMessage.timestamp);
-  const communication = storeDb.getAIMemories(user._id, characterId).find(memory => memory.key === 'communication_preference');
-  if (communication) storeDb.updateAIRelationship(user._id, { communication_style: communication.value }, characterId);
-  const relationship = updateRelationshipOnInteraction(storeDb, user._id, {
-    characterId, messageId: userMessage._id, timeZone,
-    sleepIntent: /\b(?:good night|going to sleep|i'm going to bed)\b/i.test(userMessage.content || '')
-  });
-  await storeDb.flushAIPersonalLayer?.(user._id, characterId);
+
+  let relationship = storeDb.getAIRelationship(user._id, characterId);
+  // Only the current authenticated user turn may produce new durable facts (skip on regenerate).
+  if (!isRegenerate) {
+    const candidates = extractExplicitMemoryCandidates(userMessage.content);
+    processMemoryUpdates(storeDb, user._id, characterId, candidates, userMessage._id, userMessage.timestamp);
+    const communication = storeDb.getAIMemories(user._id, characterId).find(memory => memory.key === 'communication_preference');
+    if (communication) storeDb.updateAIRelationship(user._id, { communication_style: communication.value }, characterId);
+    relationship = updateRelationshipOnInteraction(storeDb, user._id, {
+      characterId, messageId: userMessage._id, timeZone,
+      sleepIntent: /\b(?:good night|going to sleep|i'm going to bed)\b/i.test(userMessage.content || '')
+    });
+    await storeDb.flushAIPersonalLayer?.(user._id, characterId);
+  }
   const allMemories = storeDb.getAIMemories(user._id, characterId);
   const relevantMemories = filterRelevantMemories(allMemories, userMessage.content, recentHistory);
 
@@ -135,7 +143,8 @@ async function executeLatestUserMessage({
     userTimeZone: timeZone || relationship?.time_zone || user?.timezone
   });
 
-  const cleanHistory = prepareContextHistory(recentHistory, userMessage.content, aiUser._id);
+  const validHistory = (recentHistory || []).filter(m => !m.isSessionBoundary && !m.isSuperseded);
+  const cleanHistory = prepareContextHistory(validHistory, userMessage.content, aiUser._id);
   const startTime = Date.now();
 
   const lyraSender = {
@@ -157,7 +166,8 @@ async function executeLatestUserMessage({
       history: cleanHistory,
       systemPrompt,
       conversationKey: key,
-      memoryCount: relevantMemories.length
+      memoryCount: relevantMemories.length,
+      rejectedResponses: isRegenerate ? rejectedResponses : []
     });
   } catch (err) {
     emitTyping(false);
@@ -218,10 +228,12 @@ async function executeLatestUserMessage({
       receiverId: user._id,
       content: bubbleText,
       aiDeliveryMode: fastMode ? 'client-paced' : 'server-paced',
-      replyTo: null
+      replyTo: null,
+      triggerMessageId: String(userMessage._id),
+      conversationSessionId: conversationSessionId || userMessage.conversationSessionId || null
     };
     const msg = storeDb.commitAIBubble
-      ? await storeDb.commitAIBubble(user._id, characterId, userMessage._id, bubble)
+      ? await storeDb.commitAIBubble(user._id, characterId, userMessage._id, bubble, generationRevision)
       : storeDb.createMessage(bubble);
     if (!msg) break;
 

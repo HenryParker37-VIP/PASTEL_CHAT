@@ -3019,5 +3019,12 @@ body.dark .admin-hub .admin-access-codes__new {
 @media (max-width: 900px) { .admin-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }.admin-health__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.admin-columns { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .admin-hub__header { align-items: flex-start; flex-direction: column; }.admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.admin-toolbar { grid-template-columns: 1fr 1fr; }.admin-search { grid-column: 1 / -1; }.admin-health__grid, .admin-ticket-grid { grid-template-columns: 1fr; }.admin-panel { padding: 15px; border-radius: 16px; }.admin-form-grid { grid-template-columns: 1fr; }.admin-form-grid__wide { grid-column: auto; }.admin-legend { flex-wrap: wrap; }.admin-actions { flex-wrap: wrap; } }
 @media (max-width: 680px) { .admin-access-codes__create { grid-template-columns: 1fr 1fr; }.admin-access-codes__create label:first-child { grid-column: 1 / -1; }.admin-access-codes__create .btn { grid-column: 1 / -1; }.admin-access-code { grid-template-columns: 1fr auto; }.admin-access-code .btn { grid-column: 1 / -1; justify-self: start; } }
-@media (max-width: 390px) { .admin-metric { padding: 10px; }.admin-metric strong { font-size: 16px; }.admin-toolbar { grid-template-columns: 1fr; }.admin-search { grid-column: auto; }.admin-pagination { align-items: flex-start; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { .admin-user-modal { animation: none; } }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-icon {
+  animation: spin 1s linear infinite;
+}

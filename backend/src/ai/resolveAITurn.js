@@ -14,7 +14,15 @@ async function resolveAITurn(storeDb, { userId, characterUser, messageId }) {
     throw new TurnResolutionError(409, 'Expected user message is unavailable');
   }
   const history = storeDb.getConversation(userId, characterUser._id, { limit: 10 });
-  const recentHistory = [...history.filter(message => String(message._id) !== String(messageId)), storeDb.populateMessage(exactMessage, userId)];
+  const recentHistory = [
+    ...history.filter(message =>
+      !message.isSessionBoundary &&
+      !message.isSuperseded &&
+      (!exactMessage.conversationSessionId || message.conversationSessionId === exactMessage.conversationSessionId) &&
+      String(message._id) !== String(messageId)
+    ),
+    storeDb.populateMessage(exactMessage, userId)
+  ];
   const characterId = characterUser.aiCharacterId || 'char_lyra';
   const currentId = await storeDb.getCurrentAITurnMessageId(userId, characterId);
   if (currentId && String(currentId) !== String(messageId)) {

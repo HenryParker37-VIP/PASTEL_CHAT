@@ -29,6 +29,7 @@ function deliverMessageChange(io, change) {
   const reactionChanged = fields.some(field => field === 'data.reactions' || field.startsWith('data.reactions.'));
   const receiptChanged = fields.some(field => ['data.deliveredAt', 'data.readAt', 'data.deliveryReceipts'].some(prefix => field === prefix || field.startsWith(`${prefix}.`)));
   const recallChanged = fields.some(field => field === 'data.isRecalled');
+  const supersededChanged = fields.some(field => field === 'data.isSuperseded');
 
   if (message.groupId) {
     const group = store.findGroup(message.groupId);
@@ -48,6 +49,8 @@ function deliverMessageChange(io, change) {
     if (isInsert) for (const name of names) emitToUsers(io, participants, `msg:${name}`, store.populateMessage(message));
     if (reactionChanged) for (const name of names) emitToUsers(io, participants, `msg_reaction:${name}`, { messageId: message._id, reactions: message.reactions });
     if (recallChanged) for (const name of names) emitToUsers(io, participants, `msg_recall:${name}`, { messageId: message._id });
+    if (supersededChanged) for (const name of names) emitToUsers(io, participants, `msg_superseded:${name}`, { messageIds: [message._id], supersededAt: message.supersededAt });
+    if (supersededChanged) emitToUsers(io, participants, 'msg_superseded', { messageIds: [message._id], supersededAt: message.supersededAt });
   }
   if (receiptChanged && senderId) {
     const groupReceipts = Object.values(message.deliveryReceipts || {});
@@ -159,6 +162,15 @@ async function startRealtimeRelay(io) {
       for (const recipientId of recipients) emitToUser(io, recipientId, `shared_media_visibility:${recipientId}`, { _id: photo._id, isHidden: photo.isHidden });
     }
   }, [{ $project: { 'fullDocument.dataUrl': 0 } }]);
+  watch('pastelchat_ai_sessions', async change => {
+    const session = change.fullDocument;
+    if (!session?._id || !session.userId) return;
+    emitToUser(io, session.userId, 'ai_session_refreshed', {
+      characterId: session.characterId || 'char_lyra',
+      activeSessionId: session.activeSessionId,
+      sessionRevision: session.sessionRevision
+    });
+  });
   console.log('[Relay] Change streams attached');
   return () => {
     stopped = true;

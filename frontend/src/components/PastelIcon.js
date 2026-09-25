@@ -63,6 +63,7 @@ const glyphs = {
   flip: <><path d="M7 7h10l-2.5-2.5M17 7l-2.5 2.5M17 17H7l2.5 2.5M7 17l2.5-2.5" {...common}/></>,
   'picture-in-picture': <><rect x="3" y="5" width="18" height="14" rx="2" {...common}/><rect x="13" y="12" width="5" height="4" rx=".8" {...common}/></>,
   gift: <><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M8.3 7C6 7 5.5 4 7.7 4c1.9 0 3.2 2 4.3 3M15.7 7c2.3 0 2.8-3 0-3-1.9 0-3.2 2-4.3 3" {...common}/></>,
+  refresh: <><path d="M21 4v6h-6" {...common}/><path d="M3 20v-6h6" {...common}/><path d="M20.5 13A8.5 8.5 0 0 1 5.5 17L3 14M3.5 11A8.5 8.5 0 0 1 18.5 7L21 10" {...common}/></>,
 };
 
 export const PastelIcon = ({ name, size = 20, title, className = '', strokeWidth, ...props }) => {
