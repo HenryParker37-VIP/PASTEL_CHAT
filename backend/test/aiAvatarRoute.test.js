@@ -10,14 +10,14 @@ require.cache[authPath] = {
   id: authPath,
   filename: authPath,
   loaded: true,
-  exports: (req, _res, next) => { req.user = { _id: 'test-user' }; next(); }
+  exports: (req, _res, next) => { req.user = { _id: 'test-user', isAdmin: true }; req.adminRole = 'OWNER'; next(); }
 };
 
 const savedMedia = new Map();
 const emitted = [];
 let stateAvatar = null;
 let flushCount = 0;
-storeDb.store.users = [{ _id: 'test-user', isAI: false }];
+storeDb.store.users = [{ _id: 'test-user', isAdmin: true, isAI: false }];
 storeDb.storeAIAvatarMedia = async (media) => { savedMedia.set(media.version, media); };
 storeDb.getAIAvatarMedia = async (version) => {
   const item = savedMedia.get(version);

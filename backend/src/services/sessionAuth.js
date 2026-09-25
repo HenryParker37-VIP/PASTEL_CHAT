@@ -16,7 +16,7 @@ function authenticateToken(token, { requireStoredSession = false } = {}) {
       name: decoded.name,
       loginCode: decoded.loginCode,
       avatar: decoded.avatar,
-      isAdmin: Boolean(decoded.isAdmin),
+      isAdmin: false, // SECURITY: Synthesized users from tokens never receive admin rights
       loginMethod: decoded.loginMethod || 'code'
     });
   }
@@ -32,7 +32,7 @@ function authenticateToken(token, { requireStoredSession = false } = {}) {
       _id: sid,
       userId: user._id,
       expiresAt: exp,
-      adminRole: user.isAdmin ? 'OWNER' : null
+      adminRole: user.isAdmin === true ? 'OWNER' : null
     });
   }
 
@@ -42,7 +42,8 @@ function authenticateToken(token, { requireStoredSession = false } = {}) {
     if (!accessCode || accessCodeView(accessCode).status !== 'Active') return null;
   }
   if (!requireStoredSession) touchSession(session._id);
-  const adminRole = session.adminRole || (user.isAdmin === true ? 'OWNER' : null);
+  // SECURITY: Admin role derives strictly from server-side database user record.
+  const adminRole = user.isAdmin === true ? (session.adminRole || 'OWNER') : null;
   return { user, session, decoded, adminRole };
 }
 

@@ -19,6 +19,10 @@ router.get('/search', authMiddleware, (req, res) => {
 router.get('/:id', authMiddleware, (req, res) => {
   const user = findUserById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
+  const isOwner = String(user._id) === String(req.user._id);
+  if (isOwner) {
+    return res.json({ ...userPublic(user), chatColors: user.chatColors || {}, loginCode: user.loginCode });
+  }
   res.json(userPublic(user));
 });
 
@@ -39,7 +43,7 @@ router.put('/me', authMiddleware, (req, res) => {
   if (typeof req.body.bio === 'string') allowed.bio = req.body.bio.slice(0, 120);
   if (typeof req.body.status === 'string') allowed.status = req.body.status.slice(0, 60);
   const user = updateUser(req.user._id, allowed);
-  res.json({ ...userPublic(user), loginCode: user.loginCode });
+  res.json({ ...userPublic(user), chatColors: user.chatColors || {}, loginCode: user.loginCode });
 });
 
 module.exports = router;

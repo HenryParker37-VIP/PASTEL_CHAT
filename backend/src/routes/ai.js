@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const requireAdmin = require('../middleware/admin');
 const storeDb = require('../db/store');
 const { syncCharacterRhythm, getConversationDebug } = require('../ai/conversationDirector');
 const { triggerProactiveTick } = require('../ai/proactiveEngine');
@@ -282,6 +283,9 @@ router.get('/debug/conversation', authMiddleware, async (req, res) => {
 
 // POST /ai/proactive/tick - Trigger proactive check-in (admin or debug)
 router.post('/proactive/tick', authMiddleware, async (req, res) => {
+  if (process.env.NODE_ENV === 'production' && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Proactive tick access is restricted' });
+  }
   try {
     const io = req.app.get('io');
     const { targetUserId } = req.body || {};
@@ -297,6 +301,9 @@ router.post('/proactive/tick', authMiddleware, async (req, res) => {
 
 // POST /ai/debug/reset-relationship - Reset memories and relationship for test
 router.post('/debug/reset-relationship', authMiddleware, async (req, res) => {
+  if (process.env.NODE_ENV === 'production' && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Debug access is restricted' });
+  }
   try {
     await storeDb.hydrateAIPersonalLayer(req.user._id);
     const memories = storeDb.getAIMemories(req.user._id);
@@ -330,7 +337,8 @@ router.post('/debug/reset-relationship', authMiddleware, async (req, res) => {
 });
 
 // POST /ai/avatar - Store image bytes separately and keep only a versioned URL in state.
-router.post('/avatar', authMiddleware, async (req, res) => {
+// Exclusively restricted to authenticated administrators.
+router.post('/avatar', requireAdmin, async (req, res) => {
   try {
     const { avatar } = req.body;
     if (!avatar || typeof avatar !== 'string') {
