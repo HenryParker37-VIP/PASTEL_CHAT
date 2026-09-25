@@ -13,6 +13,7 @@ const fetch = globalThis.fetch || require('node-fetch');
 const { GEMINI_API_KEY, NVIDIA_API_KEY, OPENROUTER_API_KEY } = require('./config');
 
 const ALLOWED_REACTIONS = new Set(['👍', '❤️', '😂', '😮', '😢', '😡']);
+const ABBREVIATIONS_REGEX = /\b(?:dr|mr|mrs|ms|prof|e\.g|i\.e|etc|vs|no)\.$/i;
 
 function normalizeText(text) {
   return String(text || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -28,65 +29,196 @@ function calculateWordOverlap(a, b) {
 }
 
 /**
- * Parses structured JSON or recovers natural-language text as bubbles.
- * Formatting fallback is allowed; conversational fallback is NEVER allowed.
+ * Checks whether a candidate string is raw structured syntax or malformed JSON artifacts
+ * that must NEVER be exposed as a visible chat bubble.
  */
-function parseAndRecoverResponse(rawText) {
-  if (!rawText || typeof rawText !== 'string') return null;
+function isRawStructuredArtifact(str) {
+  if (!str || typeof str !== 'string') return true;
+  const s = str.trim();
+  if (s.length === 0) return true;
 
-  // 1. Strip thinking tags if present from reasoning models
-  let cleanText = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  // Pure JSON structural syntax characters
+  if (/^[\{\}\[\]"':,\s]+$/.test(s)) return true;
 
-  // 2. Try JSON parsing candidates
-  const candidates = [cleanText];
-  const codeBlockMatch = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (codeBlockMatch?.[1]) candidates.push(codeBlockMatch[1].trim());
+  // Complete JSON objects or arrays leaking as strings
+  if (/^\{[\s\S]*\}$/.test(s) && (s.includes('"') || s.includes(':'))) return true;
+  if (/^\[[\s\S]*\]$/.test(s) && (s.includes('"') || s.includes(','))) return true;
 
-  // Greedy and non-greedy JSON object extraction
-  const jsonObjectMatch = cleanText.match(/\{[\s\S]*\}/);
-  if (jsonObjectMatch?.[0]) candidates.push(jsonObjectMatch[0].trim());
+  // Structural key markers
+  if (/^"?bubbles"?\s*:\s*/i.test(s)) return true;
+  if (/^"?reaction"?\s*:\s*/i.test(s)) return true;
+  if (/\{"?bubbles"?\s*:/i.test(s)) return true;
+  if (/\{"?reaction"?\s*:/i.test(s)) return true;
+  if (/\{"?message"?\s*:/i.test(s)) return true;
+  if (/\{"?reply"?\s*:/i.test(s)) return true;
+  if (/\{"?content"?\s*:/i.test(s)) return true;
 
-  for (const candidate of candidates) {
-    try {
-      // Fix potential trailing commas before closing braces/brackets
-      const sanitized = candidate.replace(/,\s*([}\]])/g, '$1');
-      const parsed = JSON.parse(sanitized);
-      if (parsed) {
-        let rawBubbles = parsed.bubbles || parsed.messages || parsed.reply;
-        if (typeof rawBubbles === 'string') rawBubbles = [rawBubbles];
-        if (Array.isArray(rawBubbles)) {
-          const bubbles = rawBubbles
-            .map(b => (typeof b === 'string' ? b : b?.text || ''))
-            .map(t => cleanBubbleText(t))
-            .filter(Boolean)
-            .slice(0, 5);
+  // Markdown code fences wrapping JSON or empty code fences
+  if (/^```(?:json)?\s*[\{\[]/i.test(s) || /^```\s*$/i.test(s) || /```json\b/i.test(s)) return true;
 
-          if (bubbles.length > 0) {
-            return {
-              bubbles,
-              reaction: ALLOWED_REACTIONS.has(parsed.reaction) ? parsed.reaction : null
-            };
-          }
-        }
-      }
-    } catch (_) {
-      // Continue to next candidate or formatting recovery
+  // Trailing JSON remnants like '"]}' or '", "'
+  if (/^"?[}\]]+$/.test(s)) return true;
+  if (/"\s*,\s*"/.test(s) && (s.startsWith('"') || s.endsWith('"'))) return true;
+
+  return false;
+}
+
+/**
+ * Strict validator for a chat bubble's text content.
+ */
+function isValidBubbleText(str) {
+  if (!str || typeof str !== 'string') return false;
+  const trimmed = str.trim();
+  if (trimmed.length === 0) return false;
+  if (/data:[^\s]+;base64,|<svg|<img/i.test(trimmed)) return false;
+  if (isRawStructuredArtifact(trimmed)) return false;
+  return true;
+}
+
+function cleanBubbleText(str) {
+  if (!str) return '';
+  return String(str)
+    .trim()
+    .replace(/^(?:Lyra|Assistant|AI|User):\s+/i, '') // strip speaker prefix only if followed by space
+    .replace(/^["'`“]+|["'`”]+$/g, '') // strip wrapping quotes
+    .replace(/^,\s*|,\s*$/g, '') // strip trailing/leading commas
+    .trim();
+}
+
+/**
+ * Tries direct JSON parse and safe syntax repairs (trailing commas, unquoted keys,
+ * single quotes, and truncated braces/brackets).
+ */
+function tryRepairAndParseJson(text) {
+  if (!text || typeof text !== 'string') return null;
+  let str = text.trim();
+
+  // Strip code fences if wrapped
+  const codeBlockMatch = str.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch?.[1]) str = codeBlockMatch[1].trim();
+
+  // Strip thinking tags
+  str = str.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // Isolate outermost JSON object bounds if present
+  const firstBrace = str.indexOf('{');
+  if (firstBrace !== -1) {
+    const lastBrace = str.lastIndexOf('}');
+    if (lastBrace > firstBrace) {
+      str = str.substring(firstBrace, lastBrace + 1).trim();
+    } else {
+      str = str.substring(firstBrace).trim();
     }
   }
 
-  // 3. Formatting Recovery: If JSON was malformed or model spoke in plain text,
-  // recover the actual model-generated text rather than dropping it or using canned text!
-  const lines = cleanText
+  const attempts = [
+    str,
+    // Fix trailing commas
+    str.replace(/,\s*([}\]])/g, '$1'),
+    // Fix unquoted keys
+    str.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/,\s*([}\]])/g, '$1'),
+    // Fix Python/single-quoted JSON
+    str.replace(/'/g, '"').replace(/,\s*([}\]])/g, '$1')
+  ];
+
+  for (const candidate of attempts) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_) {}
+  }
+
+  // Repair truncated JSON by balancing unclosed quotes, brackets, and braces
+  for (const base of attempts) {
+    let repaired = base;
+    const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
+    if (quoteCount % 2 !== 0) repaired += '"';
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    const closeBrackets = (repaired.match(/\]/g) || []).length;
+    if (openBrackets > closeBrackets) repaired += ']'.repeat(openBrackets - closeBrackets);
+    const openBraces = (repaired.match(/\{/g) || []).length;
+    const closeBraces = (repaired.match(/\}/g) || []).length;
+    if (openBraces > closeBraces) repaired += '}'.repeat(openBraces - closeBraces);
+
+    try {
+      const parsed = JSON.parse(repaired);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_) {}
+  }
+
+  return null;
+}
+
+/**
+ * Regex-based extraction of string elements from `"bubbles": [...]` when JSON syntax is corrupted.
+ */
+function extractBubblesFromMalformedText(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  const match = text.match(/"?bubbles"?\s*:\s*\[([\s\S]*)/i);
+  if (!match) return null;
+
+  let arrayContent = match[1];
+  const closingBracketIdx = arrayContent.indexOf(']');
+  const nextKeyMatch = arrayContent.match(/,?\s*"?[a-zA-Z0-9_]+"?\s*:/);
+
+  if (closingBracketIdx !== -1) {
+    arrayContent = arrayContent.substring(0, closingBracketIdx);
+  } else if (nextKeyMatch && nextKeyMatch.index !== undefined) {
+    arrayContent = arrayContent.substring(0, nextKeyMatch.index);
+  }
+
+  const stringRegex = /"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g;
+  const extracted = [];
+  let m;
+  while ((m = stringRegex.exec(arrayContent)) !== null) {
+    const rawVal = m[1] !== undefined ? m[1] : m[2];
+    try {
+      const unescaped = JSON.parse(`"${rawVal.replace(/"/g, '\\"')}"`);
+      const cleaned = cleanBubbleText(unescaped);
+      if (cleaned && isValidBubbleText(cleaned)) {
+        extracted.push(cleaned);
+      }
+    } catch (_) {
+      const cleaned = cleanBubbleText(rawVal);
+      if (cleaned && isValidBubbleText(cleaned)) {
+        extracted.push(cleaned);
+      }
+    }
+  }
+
+  if (extracted.length > 0) {
+    let reaction = null;
+    const reactionMatch = text.match(/"?reaction"?\s*:\s*["']?([^"',}\]\s]+)/i);
+    if (reactionMatch && ALLOWED_REACTIONS.has(reactionMatch[1])) {
+      reaction = reactionMatch[1];
+    }
+    return {
+      bubbles: extracted.slice(0, 5),
+      reaction
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Recovers plain-text response ONLY if no structured JSON markers exist.
+ * Never turns malformed JSON into chat messages.
+ */
+function recoverPlainTextResponse(text) {
+  if (!text || typeof text !== 'string') return null;
+  const clean = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // If text contains ANY structured JSON markers, DO NOT treat it as plain text!
+  if (/^\s*\{|^\s*\[|"bubbles"|'bubbles'|"reaction"|'reaction'|\{\s*"|```/i.test(clean)) {
+    return null;
+  }
+
+  const lines = clean
     .split(/\n\s*\n+/)
     .map(line => cleanBubbleText(line))
-    .filter(line => {
-      if (!line || line.length < 2) return false;
-      // Filter out JSON structural syntax artifacts
-      if (/^[\{\}\[\]"':,\s]+$/.test(line)) return false;
-      if (/^"?bubbles"?:?\s*\[?/i.test(line)) return false;
-      if (/^"?reaction"?:?/i.test(line)) return false;
-      return true;
-    });
+    .filter(line => isValidBubbleText(line));
 
   if (lines.length > 0) {
     return {
@@ -98,14 +230,138 @@ function parseAndRecoverResponse(rawText) {
   return null;
 }
 
-function cleanBubbleText(str) {
-  if (!str) return '';
-  return String(str)
-    .trim()
-    .replace(/^(?:Lyra|Assistant|AI|User):\s+/i, '') // strip speaker prefix only if followed by space
-    .replace(/^["'`“]+|["'`”]+$/g, '') // strip wrapping quotes
-    .replace(/^,\s*|,\s*$/g, '') // strip trailing/leading commas
-    .trim();
+/**
+ * Checks whether user Character Studio explicitly prefers longer messages or in-depth paragraphs.
+ */
+function userPrefersLongMessages(customConfig) {
+  if (!customConfig || typeof customConfig !== 'object') return false;
+  const combined = [
+    customConfig.speakingStyle,
+    customConfig.shouldRules,
+    customConfig.personality,
+    customConfig.thoughtProcess
+  ].filter(Boolean).join(' ');
+
+  return /\b(?:long(?:er)?\s+messages?|long(?:er)?\s+texts?|paragraphs?|in-depth|detailed\s+(?:explanations?|answers?|messages?)|write\s+more|verbose|comprehensive\s+replies)\b/i.test(combined);
+}
+
+/**
+ * Splits a chunky bubble into natural conversational beats along sentence / reaction boundaries.
+ */
+function splitChunkyBubble(text, maxSegments = 5) {
+  if (!text || typeof text !== 'string') return [];
+  const clean = cleanBubbleText(text);
+  if (clean.length <= 85 || maxSegments <= 1) return [clean];
+
+  // Avoid splitting code blocks or URLs
+  if (/```|`[^`]+`|\bhttps?:\/\//i.test(clean)) return [clean];
+
+  // Split on sentence terminators [.!?] (excluding ellipses .. or ...) followed by space/quote/emoji
+  const raw = clean.split(/(?<=(?<!\.)(?:!+|\?+|\.(?!\.))["'”’]?)\s+(?=[A-Za-z0-9"“'‘\p{L}])/u);
+  if (raw.length <= 1) return [clean];
+
+  const merged = [];
+  for (let i = 0; i < raw.length; i++) {
+    const part = raw[i].trim();
+    if (!part) continue;
+    if (merged.length > 0 && ABBREVIATIONS_REGEX.test(merged[merged.length - 1])) {
+      merged[merged.length - 1] += ' ' + part;
+    } else {
+      merged.push(part);
+    }
+  }
+
+  // Ensure total segments does not exceed maxSegments
+  while (merged.length > maxSegments) {
+    const last = merged.pop();
+    merged[merged.length - 1] += ' ' + last;
+  }
+
+  return merged.map(s => cleanBubbleText(s)).filter(s => isValidBubbleText(s));
+}
+
+/**
+ * Normalizes conversation bubbles into natural conversational beats:
+ * - Simple replies remain 1 bubble (no artificial padding).
+ * - Multi-thought / chunky bubbles are naturally grouped into 2-4 beats.
+ * - Explanatory replies up to 5 bubbles max.
+ * - Preserves Character Studio long-message preference if configured.
+ */
+function normalizeConversationBeats(bubbles, customConfig = null) {
+  if (!Array.isArray(bubbles) || bubbles.length === 0) return [];
+
+  const validBubbles = bubbles
+    .map(b => cleanBubbleText(b))
+    .filter(b => isValidBubbleText(b));
+
+  if (validBubbles.length === 0) return [];
+
+  if (userPrefersLongMessages(customConfig)) {
+    return validBubbles.slice(0, 5);
+  }
+
+  const result = [];
+  for (let i = 0; i < validBubbles.length; i++) {
+    const current = validBubbles[i];
+    const remainingSlots = 5 - result.length - (validBubbles.length - 1 - i);
+
+    if (current.length > 85 && remainingSlots > 1) {
+      const splitBeats = splitChunkyBubble(current, remainingSlots);
+      result.push(...splitBeats);
+    } else {
+      result.push(current);
+    }
+
+    if (result.length >= 5) break;
+  }
+
+  return result.slice(0, 5);
+}
+
+/**
+ * Parses structured JSON or safely recovers natural-language text as bubbles.
+ * Formatting fallback is allowed; conversational fallback is NEVER allowed.
+ * Raw JSON / structured syntax is NEVER exposed as a bubble.
+ */
+function parseAndRecoverResponse(rawText) {
+  if (!rawText || typeof rawText !== 'string') return null;
+
+  const cleanText = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // 1. Direct parse & safe syntax repairs
+  const parsed = tryRepairAndParseJson(cleanText);
+  if (parsed) {
+    let rawBubbles = parsed.bubbles || parsed.messages || parsed.reply;
+    if (typeof rawBubbles === 'string') rawBubbles = [rawBubbles];
+    if (Array.isArray(rawBubbles)) {
+      const bubbles = rawBubbles
+        .map(b => (typeof b === 'string' ? b : b?.text || ''))
+        .map(t => cleanBubbleText(t))
+        .filter(t => isValidBubbleText(t))
+        .slice(0, 5);
+
+      if (bubbles.length > 0) {
+        return {
+          bubbles,
+          reaction: ALLOWED_REACTIONS.has(parsed.reaction) ? parsed.reaction : null
+        };
+      }
+    }
+  }
+
+  // 2. Regex extraction from malformed structured JSON
+  const regexExtracted = extractBubblesFromMalformedText(cleanText);
+  if (regexExtracted && regexExtracted.bubbles?.length > 0) {
+    return regexExtracted;
+  }
+
+  // 3. Plain text recovery ONLY if no structured JSON markers exist
+  const plainText = recoverPlainTextResponse(cleanText);
+  if (plainText && plainText.bubbles?.length > 0) {
+    return plainText;
+  }
+
+  return null;
 }
 
 class AIModelRouter {
@@ -327,7 +583,8 @@ class AIModelRouter {
     systemPrompt,
     conversationKey = 'default',
     memoryCount = 0,
-    rejectedResponses = []
+    rejectedResponses = [],
+    customConfig = null
   }) {
     const startTime = Date.now();
     const recentOutputs = this.getRecentOutputs(conversationKey);
@@ -388,7 +645,19 @@ class AIModelRouter {
       for (const model of candidate.models) {
         try {
           console.log(`[AI Router] Attempting ${candidate.provider} (${model})...`);
-          let result = await candidate.call(model, effectiveSystemPrompt);
+          let result = null;
+          try {
+            result = await candidate.call(model, effectiveSystemPrompt);
+          } catch (callErr) {
+            // If structured output failed, attempt one strict-format regeneration retry
+            if (callErr.message && /Unparseable/i.test(callErr.message)) {
+              console.log(`[AI Router] Unparseable structured output from ${candidate.provider} (${model}). Retrying once with strict formatting directive...`);
+              const strictFormatPrompt = `${effectiveSystemPrompt}\n\n[CRITICAL JSON FORMATTING DIRECTIVE]: Your previous output was malformed. You MUST return ONLY a valid, parseable JSON object with no markdown fences, no surrounding commentary, and no incomplete structures:\n{"bubbles": ["short natural bubble 1", "short natural bubble 2"], "reaction": null}`;
+              result = await candidate.call(model, strictFormatPrompt);
+            } else {
+              throw callErr;
+            }
+          }
 
           // Check for repetitive response against recent assistant bubbles, echoing user, or rejected response
           const needsRepetitionRetry = this.isRepetitiveOrEcho(result.bubbles, recentOutputs, userMessage) || isRepetitiveWithRejected(result.bubbles);
@@ -444,7 +713,10 @@ class AIModelRouter {
       throw new Error(`AI generation unavailable: ${lastError || 'All model providers failed or timed out'}`);
     }
 
-    console.log(`[AI Router] Generated in ${latencyMs}ms via ${usedProvider} (${usedModel})`);
+    // Apply natural thought grouping and conversational beats
+    selectedResult.bubbles = normalizeConversationBeats(selectedResult.bubbles, customConfig);
+
+    console.log(`[AI Router] Generated in ${latencyMs}ms via ${usedProvider} (${usedModel}) [${selectedResult.bubbles.length} bubbles]`);
     return {
       ...selectedResult,
       diagnostics
@@ -458,5 +730,10 @@ class AIModelRouter {
 
 module.exports = {
   AIModelRouter,
-  parseAndRecoverResponse
+  parseAndRecoverResponse,
+  cleanBubbleText,
+  isRawStructuredArtifact,
+  isValidBubbleText,
+  normalizeConversationBeats,
+  userPrefersLongMessages
 };

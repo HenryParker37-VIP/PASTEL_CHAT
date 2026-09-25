@@ -4,7 +4,7 @@
  * model routing, and human-like typing pacing.
  */
 
-const { AIModelRouter } = require('./modelRouter');
+const { AIModelRouter, isValidBubbleText } = require('./modelRouter');
 const { CharacterConfig } = require('./characterConfig');
 const { buildCharacterSystemPrompt } = require('./promptBuilder');
 const { sleep, calculateTypingDuration, calculateInitialDelay, getInterBubblePause } = require('./timingEngine');
@@ -167,7 +167,8 @@ async function executeLatestUserMessage({
       systemPrompt,
       conversationKey: key,
       memoryCount: relevantMemories.length,
-      rejectedResponses: isRegenerate ? rejectedResponses : []
+      rejectedResponses: isRegenerate ? rejectedResponses : [],
+      customConfig
     });
   } catch (err) {
     emitTyping(false);
@@ -213,7 +214,10 @@ async function executeLatestUserMessage({
   for (let i = 0; i < plan.bubbles.length; i++) {
     const bubbleText = plan.bubbles[i];
 
-    if (typeof bubbleText !== 'string' || !bubbleText.trim() || /data:[^\s]+;base64,|<svg|<img/i.test(bubbleText)) continue;
+    if (!isValidBubbleText(bubbleText)) {
+      console.warn(`[AI Director] Discarded invalid/malformed bubble: "${String(bubbleText).slice(0, 50)}"`);
+      continue;
+    }
 
     if (!await isCurrentTurn()) break;
 
@@ -312,6 +316,7 @@ function invalidateConversation(userId, characterId, messageId) {
 
 module.exports = {
   handleUserMessageToAI,
+  executeLatestUserMessage,
   syncCharacterRhythm,
   getConversationDebug,
   invalidateConversation,
