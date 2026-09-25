@@ -1,3 +1,5 @@
+const { validTimeZone, isTransientTemporalStatement } = require('./temporalContext');
+
 /** Small, explicit, user-owned facts. Conversation messages remain short-term context. */
 const AI_CHARACTER_ID = 'char_lyra';
 const STOP_WORDS = new Set(['the', 'and', 'for', 'you', 'your', 'what', 'how', 'are', 'was', 'with', 'that', 'this', 'about']);
@@ -47,6 +49,7 @@ function extractExplicitMemoryCandidates(message = '') {
   for (const originalClause of text.match(/[^.!?\n]+[.!?]?/g) || []) {
     const clause = originalClause.trim().replace(/^(?:actually|to clarify|thật ra)[,\s]+/i, '').trim();
     if (!clause || clause.endsWith('?')) continue;
+    if (isTransientTemporalStatement(clause)) continue;
     if (/^(?:why|how|do|does|did|could|would|should|what if|imagine|suppose|maybe|perhaps)\b/i.test(clause)) continue;
     if (/\b(?:never|not|don't|doesn't|didn't|can't|cannot|won't|might|maybe|perhaps|probably)\b/i.test(clause)) continue;
     for (const pattern of FACT_PATTERNS) {
@@ -57,7 +60,7 @@ function extractExplicitMemoryCandidates(message = '') {
       const key = pattern.dynamicKey ? `favorite_${match[1].toLowerCase()}` : pattern.interest ? `interest_${String(match[1]).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 35)}` : pattern.key;
       const rawValue = pattern.type === 'event' && match[2] ? `${match[1]} ${match[2]}` : match[pattern.dynamicKey ? 2 : 1];
       const value = String(rawValue).replace(/\s+(?:and|but)\s+.*$/i, '').trim();
-      if (!value) continue;
+      if (!value || isTransientTemporalStatement(value)) continue;
       candidates.push({ key, value, type: pattern.type, subject: pattern.subject, source: 'USER_STATED' });
     }
   }
@@ -69,6 +72,7 @@ function processMemoryUpdates(storeDb, userId, characterId = AI_CHARACTER_ID, me
   const saved = [];
   for (const candidate of memoriesToSave) {
     if (!candidate?.key || !candidate?.value || candidate.source === 'INFERRED') continue;
+    if (isTransientTemporalStatement(candidate.key) || isTransientTemporalStatement(candidate.value, candidate.key)) continue;
     const existing = storeDb.getAIMemories?.(userId, characterId)?.find(memory => memory.key === candidate.key);
     if (existing?.sourceMessageId === sourceMessageId && sourceMessageId) continue;
     if (sourceMessageAt && existing?.sourceMessageAt && new Date(sourceMessageAt) < new Date(existing.sourceMessageAt)) continue;
@@ -76,11 +80,6 @@ function processMemoryUpdates(storeDb, userId, characterId = AI_CHARACTER_ID, me
     if (added) saved.push(added);
   }
   return saved;
-}
-
-function validTimeZone(timeZone) {
-  if (typeof timeZone !== 'string' || timeZone.length > 64) return null;
-  try { return new Intl.DateTimeFormat('en-US', { timeZone }).resolvedOptions().timeZone; } catch { return null; }
 }
 
 function updateRelationshipOnInteraction(storeDb, userId, { characterId = AI_CHARACTER_ID, messageId = null, sleepIntent = false, activeLanguage = null, timeZone = null } = {}) {

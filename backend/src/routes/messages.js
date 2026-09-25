@@ -194,7 +194,7 @@ router.post('/', authMiddleware, async (req, res) => {
           recentHistory,
           fastMode: process.env.PERSISTENT_SERVICE !== 'true',
           characterUserId: receiver._id,
-          timeZone: req.body.timeZone
+          timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone
         });
       } catch (e) {
         console.error('[AI] Pipeline execution error:', e.message);
@@ -232,7 +232,7 @@ router.post('/ai-reply', authMiddleware, async (req, res) => {
       recentHistory,
       fastMode: process.env.PERSISTENT_SERVICE !== 'true',
       characterUserId: receiver._id,
-      timeZone: req.body.timeZone
+      timeZone: req.body.timeZone || req.headers['x-user-timezone'] || req.user?.timezone
     });
 
     res.json({ aiReplies: aiReplies || [], deliveryMode: process.env.PERSISTENT_SERVICE === 'true' ? 'server-paced' : 'client-paced' });

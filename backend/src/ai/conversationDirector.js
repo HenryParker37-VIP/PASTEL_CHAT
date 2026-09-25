@@ -131,7 +131,8 @@ async function executeLatestUserMessage({
     customConfig,
     memories: relevantMemories,
     relationship,
-    detectedLanguage: relationship?.active_language || 'auto'
+    detectedLanguage: relationship?.active_language || 'auto',
+    userTimeZone: timeZone || relationship?.time_zone || user?.timezone
   });
 
   const cleanHistory = prepareContextHistory(recentHistory, userMessage.content, aiUser._id);

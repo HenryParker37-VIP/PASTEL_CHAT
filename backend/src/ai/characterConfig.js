@@ -187,6 +187,18 @@ class CharacterConfig {
     if (c.lore && typeof c.lore === 'string' && c.lore.trim()) {
       blocks.push(`[CANONICAL KNOWLEDGE & LORE (USER-PROVIDED FACTS)]\n${c.lore.trim()}`);
     }
+    if (c.shouldRules && typeof c.shouldRules === 'string' && c.shouldRules.trim()) {
+      blocks.push(`[LYRA SHOULD (EXPLICIT BEHAVIORAL PREFERENCES & HABITS)]\n${c.shouldRules.trim()}`);
+    }
+    if (c.shouldNotRules && typeof c.shouldNotRules === 'string' && c.shouldNotRules.trim()) {
+      blocks.push(`[LYRA SHOULD NOT (EXPLICIT BEHAVIORAL CONSTRAINTS & BOUNDARIES)]\n${c.shouldNotRules.trim()}`);
+    }
+    if (c.location && typeof c.location === 'string' && c.location.trim()) {
+      blocks.push(`[LYRA CONFIGURED LOCATION]\n${c.location.trim()}`);
+    }
+    if (c.timezone && typeof c.timezone === 'string' && c.timezone.trim()) {
+      blocks.push(`[LYRA CONFIGURED TIMEZONE]\n${c.timezone.trim()}`);
+    }
     if (Array.isArray(c.examples) && c.examples.length > 0) {
       const formatted = c.examples
         .filter(ex => ex && (ex.user || ex.lyra))
