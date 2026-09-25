@@ -331,6 +331,24 @@ const vi = {
   privacyFeedbackAnother: 'Gửi thêm',
   privacyFeedbackSending: 'Đang gửi...',
   privacyFeedbackSend: 'Gửi cho người tạo',
+
+  // Character Studio
+  customizeLyra: 'Tùy chỉnh Lyra',
+  characterStudioTitle: 'Xưởng Nhân Vật',
+  characterStudioSubtitle: 'Định hình cách Lyra trò chuyện, suy nghĩ và gắn bó với bạn',
+  tabIdentity: 'Nhận dạng',
+  tabPersonality: 'Tính cách',
+  tabSpeech: 'Cách nói chuyện',
+  tabMind: 'Cách suy nghĩ',
+  tabRelationship: 'Mối quan hệ',
+  tabLore: 'Kiến thức & Bối cảnh',
+  tabExamples: 'Hội thoại mẫu',
+  tabPreview: 'Thử nghiệm',
+  resetCustomization: 'Khôi phục mặc định',
+  resetCustomizationConfirm: 'Đặt lại tùy chỉnh Lyra về mặc định? Ký ức, lịch sử trò chuyện và ảnh đại diện của bạn sẽ không bị ảnh hưởng.',
+  saveCustomization: 'Lưu thay đổi',
+  customizationSaved: 'Đã lưu tùy chỉnh Lyra của bạn!',
+  customizationReset: 'Đã khôi phục Lyra về mặc định.'
 };
 
 export default vi;

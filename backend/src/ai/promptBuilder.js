@@ -13,6 +13,7 @@ function buildCharacterSystemPrompt({
   characterState = {},
   memories = [],
   relationship = {},
+  customConfig = null,
   detectedLanguage = 'en',
   activeContext = {}
 }) {
@@ -21,6 +22,11 @@ function buildCharacterSystemPrompt({
   const personalityNotes = characterConfig.getPersonalityGuidelines().join('\n- ');
   const speechNotes = characterConfig.getSpeechGuidelines().join('\n- ');
   const coreNotes = characterConfig.getCoreGuidelines().join('\n- ');
+
+  const activeCustom = customConfig || characterConfig?.customConfig;
+  const customBlocks = activeCustom && typeof characterConfig?.getCustomizationBlocks === 'function'
+    ? characterConfig.getCustomizationBlocks()
+    : [];
 
   // Current real-world time & activity context
   const now = new Date();
@@ -84,7 +90,14 @@ RELATIONSHIP CONTEXT:
 ==================================================
 ${relationshipContext}
 ${relationship?.communication_style ? `Confirmed communication preference: ${JSON.stringify(relationship.communication_style)}` : ''}
-
+${customBlocks.length > 0 ? `
+==================================================
+USER-DEFINED CHARACTER CUSTOMIZATION (INTENTIONAL PERSONA):
+This user has customized their companion with intentional preferences.
+Adopt these traits, speaking quirks, worldview, and canonical facts fully:
+==================================================
+${customBlocks.join('\n\n')}
+` : ''}
 ==================================================
 RELEVANT FACTS ABOUT THE USER (DO NOT OVERRIDE CURRENT MESSAGE):
 ==================================================

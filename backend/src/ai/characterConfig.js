@@ -7,8 +7,9 @@
  */
 
 class CharacterConfig {
-  constructor(rawConfig = {}) {
+  constructor(rawConfig = {}, customConfig = null) {
     const config = rawConfig || {};
+    this.customConfig = customConfig;
 
     // 1. Core Identity
     this.id = config._id || config.id || 'char_default';
@@ -149,6 +150,54 @@ class CharacterConfig {
       'Be attentive and respectful of boundaries. Do not expose hidden reasoning or private information.',
       'Use personality to shape how you respond, not what the user meant or what facts are true.'
     ];
+  }
+
+  /**
+   * Generates formatted guideline blocks from user-defined Character Studio customization.
+   */
+  getCustomizationBlocks() {
+    if (!this.customConfig || typeof this.customConfig !== 'object') return [];
+    const c = this.customConfig;
+    const blocks = [];
+
+    if (c.about && typeof c.about === 'string' && c.about.trim()) {
+      blocks.push(`[CHARACTER IDENTITY & ABOUT]\n${c.about.trim()}`);
+    }
+    if (c.personality && typeof c.personality === 'string' && c.personality.trim()) {
+      blocks.push(`[PERSONALITY & TEMPERAMENT]\n${c.personality.trim()}`);
+    }
+    if (Array.isArray(c.personalityTags) && c.personalityTags.length > 0) {
+      blocks.push(`[KEY PERSONALITY TRAITS]\n${c.personalityTags.join(', ')}`);
+    }
+    if (c.thoughtProcess && typeof c.thoughtProcess === 'string' && c.thoughtProcess.trim()) {
+      blocks.push(`[HOW LYRA THINKS (BEHAVIORAL TENDENCIES & WORLDVIEW)]\n${c.thoughtProcess.trim()}`);
+    }
+    if (c.speakingStyle && typeof c.speakingStyle === 'string' && c.speakingStyle.trim()) {
+      blocks.push(`[SPEAKING & TEXTING STYLE (SLANG, LENGTH, CASING, EMOJIS, LANGUAGE)]\n${c.speakingStyle.trim()}`);
+    }
+    if (c.wordsUsed && typeof c.wordsUsed === 'string' && c.wordsUsed.trim()) {
+      blocks.push(`[FAVORITE WORDS & PHRASES TO USE]\n${c.wordsUsed.trim()}`);
+    }
+    if (c.wordsAvoided && typeof c.wordsAvoided === 'string' && c.wordsAvoided.trim()) {
+      blocks.push(`[WORDS & PHRASES TO AVOID]\n${c.wordsAvoided.trim()}`);
+    }
+    if (c.relationship && typeof c.relationship === 'string' && c.relationship.trim()) {
+      blocks.push(`[RELATIONSHIP WITH THIS USER (ROLE, DYNAMIC, ADDRESSING, BOUNDARIES)]\n${c.relationship.trim()}`);
+    }
+    if (c.lore && typeof c.lore === 'string' && c.lore.trim()) {
+      blocks.push(`[CANONICAL KNOWLEDGE & LORE (USER-PROVIDED FACTS)]\n${c.lore.trim()}`);
+    }
+    if (Array.isArray(c.examples) && c.examples.length > 0) {
+      const formatted = c.examples
+        .filter(ex => ex && (ex.user || ex.lyra))
+        .map((ex, idx) => `Example ${idx + 1}:\nUser: ${ex.user || '...'}\n${this.name}: ${ex.lyra || '...'}`)
+        .join('\n\n');
+      if (formatted) {
+        blocks.push(`[CONVERSATION STYLE EXAMPLES (Learn tone, bubble length, and cadence — do not copy verbatim)]\n${formatted}`);
+      }
+    }
+
+    return blocks;
   }
 }
 

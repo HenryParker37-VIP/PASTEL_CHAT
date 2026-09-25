@@ -98,6 +98,7 @@ async function executeLatestUserMessage({
   }
 
   await storeDb.hydrateAIPersonalLayer?.(user._id, characterId);
+  await storeDb.hydrateUserCharacterConfig?.(user._id, characterId);
   if (!await isCurrentTurn()) return [];
   if (storeDb.getAIRelationship(user._id, characterId, false)?.shared_history?.some(entry => entry.userMessageId === String(userMessage._id))) return [];
 
@@ -107,7 +108,8 @@ async function executeLatestUserMessage({
     occupation: 'Barista & design student',
     bio: aiUser.bio || 'coffee, design, film cameras, quiet cafes'
   };
-  const characterConfig = new CharacterConfig(rawCharacter);
+  const customConfig = storeDb.getUserCharacterConfig?.(user._id, characterId);
+  const characterConfig = new CharacterConfig(rawCharacter, customConfig);
   const characterState = syncCharacterRhythm(storeDb, characterId);
   // Only the current authenticated user turn may produce new durable facts.
   const candidates = extractExplicitMemoryCandidates(userMessage.content);
@@ -126,6 +128,7 @@ async function executeLatestUserMessage({
   const systemPrompt = buildCharacterSystemPrompt({
     characterConfig,
     characterState,
+    customConfig,
     memories: relevantMemories,
     relationship,
     detectedLanguage: relationship?.active_language || 'auto'

@@ -16,7 +16,7 @@ const BACKGROUNDS = [
   { id: 'sunset',   label: 'Sunset',   value: 'linear-gradient(135deg, #FFE4E1, #FFD1DC, #DDA0DD)' }
 ];
 
-const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick, onSearch, onBackgroundChange }) => {
+const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick, onSearch, onBackgroundChange, onOpenCharacterStudio }) => {
   const { user, updateProfile } = useAuth();
   const { lyraAvatar } = useSocket();
   const { t } = useLang();
@@ -71,12 +71,37 @@ const RightPanel = ({ open, onClose, peer, friendId, onClearChat, onPinnedClick,
           <>
             <h3>Chatting with</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img className="avatar" src={resolveCharacterAvatar({ friend: peer, friendId: friendId || peer._id, userId: user?._id, avatarOverride: lyraAvatar }) || peer.avatar} alt="" style={{ width: 40, height: 40 }} />
+              <img className="avatar" src={resolveCharacterAvatar({ friend: peer, friendId: friendId || peer._id, userId: user?._id, avatarOverride: lyraAvatar }) || peer.avatar} alt="" style={{ width: 40, height: 40 }} />
               <div>
                 <p style={{ margin: 0, fontWeight: 700 }}>{peer.customNickname || peer.name}</p>
                 <p style={{ margin: 0, fontSize: 11, color: '#888', display: 'flex', alignItems: 'center', gap: 4 }}><PastelIcon name={peer.isOnline ? 'online' : 'offline'} size={10} />{peer.isOnline ? 'Online' : 'Offline'}</p>
               </div>
             </div>
+            {(peer._id === 'user_ai_lyra' || peer.isAI) && onOpenCharacterStudio && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  onClose?.();
+                  onOpenCharacterStudio();
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  background: 'linear-gradient(135deg, #FFF0F5, #FFE4E1)',
+                  color: '#FF69B4',
+                  fontWeight: 600,
+                  border: '1px solid #FFB6C1'
+                }}
+              >
+                <PastelIcon name="sparkles" size={15} />
+                {t('customizeLyra') || 'Customize Lyra'}
+              </button>
+            )}
           </>
         )}
 
