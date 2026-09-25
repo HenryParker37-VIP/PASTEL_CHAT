@@ -163,10 +163,11 @@ async function run() {
     none('c1', `msg:group:${group._id}:${c._id}`);
 
     const sharedMedia = await new Promise(resolve => a1.emit('share_photo', { dataUrl: 'data:image/png;base64,iVBORw0KGgo=', caption: tag }, resolve));
-    assert.equal(sharedMedia.ok, true);
+    assert.equal(sharedMedia.ok, false);
+    assert.match(sharedMedia.error, /primary API/);
     await pause();
-    assert.equal(seen('b1', `new_photo_shared:${b._id}`).length, 1);
-    assert.equal(seen('a2', `new_photo_shared:${a._id}`).length, 1);
+    none('b1', `new_photo_shared:${b._id}`);
+    none('a2', `new_photo_shared:${a._id}`);
     none('c1', `new_photo_shared:${b._id}`);
 
     let releaseOld;

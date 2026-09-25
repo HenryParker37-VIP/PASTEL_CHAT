@@ -12,9 +12,6 @@ const {
   markMessageDelivered,
   markMessageRead,
   populateMessage,
-  addSharedPhoto,
-  resolveSharedMediaExpiry,
-  genId,
   findFriendship
 } = require('../db/store');
 const { authenticateToken } = require('../services/sessionAuth');
@@ -296,39 +293,10 @@ const setupSocket = (io) => {
       });
     });
 
-    // Shared media is stored with a server-calculated expiry and sent only to friends.
-    socket.on('share_photo', ({ dataUrl, caption, expiration = 'never', durationMs }, acknowledge = () => {}) => {
+    // Shared media mutations are authoritative REST writes on Vercel.
+    socket.on('share_photo', (_payload, acknowledge = () => {}) => {
       const respond = typeof acknowledge === 'function' ? acknowledge : () => {};
-      if (relayMode || process.env.WRITE_MODE === 'read-only') return respond({ ok: false, error: 'Use the primary API for media' });
-      const mediaType = dataUrl?.startsWith('data:video/') ? 'video' : dataUrl?.startsWith('data:image/') ? 'image' : null;
-      if (!mediaType) return respond({ ok: false, error: 'Unsupported media type' });
-      const sizeBytes = Math.round((dataUrl.length * 3) / 4);
-      const sizeLimit = mediaType === 'video' ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
-      if (sizeBytes > sizeLimit) return respond({ ok: false, error: mediaType === 'video' ? 'Video must be 8 MB or smaller' : 'Photo must be 5 MB or smaller' });
-      if (mediaType === 'video' && (durationMs == null || !Number.isFinite(Number(durationMs)) || Number(durationMs) < 0 || Number(durationMs) > 5000)) {
-        return respond({ ok: false, error: 'Video must be 5 seconds or shorter' });
-      }
-      const expiresAt = resolveSharedMediaExpiry(expiration);
-      if (expiresAt === undefined) return respond({ ok: false, error: 'Invalid expiration setting' });
-      const friends = getFriends(user._id);
-      const payload = {
-        _id: genId(),
-        dataUrl,
-        caption: caption ? String(caption).slice(0, 200) : '',
-        uploadedBy: { _id: user._id, name: user.name, avatar: user.avatar, loginMethod: user.loginMethod || 'code' },
-        createdAt: new Date().toISOString(),
-        isHidden: false,
-        mediaType,
-        expiresAt
-      };
-      addSharedPhoto(payload);
-      // Deliver to every friend (online or offline — they'll see it on load)
-      friends.forEach(f => {
-        emitToUser(f.friendId, `new_photo_shared:${f.friendId}`, payload);
-      });
-      // Echo back to sender so it appears in their own feed immediately
-      emitToUser(user._id, `new_photo_shared:${user._id}`, payload);
-      respond({ ok: true, photo: payload });
+      respond({ ok: false, error: 'Use the primary API for media' });
     });
 
     // Birthday wish — relay to the friend so they see the Happy Birthday overlay

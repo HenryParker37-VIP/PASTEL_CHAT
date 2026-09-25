@@ -9,6 +9,10 @@ const {
 
 const router = express.Router();
 const { emitToUser } = require('../services/userSocket');
+const sharedMedia = require('../services/sharedPhotoMedia');
+const storeDb = require('../db/store');
+
+const mediaError = (res, error) => res.status(error.status || 503).json({ error: error.status ? error.message : 'Shared media storage is temporarily unavailable' });
 
 const normalizeSharedWith = (sharedWith, ownerId) => {
   if (!Array.isArray(sharedWith)) return [];
@@ -116,9 +120,10 @@ router.delete('/birthdays/:id', authMiddleware, (req, res) => {
 });
 
 // ===== Shared Photos =====
-router.get('/shared-photos', authMiddleware, (req, res) => {
+router.get('/shared-photos', authMiddleware, async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
   const userId = req.user._id;
-  const photos = getSharedPhotos(userId).map(photo => {
+  const legacyPhotos = getSharedPhotos(userId).map(photo => {
     if (photo.isHidden && photo.uploadedBy._id !== userId) {
       return {
         _id: photo._id,
@@ -131,10 +136,62 @@ router.get('/shared-photos', authMiddleware, (req, res) => {
     }
     return photo;
   });
-  res.json(photos);
+  if (!storeDb.isDurableStorageEnabled()) return res.json(legacyPhotos);
+  try {
+    const photos = await sharedMedia.listPhotos(userId);
+    res.json([...photos, ...legacyPhotos].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 50));
+  } catch (error) { mediaError(res, error); }
 });
 
-router.delete('/shared-photos/:id', authMiddleware, (req, res) => {
+// Vercel's request limit is 4.5 MB. Each authenticated upload request stays
+// below that limit; only the final media document holds the complete payload.
+router.post('/shared-photos/uploads', authMiddleware, async (req, res) => {
+  try { res.status(201).json(await sharedMedia.startUpload(req.user, req.body || {})); }
+  catch (error) { mediaError(res, error); }
+});
+
+router.put('/shared-photos/uploads/:id/chunks/:index', authMiddleware, async (req, res) => {
+  try {
+    await sharedMedia.storeChunk(req.user._id, req.params.id, Number(req.params.index), req.body?.data);
+    res.json({ ok: true });
+  } catch (error) { mediaError(res, error); }
+});
+
+router.post('/shared-photos/uploads/:id/complete', authMiddleware, async (req, res) => {
+  try {
+    const photo = await sharedMedia.finishUpload(req.user, req.params.id, Number(req.body?.chunkCount));
+    const recipients = sharedMedia.recipientIds(req.user._id);
+    const io = req.app?.get('io');
+    for (const recipientId of recipients) emitToUser(io, recipientId, `new_photo_shared:${recipientId}`, photo);
+    res.status(201).json({ ok: true, photo });
+  } catch (error) { mediaError(res, error); }
+});
+
+router.get('/shared-photos/:id/chunks/:index', authMiddleware, async (req, res) => {
+  try {
+    const photo = await sharedMedia.getPhoto(req.user._id, req.params.id);
+    if (!photo) return res.status(404).json({ error: 'Shared media not found' });
+    if (photo.isHidden && String(photo.uploadedBy._id) !== String(req.user._id)) return res.status(403).json({ error: 'Shared media is hidden' });
+    const index = Number(req.params.index);
+    if (!Number.isInteger(index) || index < 0 || index >= photo.chunkCount) return res.status(404).json({ error: 'Media chunk not found' });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ data: photo.dataUrl.slice(index * sharedMedia.CHUNK_LENGTH, (index + 1) * sharedMedia.CHUNK_LENGTH) });
+  } catch (error) { mediaError(res, error); }
+});
+
+router.delete('/shared-photos/:id', authMiddleware, async (req, res) => {
+  if (storeDb.isDurableStorageEnabled()) {
+    try {
+      const deleted = await sharedMedia.deletePhoto(req.user._id, req.params.id);
+      if (deleted === false) return res.status(403).json({ error: 'Only the owner can delete shared media' });
+      if (deleted) {
+        const recipientIds = sharedMedia.recipientIds(deleted.uploadedBy._id);
+        const io = req.app?.get('io');
+        recipientIds.forEach(recipientId => emitToUser(io, recipientId, `shared_media_deleted:${recipientId}`, { _id: deleted._id }));
+        return res.json({ ok: true, _id: deleted._id });
+      }
+    } catch (error) { return mediaError(res, error); }
+  }
   const deleted = deleteSharedPhoto(req.params.id, req.user._id);
   if (deleted === false) return res.status(403).json({ error: 'Only the owner can delete shared media' });
   if (!deleted) return res.status(404).json({ error: 'Shared media not found' });
@@ -146,11 +203,17 @@ router.delete('/shared-photos/:id', authMiddleware, (req, res) => {
 });
 
 // POST /private-space/shared-photos/:id/toggle-visibility — Google users only
-router.post('/shared-photos/:id/toggle-visibility', authMiddleware, (req, res) => {
+router.post('/shared-photos/:id/toggle-visibility', authMiddleware, async (req, res) => {
   if (!req.user.isGoogleVerified) {
     return res.status(403).json({ error: 'Only Google-verified users can toggle photo visibility' });
   }
   const { isHidden } = req.body;
+  if (storeDb.isDurableStorageEnabled()) {
+    try {
+      const photo = await sharedMedia.toggleVisibility(req.user._id, req.params.id, isHidden);
+      if (photo) return res.json({ success: true, isHidden: photo.isHidden });
+    } catch (error) { return mediaError(res, error); }
+  }
   const photo = togglePhotoEncryption(req.params.id, req.user._id, !!isHidden);
   if (!photo) return res.status(404).json({ error: 'Photo not found or not your photo' });
   res.json({ success: true, isHidden: photo.isHidden });

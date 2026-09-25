@@ -17,6 +17,7 @@ const mockResponse = () => {
   let body;
   return {
     status(code) { statusCode = code; return this; },
+    set() { return this; },
     json(value) { body = value; return this; },
     get statusCode() { return statusCode; },
     get body() { return body; }

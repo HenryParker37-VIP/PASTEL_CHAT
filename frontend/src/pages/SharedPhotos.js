@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import api from '../services/api';
+import { loadSharedPhoto, uploadSharedPhoto } from '../services/sharedPhotos';
 import PhotoUpload from '../components/PhotoUpload';
 import PastelIcon from '../components/PastelIcon';
 import { useConfirm, useToast } from '../components/Toast';
@@ -30,7 +31,7 @@ function makeBeep(ctx, freq = 880, duration = 0.08) {
 
 const SharedPhotos = () => {
   const { user } = useAuth();
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
   const navigate = useNavigate();
   const { confirm } = useConfirm();
   const { push } = useToast();
@@ -42,6 +43,7 @@ const SharedPhotos = () => {
   const mediaRecorderRef = useRef(null);
   const recordingTimeoutRef = useRef(null);
   const recordingProgressRef = useRef(null);
+  const photoDataCacheRef = useRef(new Map());
 
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -136,57 +138,84 @@ const SharedPhotos = () => {
     if (videoRef.current && streamRef.current) videoRef.current.srcObject = streamRef.current;
   }, [recordedVideo]);
 
-  // Load persisted photos on mount
+  const refreshPhotos = useCallback(async () => {
+    try {
+      const { data } = await api.get('/private-space/shared-photos');
+      const active = activeMedia(data);
+      const ids = new Set(active.map(photo => photo._id));
+      for (const id of photoDataCacheRef.current.keys()) if (!ids.has(id)) photoDataCacheRef.current.delete(id);
+      const loaded = await Promise.all(active.map(async photo => {
+        if (photo.isHidden && String(photo.uploadedBy?._id) !== String(user?._id)) photoDataCacheRef.current.delete(photo._id);
+        const cached = photoDataCacheRef.current.get(photo._id);
+        if (cached && (!photo.isHidden || String(photo.uploadedBy?._id) === String(user?._id))) return { ...photo, dataUrl: cached };
+        const complete = await loadSharedPhoto(photo, user?._id).catch(() => photo);
+        if (complete.dataUrl) photoDataCacheRef.current.set(photo._id, complete.dataUrl);
+        return complete;
+      }));
+      setPhotos(loaded);
+    } finally { setLoading(false); }
+  }, [activeMedia, user?._id]);
+
   useEffect(() => {
     setLoading(true);
-    api.get('/private-space/shared-photos')
-      .then(res => setPhotos(activeMedia(res.data)))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [activeMedia]);
+    refreshPhotos().catch(() => setLoading(false));
+  }, [refreshPhotos]);
+
+  // Render may sleep. Reconcile with Vercel, including missed deletions.
+  useEffect(() => {
+    const timer = window.setInterval(() => refreshPhotos().catch(() => {}), connected ? 30_000 : 15_000);
+    return () => window.clearInterval(timer);
+  }, [connected, refreshPhotos]);
 
   // Real-time incoming photos via Socket.io
   useEffect(() => {
     if (!socket || !user) return;
     const event = `new_photo_shared:${user._id}`;
     const handler = (photo) => {
-      setPhotos(prev => {
-        if (isExpired(photo) || prev.find(p => p._id === photo._id)) return prev;
-        return [photo, ...prev].slice(0, 50);
-      });
+      if (isExpired(photo)) return;
+      loadSharedPhoto(photo, user._id).then(loaded => {
+        if (loaded.dataUrl) photoDataCacheRef.current.set(loaded._id, loaded.dataUrl);
+        setPhotos(prev => prev.some(p => p._id === loaded._id) ? prev : [loaded, ...prev].slice(0, 50));
+      }).catch(() => {});
     };
     socket.on(event, handler);
     const deletedEvent = `shared_media_deleted:${user._id}`;
     const deletedHandler = ({ _id }) => {
+      photoDataCacheRef.current.delete(_id);
       setPhotos(prev => prev.filter(photo => photo._id !== _id));
       setSelectedPhoto(prev => prev?._id === _id ? null : prev);
     };
     socket.on(deletedEvent, deletedHandler);
+    const visibilityEvent = `shared_media_visibility:${user._id}`;
+    const visibilityHandler = () => refreshPhotos().catch(() => {});
+    socket.on(visibilityEvent, visibilityHandler);
+    socket.on('connect', visibilityHandler);
     return () => {
       socket.off(event, handler);
       socket.off(deletedEvent, deletedHandler);
+      socket.off(visibilityEvent, visibilityHandler);
+      socket.off('connect', visibilityHandler);
     };
-  }, [isExpired, socket, user]);
+  }, [isExpired, refreshPhotos, socket, user]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setPhotos(prev => activeMedia(prev)), 30_000);
     return () => window.clearInterval(timer);
   }, [activeMedia]);
 
-  const shareMedia = useCallback((dataUrl, afterSuccess, mediaMeta = {}) => {
-    if (!socket || sending) return;
+  const shareMedia = useCallback(async (dataUrl, afterSuccess, mediaMeta = {}) => {
+    if (sending) return;
     setSending(true);
-    socket.emit('share_photo', { dataUrl, caption: '', expiration, ...mediaMeta }, (response) => {
-      setSending(false);
-      if (!response?.ok) {
-        push({ icon: 'alert', title: response?.error || 'Could not share media', tone: 'error' });
-        return;
-      }
-      setPhotos((previous) => previous.some((photo) => photo._id === response.photo._id) ? previous : [response.photo, ...previous].slice(0, 50));
+    try {
+      const photo = await uploadSharedPhoto(dataUrl, { expiration, ...mediaMeta });
+      photoDataCacheRef.current.set(photo._id, dataUrl);
+      setPhotos((previous) => previous.some((item) => item._id === photo._id) ? previous : [{ ...photo, dataUrl }, ...previous].slice(0, 50));
       afterSuccess?.();
       push({ icon: 'check', title: 'Shared with your friends', tone: 'success' });
-    });
-  }, [expiration, push, sending, socket]);
+    } catch (error) {
+      push({ icon: 'alert', title: error.response?.data?.error || error.message || 'Could not share media', tone: 'error' });
+    } finally { setSending(false); }
+  }, [expiration, push, sending]);
 
   const capturePhoto = useCallback(() => {
     if (!cameraReady || !videoRef.current || sending) return;
@@ -317,6 +346,7 @@ const SharedPhotos = () => {
     setDeletingPhotoId(photo._id);
     try {
       await api.delete(`/private-space/shared-photos/${photo._id}`);
+      photoDataCacheRef.current.delete(photo._id);
       setPhotos((previous) => previous.filter((item) => item._id !== photo._id));
       setSelectedPhoto((current) => current?._id === photo._id ? null : current);
       push({ icon: 'check', title: 'Shared media deleted', tone: 'success' });

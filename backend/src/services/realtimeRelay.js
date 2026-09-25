@@ -2,6 +2,7 @@
 // process only reads change streams and emits to authenticated socket rooms.
 const store = require('../db/store');
 const { emitToUser, emitToUsers, emitToAuthenticatedUsers } = require('./userSocket');
+const { photoView, recipientIds } = require('./sharedPhotoMedia');
 
 const ATLAS_WRITE_ACTIONS = new Set([
   'anyAction', 'insert', 'update', 'remove', 'createCollection', 'dropCollection',
@@ -108,9 +109,9 @@ async function startRealtimeRelay(io) {
     users: structuredClone(store.store.users)
   };
 
-  const watch = (collectionName, handler) => {
+  const watch = (collectionName, handler, pipeline = []) => {
     if (stopped) return;
-    const stream = db.collection(collectionName).watch([], { fullDocument: 'updateLookup' });
+    const stream = db.collection(collectionName).watch(pipeline, { fullDocument: 'updateLookup' });
     streams.push(stream);
     stream.on('change', change => {
       Promise.resolve(handler(change)).catch(error => console.warn(`[Relay] ${collectionName} event skipped:`, error.message));
@@ -119,7 +120,7 @@ async function startRealtimeRelay(io) {
       if (stopped || stream.__retrying) return;
       stream.__retrying = true;
       console.warn(`[Relay] ${collectionName} stream interrupted:`, error.message);
-      const timer = setTimeout(() => { timers.delete(timer); watch(collectionName, handler); }, 2000);
+      const timer = setTimeout(() => { timers.delete(timer); watch(collectionName, handler, pipeline); }, 2000);
       timers.add(timer);
     };
     stream.on('error', retry);
@@ -143,6 +144,21 @@ async function startRealtimeRelay(io) {
       users: structuredClone(current.users || [])
     };
   });
+  watch('pastelchat_shared_photos', async change => {
+    const photo = change.fullDocument;
+    if (!photo?._id || !photo.uploadedBy?._id) return;
+    await store.hydrateFromDurableStore();
+    const ownerId = String(photo.uploadedBy._id);
+    const recipients = recipientIds(ownerId);
+    if (change.operationType === 'insert') {
+      for (const recipientId of recipients) emitToUser(io, recipientId, `new_photo_shared:${recipientId}`, photoView(photo));
+    } else if (change.operationType === 'delete') {
+      // MongoDB delete events omit the document. The frontend polls the
+      // authoritative feed and reconciles deletions after reconnect.
+    } else if (change.operationType === 'update' && Object.hasOwn(change.updateDescription?.updatedFields || {}, 'isHidden')) {
+      for (const recipientId of recipients) emitToUser(io, recipientId, `shared_media_visibility:${recipientId}`, { _id: photo._id, isHidden: photo.isHidden });
+    }
+  }, [{ $project: { 'fullDocument.dataUrl': 0 } }]);
   console.log('[Relay] Change streams attached');
   return () => {
     stopped = true;
