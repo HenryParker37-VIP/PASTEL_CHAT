@@ -331,6 +331,24 @@ const en = {
   privacyFeedbackAnother: 'Send another',
   privacyFeedbackSending: 'Sending...',
   privacyFeedbackSend: 'Send to creator',
+
+  // Character Studio
+  customizeLyra: 'Customize Lyra',
+  characterStudioTitle: 'Character Studio',
+  characterStudioSubtitle: 'Shape how your Lyra speaks, thinks, and relates to you',
+  tabIdentity: 'Identity',
+  tabPersonality: 'Personality',
+  tabSpeech: 'How She Talks',
+  tabMind: 'How She Thinks',
+  tabRelationship: 'Relationship',
+  tabLore: 'Lore & Facts',
+  tabExamples: 'Examples',
+  tabPreview: 'Test Lyra',
+  resetCustomization: 'Reset to default',
+  resetCustomizationConfirm: 'Reset your Lyra customization to default? Your memories, conversation history, and avatars will not be affected.',
+  saveCustomization: 'Save changes',
+  customizationSaved: 'Your Lyra customization has been saved!',
+  customizationReset: 'Lyra reset to default persona.'
 };
 
 export default en;

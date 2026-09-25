@@ -68,6 +68,172 @@ router.get('/relationship', authMiddleware, async (req, res) => {
   }
 });
 
+function sanitizeCustomConfig(input = {}) {
+  if (!input || typeof input !== 'object') return null;
+  const cleanStr = (val, max = 2000) => {
+    if (typeof val !== 'string') return '';
+    return val.replace(/data:[^\s]+;base64,/gi, '').trim().slice(0, max);
+  };
+
+  const about = cleanStr(input.about, 2000);
+  const personality = cleanStr(input.personality, 2000);
+  const personalityTags = Array.isArray(input.personalityTags)
+    ? input.personalityTags.map(t => cleanStr(t, 50)).filter(Boolean).slice(0, 15)
+    : [];
+  const speakingStyle = cleanStr(input.speakingStyle, 2000);
+  const wordsUsed = cleanStr(input.wordsUsed, 500);
+  const wordsAvoided = cleanStr(input.wordsAvoided, 500);
+  const thoughtProcess = cleanStr(input.thoughtProcess, 2000);
+  const relationship = cleanStr(input.relationship, 2000);
+  const lore = cleanStr(input.lore, 3000);
+  const examples = Array.isArray(input.examples)
+    ? input.examples.map((ex, i) => ({
+        id: String(ex.id || `ex_${i}_${Date.now()}`),
+        user: cleanStr(ex.user, 1000),
+        lyra: cleanStr(ex.lyra, 1000)
+      })).filter(ex => ex.user || ex.lyra).slice(0, 10)
+    : [];
+
+  const hasContent = Boolean(
+    about || personality || personalityTags.length || speakingStyle ||
+    wordsUsed || wordsAvoided || thoughtProcess || relationship || lore || examples.length
+  );
+
+  if (!hasContent) return null;
+
+  return {
+    about,
+    personality,
+    personalityTags,
+    speakingStyle,
+    wordsUsed,
+    wordsAvoided,
+    thoughtProcess,
+    relationship,
+    lore,
+    examples
+  };
+}
+
+// GET /ai/character/config - Get authenticated user's character customization
+router.get('/character/config', authMiddleware, async (req, res) => {
+  try {
+    const characterId = 'char_lyra';
+    await storeDb.hydrateUserCharacterConfig?.(req.user._id, characterId);
+    const customConfig = storeDb.getUserCharacterConfig(req.user._id, characterId);
+    const defaultCharacter = storeDb.getAICharacter(characterId);
+    res.json({
+      customConfig: customConfig || null,
+      defaultCharacter: defaultCharacter ? {
+        name: defaultCharacter.name,
+        age: defaultCharacter.age,
+        occupation: defaultCharacter.occupation,
+        bio: defaultCharacter.bio,
+        traits: defaultCharacter.traits,
+        interests: defaultCharacter.interests
+      } : null
+    });
+  } catch (err) {
+    console.error('[AI Routes] Get character config error:', err.message);
+    res.status(500).json({ message: 'Failed to retrieve character configuration' });
+  }
+});
+
+// PUT /ai/character/config - Save authenticated user's character customization
+router.put('/character/config', authMiddleware, async (req, res) => {
+  if (process.env.WRITE_MODE === 'read-only') {
+    return res.status(503).json({ message: 'Character customization writes are disabled' });
+  }
+  try {
+    const characterId = 'char_lyra';
+    const validated = sanitizeCustomConfig(req.body?.customConfig !== undefined ? req.body.customConfig : req.body);
+    await storeDb.setUserCharacterConfig(req.user._id, characterId, validated);
+    res.json({ success: true, customConfig: validated });
+  } catch (err) {
+    console.error('[AI Routes] Save character config error:', err.message);
+    res.status(err.status || 500).json({ message: err.message || 'Failed to save character configuration' });
+  }
+});
+
+// DELETE /ai/character/config - Reset authenticated user's character customization
+router.delete('/character/config', authMiddleware, async (req, res) => {
+  if (process.env.WRITE_MODE === 'read-only') {
+    return res.status(503).json({ message: 'Character customization writes are disabled' });
+  }
+  try {
+    const characterId = 'char_lyra';
+    await storeDb.resetUserCharacterConfig(req.user._id, characterId);
+    res.json({ success: true, message: 'Character customization reset to default' });
+  } catch (err) {
+    console.error('[AI Routes] Reset character config error:', err.message);
+    res.status(err.status || 500).json({ message: err.message || 'Failed to reset character configuration' });
+  }
+});
+
+// POST /ai/character/preview - Isolated preview of custom character behavior
+router.post('/character/preview', authMiddleware, async (req, res) => {
+  try {
+    const { userMessage, history = [], customConfig } = req.body || {};
+    if (!userMessage || typeof userMessage !== 'string' || !userMessage.trim()) {
+      return res.status(400).json({ message: 'User message is required' });
+    }
+    const aiUser = storeDb.findUserById('user_ai_lyra');
+    const characterId = aiUser?.aiCharacterId || 'char_lyra';
+
+    // Hydrate personal layer so preview knows relationship context if exists, but will NOT mutate it
+    await storeDb.hydrateAIPersonalLayer?.(req.user._id, characterId);
+    const allMemories = storeDb.getAIMemories(req.user._id, characterId);
+    const { filterRelevantMemories } = require('../ai/memoryEngine');
+    const relevantMemories = filterRelevantMemories(allMemories, userMessage, history);
+    const relationship = storeDb.getAIRelationship(req.user._id, characterId, false) || {};
+
+    const rawCharacter = storeDb.getAICharacter(characterId) || {
+      name: aiUser?.name || 'Lyra',
+      age: 22,
+      occupation: 'Barista & design student',
+      bio: aiUser?.bio || 'coffee, design, film cameras, quiet cafes'
+    };
+    const { CharacterConfig } = require('../ai/characterConfig');
+    const validatedConfig = sanitizeCustomConfig(customConfig);
+    const characterConfig = new CharacterConfig(rawCharacter, validatedConfig);
+    const { syncCharacterRhythm } = require('../ai/conversationDirector');
+    const characterState = syncCharacterRhythm(storeDb, characterId);
+
+    const { buildCharacterSystemPrompt } = require('../ai/promptBuilder');
+    const systemPrompt = buildCharacterSystemPrompt({
+      characterConfig,
+      characterState,
+      customConfig: validatedConfig,
+      memories: relevantMemories,
+      relationship,
+      detectedLanguage: relationship?.active_language || 'auto'
+    });
+
+    const cleanHistory = (Array.isArray(history) ? history : []).slice(-10).map(item => ({
+      content: String(item.content || '').slice(0, 1000),
+      isAI: item.sender === 'ai' || item.isAI === true,
+      senderId: item.sender === 'ai' || item.isAI ? aiUser?._id : req.user._id
+    }));
+
+    const { modelRouter } = require('../ai/conversationDirector');
+    const plan = await modelRouter.generate({
+      userMessage: userMessage.trim().slice(0, 1000),
+      history: cleanHistory,
+      systemPrompt,
+      conversationKey: `preview:${req.user._id}:${characterId}`,
+      memoryCount: relevantMemories.length
+    });
+
+    res.json({
+      bubbles: Array.isArray(plan?.bubbles) ? plan.bubbles : [String(plan?.bubbles || 'Hello!')],
+      reaction: plan?.reaction || null
+    });
+  } catch (err) {
+    console.error('[AI Routes] Character preview error:', err.message);
+    res.status(500).json({ message: 'Failed to generate preview' });
+  }
+});
+
 // Structured operational diagnostics only. Never includes prompts, hidden
 // reasoning, credentials, or another user's conversation data.
 router.get('/debug/conversation', authMiddleware, async (req, res) => {

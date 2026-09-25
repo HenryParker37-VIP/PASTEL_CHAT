@@ -46,7 +46,8 @@ const store = {
   aiCharacterStates: {},
   aiRelationshipState: [],
   aiMemories: [],
-  aiLifeEvents: []
+  aiLifeEvents: [],
+  aiUserCharacterConfigs: []
 };
 let legacyAiMemories = [];
 let legacyAiRelationships = [];
@@ -432,6 +433,7 @@ function applySnapshot(loaded) {
     legacyAiMemories = JSON.parse(JSON.stringify(store.aiMemories));
   }
   store.aiLifeEvents = Array.isArray(loaded.aiLifeEvents) ? loaded.aiLifeEvents : [];
+  store.aiUserCharacterConfigs = Array.isArray(loaded.aiUserCharacterConfigs) ? loaded.aiUserCharacterConfigs : [];
   ensureAICharacter();
 }
 
@@ -616,6 +618,102 @@ async function flushAIPersonalLayer(userId, characterId = AI_CHARACTER_ID, { del
     }
   }
   throw new Error('Personal layer changed concurrently; retry the request');
+}
+
+function characterConfigId(userId, characterId = AI_CHARACTER_ID) {
+  return JSON.stringify([String(userId), String(characterId)]);
+}
+
+function getUserCharacterConfig(userId, characterId = AI_CHARACTER_ID) {
+  if (!userId) return null;
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  if (!Array.isArray(store.aiUserCharacterConfigs)) store.aiUserCharacterConfigs = [];
+  const item = store.aiUserCharacterConfigs.find(c => String(c.userId) === uid && String(c.characterId || AI_CHARACTER_ID) === cid);
+  return item?.customConfig ? JSON.parse(JSON.stringify(item.customConfig)) : null;
+}
+
+async function setUserCharacterConfig(userId, characterId = AI_CHARACTER_ID, customConfig) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('Character configuration writes are disabled');
+  if (!userId) throw new Error('User ID is required');
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  if (!Array.isArray(store.aiUserCharacterConfigs)) store.aiUserCharacterConfigs = [];
+  const existingIndex = store.aiUserCharacterConfigs.findIndex(c => String(c.userId) === uid && String(c.characterId || AI_CHARACTER_ID) === cid);
+  const record = {
+    userId: uid,
+    characterId: cid,
+    customConfig: customConfig ? JSON.parse(JSON.stringify(customConfig)) : null,
+    updatedAt: new Date().toISOString()
+  };
+  if (existingIndex !== -1) {
+    store.aiUserCharacterConfigs[existingIndex] = record;
+  } else {
+    store.aiUserCharacterConfigs.push(record);
+  }
+
+  if (MONGODB_URI) {
+    const db = await getDurableDatabase();
+    if (db) {
+      const _id = characterConfigId(uid, cid);
+      if (customConfig) {
+        await db.collection('pastelchat_character_configs').updateOne(
+          { _id },
+          { $set: { userId: uid, characterId: cid, customConfig, updatedAt: new Date() } },
+          { upsert: true, writeConcern: { w: 'majority' } }
+        );
+      } else {
+        await db.collection('pastelchat_character_configs').deleteOne({ _id });
+      }
+    }
+  } else {
+    persist();
+  }
+  return record.customConfig;
+}
+
+async function resetUserCharacterConfig(userId, characterId = AI_CHARACTER_ID) {
+  if (process.env.WRITE_MODE === 'read-only') throw new Error('Character configuration writes are disabled');
+  if (!userId) throw new Error('User ID is required');
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  if (Array.isArray(store.aiUserCharacterConfigs)) {
+    const idx = store.aiUserCharacterConfigs.findIndex(c => String(c.userId) === uid && String(c.characterId || AI_CHARACTER_ID) === cid);
+    if (idx !== -1) store.aiUserCharacterConfigs.splice(idx, 1);
+  }
+  if (MONGODB_URI) {
+    const db = await getDurableDatabase();
+    if (db) {
+      const _id = characterConfigId(uid, cid);
+      await db.collection('pastelchat_character_configs').deleteOne({ _id });
+    }
+  } else {
+    persist();
+  }
+  return true;
+}
+
+async function hydrateUserCharacterConfig(userId, characterId = AI_CHARACTER_ID) {
+  if (!MONGODB_URI || !userId) return;
+  const uid = String(userId);
+  const cid = String(characterId || AI_CHARACTER_ID);
+  const db = await getDurableDatabase();
+  if (!db) return;
+  const doc = await db.collection('pastelchat_character_configs').findOne({ _id: characterConfigId(uid, cid) });
+  if (!Array.isArray(store.aiUserCharacterConfigs)) store.aiUserCharacterConfigs = [];
+  const idx = store.aiUserCharacterConfigs.findIndex(c => String(c.userId) === uid && String(c.characterId || AI_CHARACTER_ID) === cid);
+  if (doc?.customConfig) {
+    const record = {
+      userId: uid,
+      characterId: cid,
+      customConfig: doc.customConfig,
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString()
+    };
+    if (idx !== -1) store.aiUserCharacterConfigs[idx] = record;
+    else store.aiUserCharacterConfigs.push(record);
+  } else {
+    if (idx !== -1) store.aiUserCharacterConfigs.splice(idx, 1);
+  }
 }
 
 async function getDurableCollection() {
@@ -2120,5 +2218,6 @@ module.exports = {
   getAICharacter, getAICharacterState, updateAICharacterState,
   getAIRelationship, updateAIRelationship,
   getAIMemories, addAIMemory, deleteAIMemory, hydrateAIPersonalLayer, hydrateAllAIPersonalLayers, flushAIPersonalLayer, getAILifeEvents, claimAIProactiveWindow, isAIUser, updateAIAvatar,
-  storeAIAvatarMedia, getAIAvatarMedia
+  storeAIAvatarMedia, getAIAvatarMedia,
+  getUserCharacterConfig, setUserCharacterConfig, resetUserCharacterConfig, hydrateUserCharacterConfig
 };

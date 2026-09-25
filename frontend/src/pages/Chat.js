@@ -11,7 +11,9 @@ import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import PastelIcon from '../components/PastelIcon';
 import AIDebugModal from '../components/AIDebugModal';
+import CharacterStudioModal from '../components/CharacterStudioModal';
 import { useToast } from '../components/Toast';
+import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity, PASTEL_IDENTITY_PALETTE } from '../utils/pastelIdentity';
 import { loadPendingMessages, removePendingMessage, savePendingMessage } from '../utils/pendingMessages';
 import {
@@ -42,6 +44,7 @@ const Chat = () => {
   const { socket, connected, relayMode, setLyraAvatar } = useSocket();
   const { startCall, activeCall } = useCall();
   const { push } = useToast();
+  const { t } = useLang();
   const navigate = useNavigate();
 
   const initialCache = getCachedConversation(user?._id, friendId);
@@ -61,6 +64,7 @@ const Chat = () => {
   const [chatColor, setChatColor] = useState(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [showAIDebug, setShowAIDebug] = useState(false);
+  const [showCharacterStudio, setShowCharacterStudio] = useState(false);
   const [aiActivity, setAiActivity] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const typingRef = useRef({});
@@ -1312,6 +1316,28 @@ const Chat = () => {
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
                   ><PastelIcon name="palette" size={17} /></button>
 
+                  {(friend._id === 'user_ai_lyra' || friend.isAI) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCharacterStudio(true)}
+                      title={t('customizeLyra') || 'Customize Lyra'}
+                      aria-label="Customize Lyra"
+                      style={{
+                        width: 34, height: 34, borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #FFF0F5, #FFE4E1)',
+                        color: friendIdentity.accent,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: `1.5px solid ${friendIdentity.accent}`, cursor: 'pointer',
+                        boxShadow: `0 2px 6px ${friendIdentity.accent}33`,
+                        transition: 'transform 0.15s'
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
+                      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                    >
+                      <PastelIcon name="sparkles" size={17} style={{ color: friendIdentity.accent }} />
+                    </button>
+                  )}
+
                   {colorPickerOpen && (
                     <div role="dialog" aria-label="Choose chat color" style={{
                       position: 'absolute', top: 42, right: 0, zIndex: 30,
@@ -1413,6 +1439,32 @@ const Chat = () => {
                 <div style={{ fontSize: 11, color: friend.isOnline ? '#4fa865' : '#bbb', marginTop: 4 }}>
                   <><PastelIcon name={friend.isOnline ? 'online' : 'offline'} size={10} /> {friend.isOnline ? 'Online now' : 'Offline'}</>
                 </div>
+                {(friend._id === 'user_ai_lyra' || friend.isAI) && (
+                  <div style={{ marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCharacterStudio(true)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 14px',
+                        borderRadius: 16,
+                        border: `1.5px solid ${friendIdentity.accent}`,
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        color: friendIdentity.accent,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <PastelIcon name="sparkles" size={13} style={{ color: friendIdentity.accent }} />
+                      {t('customizeLyra') || 'Customize Lyra'}
+                    </button>
+                  </div>
+                )}
               </div>
               <button onClick={() => setProfileOpen(false)} aria-label="Close profile" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ccc' }}><PastelIcon name="close" size={18} /></button>
             </div>
@@ -1550,6 +1602,17 @@ const Chat = () => {
       </div>
       {showAIDebug && (
         <AIDebugModal onClose={() => setShowAIDebug(false)} onRefreshChat={fetchMessages} />
+      )}
+      {showCharacterStudio && (
+        <CharacterStudioModal
+          open={showCharacterStudio}
+          onClose={() => setShowCharacterStudio(false)}
+          friend={friend}
+          friendId={friendId}
+          onSaved={() => {
+            fetchMessages(true);
+          }}
+        />
       )}
     </div>
   );
