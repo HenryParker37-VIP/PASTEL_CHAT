@@ -105,9 +105,11 @@ class CharacterConfig {
 
     // Verbosity
     if (this.speech.verbosity <= 0.4) {
-      guidelines.push('Length: Keep messages brief (typically 1 to 2 short sentences per bubble). Do not write essays or paragraphs.');
+      guidelines.push('Length: Short conversational beats (typically 1 quick phrase, natural fragment, or short sentence per bubble). Split multiple thoughts across separate bubbles. Never write paragraph-like bubbles.');
     } else if (this.speech.verbosity <= 0.7) {
-      guidelines.push('Length: Moderate conversational length (1 to 3 natural sentences).');
+      guidelines.push('Length: Moderate conversational length (1 to 2 natural sentences per bubble). Naturally split multiple thoughts into separate bubbles.');
+    } else {
+      guidelines.push('Length: Longer, detailed conversational replies.');
     }
 
     // Formality & Style
