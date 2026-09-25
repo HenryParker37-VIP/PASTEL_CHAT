@@ -437,3 +437,152 @@ test('Hygiene 3: Telegram webhook rejects invalid signatures in production mode'
     process.env.TELEGRAM_WEBHOOK_SECRET = origSecret;
   }
 });
+
+// ==========================================
+// ROUND 2: CR-1, H-1, M-1, M-2 & TRACEABILITY
+// ==========================================
+
+test('CR-1.1: Lyra AI identity cannot be interactively logged into via POST /auth/login', async () => {
+  // Test both with LYRA-AI24 and any arbitrary attempt
+  const res1 = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loginCode: 'LYRA-AI24' })
+  });
+  assert.equal(res1.status, 401);
+
+  // Even if an AI user somehow had a login code assigned in memory
+  const lyra = storeDb.findUserById('user_ai_lyra');
+  assert.ok(lyra);
+  assert.equal(lyra.loginCode, null);
+});
+
+test('CR-1.2: Token claiming AI user identity is strictly rejected by authenticateToken', () => {
+  const forgedAiToken = jwt.sign(
+    {
+      userId: 'user_ai_lyra',
+      name: 'Lyra',
+      avatar: 'https://example.com/avatar.png',
+      isAI: true,
+      sid: 'ai-sess-1',
+      ver: 0
+    },
+    process.env.JWT_SECRET,
+    { issuer: 'pastelchat', audience: 'pastelchat-web', algorithm: 'HS256' }
+  );
+
+  const auth = authenticateToken(forgedAiToken);
+  assert.equal(auth, null, 'authenticateToken must return null for AI identity');
+});
+
+test('CR-1.3: Cross-user conversation authorization strictly enforced (User A cannot view User B conversation)', async () => {
+  // Create disposable QA users A, B, and C
+  const userA = storeDb.createUser({ name: 'qa_user_test_a', isQA: true });
+  const userB = storeDb.createUser({ name: 'qa_user_test_b', isQA: true });
+  const userC = storeDb.createUser({ name: 'qa_user_test_c', isQA: true });
+
+  const tokenA = createUserToken(userA);
+
+  // User A attempts to view conversation between user B and user C
+  const res = await fetch(`${baseUrl}/messages/with/${userB._id}`, {
+    headers: { 'Authorization': `Bearer ${tokenA}` }
+  });
+  // User A and User B are not friends -> 403 Forbidden
+  assert.equal(res.status, 403);
+  const data = await res.json();
+  assert.equal(data.message, 'Conversation access denied');
+});
+
+test('H-1.1: All 30 historically exposed login codes including LYRA-AI24 are in COMPROMISED_LOGIN_CODES', () => {
+  const codes = [
+    'LYRA-AI24', 'ADMN-0307', 'B5F8-JUZZ', 'VFTQ-KCCB', 'EJ44-FJM2', 'AP3K-2W2S',
+    'BDQG-SJ4C', 'HDFA-PWNU', '8UKT-YU8K', 'PA8G-G5UE', 'SFPC-5K85', 'X9WA-32VD',
+    '7E4S-BGG3', '4QMJ-YQKP', '6CCA-SZ6D', '2KNA-W8J7', 'KK4W-C562', 'UT4E-7KA5',
+    '9M6D-CGPU', 'R2M8-WE3F', 'TDFU-4NH2', '5GWR-WF6E', 'E4MY-E62X', 'BP7U-5WY6',
+    'PEVK-DPN4', '76VR-AX2D', 'S2EX-9Q5E', 'YTGR-MV8R', 'P4TC-R6YY', 'KJ7T-FU7U'
+  ];
+  assert.equal(codes.length, 30);
+  for (const c of codes) {
+    assert.ok(COMPROMISED_LOGIN_CODES.has(c), `Missing compromised code: ${c}`);
+  }
+});
+
+test('H-1.2: seedData.json contains zero active login credentials', () => {
+  const seedPath = path.join(__dirname, '../src/db/seedData.json');
+  const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+  for (const u of seed.users) {
+    assert.equal(u.loginCode, null, `User ${u.name} in seedData.json must have loginCode: null`);
+  }
+});
+
+test('M-1.1: deleteDisposableUser strictly refuses to delete legitimate (non-QA) users', () => {
+  const realUser = storeDb.createUser({
+    name: 'RealLegitimateUser',
+    loginCode: 'REAL-USER',
+    isQA: false
+  });
+  assert.equal(realUser.isQA, false);
+
+  const deleted = storeDb.deleteDisposableUser(realUser._id);
+  assert.equal(deleted, false, 'deleteDisposableUser must return false for non-QA user');
+
+  const stillExists = storeDb.findUserById(realUser._id);
+  assert.ok(stillExists, 'Non-QA user must NOT be deleted');
+});
+
+test('M-1.2: POST /admin/qa/cleanup refuses to delete non-QA accounts even when caller passes userIds', async () => {
+  const realUser = storeDb.createUser({ name: 'ProtectedCustomer', isQA: false });
+  const qaUser = storeDb.createUser({ name: 'qa_disposable_user_1', isQA: true });
+
+  const adminToken = createUserToken(storeDb.findUser({ isAdmin: true }), { adminRole: 'OWNER' });
+
+  // Admin calls cleanup targeting the non-QA user ID explicitly
+  const res = await fetch(`${baseUrl}/admin/qa/cleanup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`
+    },
+    body: JSON.stringify({ userIds: [realUser._id, qaUser._id] })
+  });
+
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.deletedCount, 1);
+  assert.deepEqual(data.deletedIds, [qaUser._id]);
+
+  // Verify real user still exists completely untouched
+  const realStillExists = storeDb.findUserById(realUser._id);
+  assert.ok(realStillExists);
+});
+
+test('M-2.1: Rate limiter fails safely (503) in production if durable store is unavailable', async () => {
+  const origEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = 'production';
+    // Without MongoDB configured in test, rate limiter must fail closed (503)
+    const res = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loginCode: 'TEST-CODE' })
+    });
+    assert.equal(res.status, 503);
+    const data = await res.json();
+    assert.ok(data.message.includes('unavailable'));
+  } finally {
+    process.env.NODE_ENV = origEnv;
+  }
+});
+
+test('Traceability: /api/version returns buildId and commit identifying source revision', async () => {
+  const res = await fetch(`${baseUrl}/api/version`);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(data.version);
+  assert.ok(data.buildId);
+  assert.ok(data.commit);
+  // buildId should be the first 12 characters of the commit or match git SHA prefix
+  if (/^[0-9a-f]{7,40}$/i.test(data.commit)) {
+    assert.equal(data.buildId, data.commit.slice(0, 12).toLowerCase());
+  }
+});

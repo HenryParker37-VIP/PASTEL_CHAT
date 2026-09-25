@@ -3,7 +3,7 @@
     {
       "_id": "user_ai_lyra",
       "name": "Lyra",
-      "loginCode": "LYRA-AI24",
+      "loginCode": null,
       "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50",
       "bio": "barista & design student 🍵 film cameras & quiet cafes",
       "status": "brewing something warm ☕",
@@ -18,7 +18,7 @@
     {
       "_id": "synthetic_user_alice",
       "name": "Alice",
-      "loginCode": "SYNT-ALIC",
+      "loginCode": null,
       "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=alice&backgroundColor=ffb6c1,add8e6,dda0dd,ffe4e1&radius=50",
       "bio": "synthetic fixture user",
       "status": "testing",
@@ -33,7 +33,7 @@
     {
       "_id": "synthetic_user_bob",
       "name": "Bob",
-      "loginCode": "SYNT-BOB1",
+      "loginCode": null,
       "avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=bob&backgroundColor=add8e6&radius=50",
       "bio": "synthetic fixture user",
       "status": "testing",

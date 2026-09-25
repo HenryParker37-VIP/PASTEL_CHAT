@@ -73,7 +73,7 @@ function ensureAICharacter() {
     aiUser = {
       _id: AI_USER_ID,
       name: 'Lyra',
-      loginCode: 'LYRA-AI24',
+      loginCode: null,
       avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50',
       bio: 'barista & design student 🍵 film cameras & quiet cafes',
       status: 'brewing something warm ☕',
@@ -88,6 +88,7 @@ function ensureAICharacter() {
     store.users.unshift(aiUser);
   } else {
     aiUser.isAI = true;
+    aiUser.loginCode = null; // AI character must never have an interactive login code
     aiUser.aiCharacterId = AI_CHARACTER_ID;
     if (!aiUser.avatar) aiUser.avatar = 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lyra&backgroundColor=ffd1dc,b5ead7,c7ceea,ffe4e1&radius=50';
     if (!aiUser.bio) aiUser.bio = 'barista & design student 🍵 film cameras & quiet cafes';
@@ -1526,6 +1527,14 @@ function revokeCompromisedAdminSessions() {
 function rotateExposedCredentials() {
   let rotated = 0;
   for (const user of (store.users || [])) {
+    if (user.isAI || user.isService || user.aiCharacterId || String(user._id) === AI_USER_ID) {
+      if (user.loginCode !== null) {
+        user.loginCode = null;
+        user.authVersion = Number(user.authVersion || 0) + 1;
+        rotated++;
+      }
+      continue;
+    }
     if (user.loginCode && COMPROMISED_LOGIN_CODES.has(user.loginCode)) {
       if (user.isAdmin) {
         user.loginCode = null;
@@ -1627,6 +1636,7 @@ function isNameTaken(name, exceptId = null) {
   return !!(u && String(u._id) !== String(exceptId || ''));
 }
 function createUser(doc) {
+  const isQA = Boolean(doc?.isQA || /^qa_|^test_qa_/i.test(doc?.name || ''));
   const user = {
     _id: genId(),
     isOnline: false,
@@ -1642,9 +1652,11 @@ function createUser(doc) {
     loginMethod: 'code',
     isSuspended: false,
     authVersion: 0,
-    isTestAccount: false,
+    isTestAccount: isQA,
+    isQA,
     isGoogleVerified: false,
-    ...doc
+    ...doc,
+    isQA
   };
   store.users.push(user);
   persist();
@@ -2533,8 +2545,9 @@ function deleteDisposableUser(userId) {
   const uid = String(userId || '');
   if (!uid) return false;
   const user = store.users.find((u) => String(u._id) === uid);
-  // SECURITY: Never delete admin or AI character accounts
-  if (!user || user.isAdmin || user.isAI || uid === 'user_ai_lyra') {
+  // SECURITY: Only accounts explicitly marked as QA accounts can be deleted.
+  // Never delete admin, AI, or normal production user accounts.
+  if (!user || user.isAdmin || user.isAI || uid === 'user_ai_lyra' || user.isQA !== true) {
     return false;
   }
   store.users = store.users.filter((u) => String(u._id) !== uid);

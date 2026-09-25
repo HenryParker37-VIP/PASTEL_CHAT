@@ -28,7 +28,7 @@ const securityHeaders = require('./middleware/security');
 const rateLimit = require('./middleware/rateLimit');
 const { assertAuthConfigured } = require('./config/auth');
 const { findUserByVerificationCode, updateUser } = require('./db/store');
-const { appVersion, buildId, deployedAt } = require('./version');
+const { appVersion, buildId, commit, deployedAt } = require('./version');
 const { emitToUser } = require('./services/userSocket');
 
 const app = express();
@@ -142,7 +142,7 @@ app.get('/api/version', (_, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
-  res.json({ version: appVersion, buildId, deployedAt });
+  res.json({ version: appVersion, buildId, commit, deployedAt });
 });
 
 app.use((error, req, res, next) => {
