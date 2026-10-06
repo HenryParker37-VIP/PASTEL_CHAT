@@ -83,6 +83,14 @@ async function run() {
     a1.emit('send_private_message', { to: b._id, content: `${tag}-socket-friend` });
     await pause();
     for (const label of ['a1', 'a2', 'b1']) assert.equal(seen(label, friendEvent, message => message.content === `${tag}-socket-friend`).length, 1);
+    a1.emit('send_private_message', {
+      to: b._id,
+      content: `${tag}-socket-invalid-media`,
+      media: { type: 'image', name: 'invalid', dataUrl: 'capacitor://localhost/_capacitor_http_interceptor_/https://attacker.invalid' }
+    });
+    await pause();
+    assert(seen('a1', 'message_error', payload => /invalid attachment/i.test(payload.message)).length > 0);
+    assert.equal(seen('b1', friendEvent, message => message.content === `${tag}-socket-invalid-media`).length, 0);
     none('c1', friendEvent);
     c1.emit('send_private_message', { to: b._id, content: `${tag}-forged-friend` });
     await pause();

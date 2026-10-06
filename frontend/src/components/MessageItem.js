@@ -9,6 +9,7 @@ import { useLang } from '../i18n';
 import { getPastelColor, getPastelIdentity } from '../utils/pastelIdentity';
 import { resolveCharacterAvatar } from '../utils/characterAvatar';
 import { useSocket } from '../contexts/SocketContext';
+import { safeAttachmentDataUrl } from '../utils/safeAttachmentUrl';
 
 const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
 const isEmojiOnly = (text) => {
@@ -77,6 +78,7 @@ const MessageItem = ({
   const hasReactions = Object.keys(reactions).length > 0;
   const deliveryStatus = message.deliveryStatus || 'sent';
   const toolbarIsVertical = Boolean(message.media?.type);
+  const safeAttachmentUrl = safeAttachmentDataUrl(message.media?.dataUrl);
 
   const handleRecall = async () => {
     const accepted = await confirm({ title: t('chatRecall'), message: t('chatRecallConfirm'), confirmLabel: t('chatRecall'), tone: 'danger', icon: 'trash' });
@@ -215,21 +217,22 @@ const MessageItem = ({
             )}
 
             {/* Media attachment */}
-            {message.media && !['gif', 'sticker'].includes(message.media.type) && !message.isRecalled && (
+            {message.media && safeAttachmentUrl && !['gif', 'sticker'].includes(message.media.type) && !message.isRecalled && (
               message.media.type === 'image' ? (
                 <div className="bubble-media-img">
                   <img
-                    src={message.media.dataUrl}
+                    src={safeAttachmentUrl}
                     alt={message.media.name || 'image'}
                     style={{ maxWidth: '100%', maxHeight: 280, borderRadius: 10, display: 'block', cursor: 'pointer' }}
-                    onClick={() => window.open(message.media.dataUrl, '_blank')}
+                    onClick={() => window.open(safeAttachmentUrl, '_blank', 'noopener,noreferrer')}
                   />
                 </div>
               ) : (
                 <a
-                  href={message.media.dataUrl}
+                  href={safeAttachmentUrl}
                   download={message.media.name}
                   className="bubble-media-file"
+                  rel="noreferrer"
                 >
                   <PastelIcon name="file" size={22} title="File attachment" />
                   <div style={{ minWidth: 0 }}>

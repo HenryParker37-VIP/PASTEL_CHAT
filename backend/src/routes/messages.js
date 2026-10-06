@@ -32,6 +32,7 @@ const {
   getCurrentAITurnRevision
 } = require('../db/store');
 const { resolveAITurn } = require('../ai/resolveAITurn');
+const { createInlineMedia } = require('../services/inlineAttachment');
 
 function canAccessConversation(userId, friendId) {
   if (!userId || !friendId || String(userId) === String(friendId)) return false;
@@ -133,14 +134,8 @@ router.post('/', authMiddleware, async (req, res) => {
       }
       // Legacy format (base64 dataUrl) - keep for backward compatibility, capped to prevent bloat
       else if (media.dataUrl && media.name) {
-        const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
-        if (sizeBytes > 64 * 1024) return res.status(400).json({ message: 'Direct embed file too large (max 64KB). Please use an image or file URL.' });
-        validMedia = {
-          type: media.type === 'image' ? 'image' : 'file',
-          dataUrl: media.dataUrl,
-          name: String(media.name).slice(0, 200),
-          size: sizeBytes
-        };
+        validMedia = createInlineMedia(media, 64 * 1024);
+        if (!validMedia) return res.status(400).json({ message: 'Unsupported or invalid inline attachment' });
       }
     }
 

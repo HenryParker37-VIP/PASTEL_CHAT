@@ -76,7 +76,13 @@ app.use((req, res, next) => {
   if (process.env.REALTIME_RELAY === 'true' && !['/health', '/api/version'].includes(req.path)) {
     return res.status(503).json({ status: 'relay_only', message: 'Use the primary API' });
   }
-  if (process.env.WRITE_MODE !== 'read-only' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || req.path === '/internal/rehydrate') return next();
+  const safeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  // Render is a realtime relay only. A missing or incorrect WRITE_MODE must
+  // never silently make its REST or internal maintenance routes authoritative.
+  if (process.env.RENDER === 'true' && !safeMethod) {
+    return res.status(503).json({ status: 'read_only', message: 'Application writes are disabled on the realtime relay' });
+  }
+  if (process.env.WRITE_MODE !== 'read-only' || safeMethod || req.path === '/internal/rehydrate') return next();
   return res.status(503).json({ status: 'read_only', message: 'Application writes are temporarily disabled' });
 });
 
@@ -131,9 +137,9 @@ app.get('/health', (_, res) => {
     status: unavailable ? 'unavailable' : 'ok',
     storage: durable ? 'mongodb' : (unavailable ? 'durable-storage-required' : 'local-ephemeral'),
     realtime: 'socket.io',
-    writeMode: process.env.WRITE_MODE === 'read-only' ? 'read-only' : 'write',
-    singleWriterConfigured: process.env.WRITE_MODE === 'read-only' || process.env.PERSISTENT_SERVICE === 'true',
-    relayOnly: process.env.REALTIME_RELAY === 'true',
+    writeMode: process.env.RENDER === 'true' || process.env.WRITE_MODE === 'read-only' ? 'read-only' : 'write',
+    singleWriterConfigured: process.env.RENDER === 'true' || process.env.WRITE_MODE === 'read-only' || process.env.PERSISTENT_SERVICE === 'true',
+    relayOnly: process.env.RENDER === 'true' || process.env.REALTIME_RELAY === 'true',
     timestamp: new Date()
   });
 });

@@ -31,6 +31,31 @@ async function run() {
     const history = await fetch(`${base}/messages/with/${a._id}`, { headers: { Authorization: `Bearer ${tokenB}` } });
     assert.strictEqual(history.status, 200);
     assert((await history.json()).some(item => item._id === message._id));
+
+    const goodMedia = { type: 'image', name: 'qa.png', dataUrl: 'data:image/png;base64,iVBORw0KGgo=' };
+    const mediaSent = await fetch(`${base}/messages`, {
+      method: 'POST', headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receiverId: b._id, content: 'safe attachment', media: goodMedia })
+    });
+    assert.strictEqual(mediaSent.status, 201);
+    const stored = await mediaSent.json();
+    assert.strictEqual(stored.media.dataUrl, goodMedia.dataUrl);
+    const mediaHistory = await fetch(`${base}/messages/with/${a._id}`, { headers: { Authorization: `Bearer ${tokenB}` } });
+    const renderedSource = (await mediaHistory.json()).find(item => item._id === stored._id).media.dataUrl;
+    assert.strictEqual(renderedSource, goodMedia.dataUrl, 'valid attachment survives API storage and retrieval for rendering');
+
+    for (const dataUrl of [
+      'javascript:alert(1)', 'file:///etc/passwd', 'capacitor://localhost/path',
+      'https://attacker.example/payload', 'data:text/html;base64,PHNjcmlwdD4=',
+      'data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png;base64,%%%=',
+      'data:image/png;base64%2ciVBORw0KGgo=', 'data:image/png;base64,iVBORw0KGg'
+    ]) {
+      const rejected = await fetch(`${base}/messages`, {
+        method: 'POST', headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: b._id, content: 'rejected attachment', media: { type: 'image', name: 'bad', dataUrl } })
+      });
+      assert.strictEqual(rejected.status, 400, `attachment should be rejected: ${dataUrl.slice(0, 32)}`);
+    }
   } finally {
     await new Promise(resolve => app.get('io').close(resolve));
     storeDb.store.messages.splice(initialMessages);

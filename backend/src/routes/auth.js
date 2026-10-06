@@ -23,7 +23,7 @@ const { createUserToken } = require('../services/sessionAuth');
 const GOOGLE_CLIENT_ID = '803433790062-2dmhg2du471q65q2biheuli604b31vgv.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-const { COMPROMISED_LOGIN_CODES } = require('../config/securityConstants');
+const { isCompromisedLoginCode } = require('../config/securityConstants');
 
 function defaultAvatar(seed) {
   const safe = encodeURIComponent((seed || 'guest').toLowerCase().trim());
@@ -83,7 +83,7 @@ router.post('/login', rateLimit({ name: 'auth-login', max: 60 }), (req, res) => 
     if (!code) return res.status(400).json({ message: 'Login code is required' });
 
     // Reject any historically compromised / exposed login codes
-    if (COMPROMISED_LOGIN_CODES.has(code)) {
+    if (isCompromisedLoginCode(code)) {
       return res.status(401).json({ message: 'Invalid login code' });
     }
 
@@ -92,7 +92,7 @@ router.post('/login', rateLimit({ name: 'auth-login', max: 60 }), (req, res) => 
     let user = null;
     let adminRole = null;
     let accessCodeId = null;
-    if (ownerCode && !COMPROMISED_LOGIN_CODES.has(ownerCode) && sameSecret(code, ownerCode)) {
+    if (ownerCode && !isCompromisedLoginCode(ownerCode) && sameSecret(code, ownerCode)) {
       user = findUser({ isAdmin: true });
       adminRole = 'OWNER';
     } else if (demoCode) {

@@ -13,7 +13,7 @@ process.env.PASTELCHAT_DISABLE_PERSIST = '1';
 const { once } = require('events');
 const { app, server } = require('../src/app');
 const storeDb = require('../src/db/store');
-const { COMPROMISED_LOGIN_CODES } = require('../src/config/securityConstants');
+const { COMPROMISED_LOGIN_CODE_HASHES, hashLoginCode, isCompromisedLoginCode } = require('../src/config/securityConstants');
 const { issueToken, verifyToken, assertAuthConfigured } = require('../src/config/auth');
 const { authenticateToken, createUserToken } = require('../src/services/sessionAuth');
 
@@ -37,15 +37,21 @@ test.after(async () => {
 // ==========================================
 // C1: ADMIN AUTH & CREDENTIAL SECURITY
 // ==========================================
-test('C1.1: Compromised default admin code ADMN-0000 is strictly rejected', async () => {
-  const res = await fetch(`${baseUrl}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ loginCode: 'ADMN-0000' })
-  });
-  assert.equal(res.status, 401);
-  const data = await res.json();
-  assert.equal(data.message, 'Invalid login code');
+test('C1.1: a revoked credential digest is rejected by login', async () => {
+  const code = 'QA-REVOKED-ADMIN-TEST';
+  const digest = hashLoginCode(code);
+  COMPROMISED_LOGIN_CODE_HASHES.add(digest);
+  try {
+    const res = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loginCode: code })
+    });
+    assert.equal(res.status, 401);
+    assert.equal((await res.json()).message, 'Invalid login code');
+  } finally {
+    COMPROMISED_LOGIN_CODE_HASHES.delete(digest);
+  }
 });
 
 test('C1.2: Hardcoded fallback secrets are banned and assertAuthConfigured fails closed in production', () => {
@@ -165,21 +171,26 @@ test('H1.1: seedData.json contains only synthetic fixture data with zero leaked 
   assert.equal(seed.messages.length, 0);
 });
 
-test('H1.2: All 29 historically exposed login codes are blocked from login', async () => {
-  for (const code of COMPROMISED_LOGIN_CODES) {
+test('H1.2: revoked-code digest check rejects login without plaintext denylist entries', async () => {
+  const code = 'QA-REVOKED-TEST';
+  const digest = hashLoginCode(code);
+  COMPROMISED_LOGIN_CODE_HASHES.add(digest);
+  try {
     const res = await fetch(`${baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ loginCode: code })
     });
-    assert.equal(res.status, 401, `Compromised code ${code} was not rejected!`);
+    assert.equal(res.status, 401, 'revoked code must be rejected');
+  } finally {
+    COMPROMISED_LOGIN_CODE_HASHES.delete(digest);
   }
 });
 
 test('H1.3: generateLoginCode never outputs any compromised code', () => {
   for (let i = 0; i < 50; i++) {
     const code = storeDb.generateLoginCode();
-    assert.ok(!COMPROMISED_LOGIN_CODES.has(code), `Generated code ${code} is in compromised list!`);
+    assert.ok(!isCompromisedLoginCode(code), 'generated code must not be a compromised credential');
   }
 });
 
@@ -443,11 +454,11 @@ test('Hygiene 3: Telegram webhook rejects invalid signatures in production mode'
 // ==========================================
 
 test('CR-1.1: Lyra AI identity cannot be interactively logged into via POST /auth/login', async () => {
-  // Test both with LYRA-AI24 and any arbitrary attempt
+  // Test an arbitrary credential attempt; the AI identity remains non-interactive.
   const res1 = await fetch(`${baseUrl}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ loginCode: 'LYRA-AI24' })
+    body: JSON.stringify({ loginCode: 'LYRA-LOGIN-TEST' })
   });
   assert.equal(res1.status, 401);
 
@@ -493,18 +504,10 @@ test('CR-1.3: Cross-user conversation authorization strictly enforced (User A ca
   assert.equal(data.message, 'Conversation access denied');
 });
 
-test('H-1.1: All 30 historically exposed login codes including LYRA-AI24 are in COMPROMISED_LOGIN_CODES', () => {
-  const codes = [
-    'LYRA-AI24', 'ADMN-0000', 'B5F8-JUZZ', 'VFTQ-KCCB', 'EJ44-FJM2', 'AP3K-2W2S',
-    'BDQG-SJ4C', 'HDFA-PWNU', '8UKT-YU8K', 'PA8G-G5UE', 'SFPC-5K85', 'X9WA-32VD',
-    '7E4S-BGG3', '4QMJ-YQKP', '6CCA-SZ6D', '2KNA-W8J7', 'KK4W-C562', 'UT4E-7KA5',
-    '9M6D-CGPU', 'R2M8-WE3F', 'TDFU-4NH2', '5GWR-WF6E', 'E4MY-E62X', 'BP7U-5WY6',
-    'PEVK-DPN4', '76VR-AX2D', 'S2EX-9Q5E', 'YTGR-MV8R', 'P4TC-R6YY', 'KJ7T-FU7U'
-  ];
-  assert.equal(codes.length, 30);
-  for (const c of codes) {
-    assert.ok(COMPROMISED_LOGIN_CODES.has(c), `Missing compromised code: ${c}`);
-  }
+test('H-1.1: exposed login denylist contains only one-way SHA-256 digests', () => {
+  assert.equal(COMPROMISED_LOGIN_CODE_HASHES.size, 32);
+  for (const digest of COMPROMISED_LOGIN_CODE_HASHES) assert.match(digest, /^[a-f0-9]{64}$/);
+  assert.ok(isCompromisedLoginCode('qa-revoked-test', new Set([hashLoginCode('QA-REVOKED-TEST')])), 'normalization and digest check must reject revoked codes');
 });
 
 test('H-1.2: seedData.json contains zero active login credentials', () => {

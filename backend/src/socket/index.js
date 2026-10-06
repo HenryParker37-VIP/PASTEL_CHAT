@@ -25,9 +25,10 @@ const { notifyInApp } = require('../services/inAppNotifications');
 const { invalidateConversation } = require('../ai/conversationDirector');
 const { joinAuthenticatedRooms, emitToUser: emitUser, emitToUsers } = require('../services/userSocket');
 const storeDb = require('../db/store');
+const { createInlineMedia } = require('../services/inlineAttachment');
 
 const setupSocket = (io) => {
-  const relayMode = process.env.REALTIME_RELAY === 'true';
+  const relayMode = process.env.REALTIME_RELAY === 'true' || process.env.RENDER === 'true';
   const emitToUser = (userId, event, payload) => emitUser(io, userId, event, payload);
   io.use(async (socket, next) => {
     try {
@@ -139,10 +140,8 @@ const setupSocket = (io) => {
       if (media?.type === 'sticker' && media?.imageUrl) {
         validMedia = { type: 'sticker', stickerId: media.stickerId ? String(media.stickerId).slice(0, 100) : null, imageUrl: String(media.imageUrl).slice(0, 2000), name: media.name ? String(media.name).slice(0, 200) : 'Sticker' };
       } else if (media && media.dataUrl && media.name) {
-        const sizeBytes = Math.round((media.dataUrl.length * 3) / 4);
-        if (sizeBytes <= 8 * 1024 * 1024) {
-          validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sizeBytes };
-        }
+        validMedia = createInlineMedia(media, 8 * 1024 * 1024);
+        if (!validMedia) return socket.emit('message_error', { message: 'Unsupported or invalid attachment' });
       }
       const target = findUserById(to);
       const targetAI = target?.isAI ? target : null;
@@ -258,8 +257,8 @@ const setupSocket = (io) => {
       if (media?.type === 'sticker' && media?.imageUrl) {
         validMedia = { type: 'sticker', stickerId: media.stickerId ? String(media.stickerId).slice(0, 100) : null, imageUrl: String(media.imageUrl).slice(0, 2000), name: media.name ? String(media.name).slice(0, 200) : 'Sticker' };
       } else if (media?.dataUrl && media?.name) {
-        const sz = Math.round((media.dataUrl.length * 3) / 4);
-        if (sz <= 8 * 1024 * 1024) validMedia = { type: media.type === 'image' ? 'image' : 'file', dataUrl: media.dataUrl, name: String(media.name).slice(0, 200), size: sz };
+        validMedia = createInlineMedia(media, 8 * 1024 * 1024);
+        if (!validMedia) return socket.emit('message_error', { message: 'Unsupported or invalid attachment' });
       }
       const msg = createMessage({
         senderId: user._id,

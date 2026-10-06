@@ -1,6 +1,8 @@
 const assert = require('assert');
-process.env.WRITE_MODE = 'read-only';
 process.env.VERCEL = '1';
+process.env.RENDER = 'true';
+process.env.REALTIME_RELAY = 'false';
+process.env.WRITE_MODE = 'write';
 process.env.MONGODB_URI = '';
 process.env.NODE_ENV = 'test';
 const { app, server } = require('../src/app');
@@ -16,7 +18,12 @@ async function run() {
       assert.strictEqual(response.status, 503);
       assert.strictEqual((await response.json()).status, 'read_only');
     }
-    assert.strictEqual(process.env.WRITE_MODE, 'read-only');
+    const health = await fetch(base + '/health');
+    const status = await health.json();
+    assert.strictEqual(status.writeMode, 'read-only');
+    assert.strictEqual(status.relayOnly, true);
+    assert.strictEqual(status.singleWriterConfigured, true);
+    assert.strictEqual(process.env.WRITE_MODE, 'write', 'Render must fail closed even if WRITE_MODE is misconfigured');
   } finally {
     await new Promise(resolve => app.get('io').close(resolve));
   }

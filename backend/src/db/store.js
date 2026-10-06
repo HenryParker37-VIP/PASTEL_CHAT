@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { avatarBytes } = require('../services/aiAvatarMedia');
-const { COMPROMISED_LOGIN_CODES } = require('../config/securityConstants');
+const { isCompromisedLoginCode } = require('../config/securityConstants');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 let rawMongo = (process.env.MONGODB_URI || '').trim();
@@ -1535,7 +1535,7 @@ function rotateExposedCredentials() {
       }
       continue;
     }
-    if (user.loginCode && COMPROMISED_LOGIN_CODES.has(user.loginCode)) {
+    if (user.loginCode && isCompromisedLoginCode(user.loginCode)) {
       if (user.isAdmin) {
         user.loginCode = null;
       } else {
@@ -1551,7 +1551,7 @@ function rotateExposedCredentials() {
 function ensureConfiguredAdmin() {
   const configuredAdminCode = normalizeAccessCode(process.env.ADMIN_LOGIN_CODE);
   const configuredAdmin = store.users.find((user) => user.isAdmin === true);
-  if (configuredAdminCode && !COMPROMISED_LOGIN_CODES.has(configuredAdminCode)) {
+  if (configuredAdminCode && !isCompromisedLoginCode(configuredAdminCode)) {
     if (configuredAdmin) {
       if (configuredAdmin.loginCode !== null || configuredAdmin.adminRole !== 'OWNER') {
         configuredAdmin.loginCode = null;
@@ -1571,7 +1571,7 @@ function ensureConfiguredAdmin() {
     console.warn('[DB] ADMIN_LOGIN_CODE is not configured; admin login is disabled.');
   }
   const configuredDemoCode = normalizeAccessCode(process.env.DEMO_LOGIN_CODE);
-  if (configuredDemoCode && !COMPROMISED_LOGIN_CODES.has(configuredDemoCode) && !findAccessCodeByHash(accessCodeHash(configuredDemoCode))) {
+  if (configuredDemoCode && !isCompromisedLoginCode(configuredDemoCode) && !findAccessCodeByHash(accessCodeHash(configuredDemoCode))) {
     createAccessCode({ code: configuredDemoCode, label: 'Initial demo access', createdBy: 'system' });
     console.log('[DB] Bootstrapped configured demo access code');
   }
@@ -1603,7 +1603,7 @@ function generateLoginCode() {
     let code = '';
     for (let i = 0; i < 8; i++) code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
     const formatted = code.slice(0, 4) + '-' + code.slice(4);
-    if (!COMPROMISED_LOGIN_CODES.has(formatted) && !store.users.find((u) => u.loginCode === formatted)) return formatted;
+    if (!isCompromisedLoginCode(formatted) && !store.users.find((u) => u.loginCode === formatted)) return formatted;
   }
   throw new Error('Could not generate unique code');
 }
